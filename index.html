@@ -5,14 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pilotage Formation B2C & B2B - Sécurisé</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     
-    <!-- Babel pour JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
@@ -517,7 +514,7 @@
             const [lignesMultiplesPSF, setLignesMultiplesPSF] = useState([]);
             const [lignesMultiplesTTT, setLignesMultiplesTTT] = useState([]);
             
-            // --- Récupération des données depuis Firestore (SANS window.fb) ---
+            // --- Récupération des données depuis Firestore ---
             useEffect(() => {
                 setChargement(true);
                 const { colName, localKey } = getDbInfo();
@@ -558,8 +555,7 @@
                 if (timelineContainer) {
                     const todayMarker = timelineContainer.querySelector('.marker-today');
                     if (todayMarker) {
-                        const containerCenter = timelineContainer.clientWidth / 2;
-                        timelineContainer.scrollTo({ left: todayMarker.offsetLeft - containerCenter, behavior: 'smooth' });
+                        todayMarker.parentElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                     }
                 }
             };
@@ -631,23 +627,24 @@
                 return true;
             };
 
-            const formationsFiltrees = useMemo(() => formations.filter(t => t?.type !== 'PSF' && !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
+            const formationsFiltrees = useMemo(() => formations.filter(t => !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
             const formationsPSF = useMemo(() => formations.filter(t => t?.type === 'PSF' && !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
             const formationsSpe = useMemo(() => formations.filter(t => t?.type === 'Spécialisation' && !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
             const formationsFim = useMemo(() => formations.filter(t => t?.type === 'FIM' && !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
             const formationsGenesys = useMemo(() => formations.filter(t => t?.type === 'Projet Genesys' && !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
             const formationsTTT = useMemo(() => formations.filter(t => t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
 
-            const bilanMensuelData = useMemo(() => formations.filter(t => t && !t.isTTT && passeFiltres(t) && (!filtres.mois || filtres.mois.length === 0 || filtres.mois.includes(getMonthYear(t.startDate)))), [formations, filtres]);
-            const bilanHebdoData = useMemo(() => formations.filter(t => t && !t.isTTT && passeFiltres(t) && (!filtres.semaines || filtres.semaines.length === 0 || (t.week && filtres.semaines.some(sw => t.week.includes(sw))))), [formations, filtres]);
+            // EXCLUSION DES ANNULATIONS DES CALCULS DE BILAN ET RÉPARTITION
+            const bilanMensuelData = useMemo(() => formations.filter(t => t && !t.isTTT && t.status !== 'Annulé' && passeFiltres(t) && (!filtres.mois || filtres.mois.length === 0 || filtres.mois.includes(getMonthYear(t.startDate)))), [formations, filtres]);
+            const bilanHebdoData = useMemo(() => formations.filter(t => t && !t.isTTT && t.status !== 'Annulé' && passeFiltres(t) && (!filtres.semaines || filtres.semaines.length === 0 || (t.week && filtres.semaines.some(sw => t.week.includes(sw))))), [formations, filtres]);
 
             const suiviDonnees = useMemo(() => {
-                const base = formations.filter(passeFiltres);
+                const base = formations.filter(t => !t?.isTTT && t?.status !== 'Annulé' && passeFiltres(t));
                 const typesSet = new Set();
                 let grandTotal = 0; let totalAgents = 0; const colTotals = {};
                 base.forEach(t => {
                     if(!t) return;
-                    const type = t.isTTT ? 'TTT' : (t.type || 'Autre');
+                    const type = t.type || 'Autre';
                     const hours = (parseFloat(t.duration) || 0) * 7 * (parseInt(t.agents) || 0);
                     if (!colTotals[type]) colTotals[type] = 0;
                     colTotals[type] += hours; typesSet.add(type); grandTotal += hours; totalAgents += parseInt(t.agents) || 0;
@@ -657,7 +654,7 @@
 
             const heuresParSite = useMemo(() => {
                 let rabat = 0, meknes = 0;
-                formations.filter(passeFiltres).forEach(t => {
+                formations.filter(t => !t?.isTTT && t?.status !== 'Annulé' && passeFiltres(t)).forEach(t => {
                     if(!t) return;
                     const h = (parseFloat(t.duration) || 0) * 7 * (parseInt(t.agents) || 0);
                     if (t.site === 'Rabat') rabat += h;
@@ -668,7 +665,8 @@
             }, [formations, filtres]);
 
             const ensembleStats = useMemo(() => {
-                const base = formationsFiltrees;
+                // On exclut les annulations de l'affichage global de l'Accueil aussi
+                const base = formationsFiltrees.filter(f => f?.status !== 'Annulé');
                 const total = base.length;
                 const terminees = base.filter(f => f?.status === 'Terminé').length;
                 const enCours = base.filter(f => f?.status === 'En cours').length;
@@ -741,7 +739,7 @@
                 setNouvelleFormationPSF(prev => ({ ...prev, dates: sortedDates, startDate: sortedDates[0] || '', week: weeks }));
             };
 
-            // --- FONCTIONS FIREBASE MODIFIÉES POUR UTILISER LES IMPORTS DIRECTS ---
+            // --- FONCTIONS FIREBASE ---
             const validerFormation = async () => {
                 const isPSF = modalAjoutPSF;
                 const formToSave = isPSF ? nouvelleFormationPSF : nouvelleFormation;
@@ -789,7 +787,6 @@
                         await setDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', colName, item.id), item);
                     } 
                     setModalMultiple(false); setModalMultiplePSF(false); setModalMultipleTTT(false);
-                    // Reset
                     if(mode === 'PSF') setLignesMultiplesPSF([]);
                     else if(mode === 'TTT') setLignesMultiplesTTT([]);
                     else setLignesMultiples([]);
@@ -797,7 +794,6 @@
                 finally { setChargement(false); }
             };
 
-            // Fonctions de saisie multiple locales
             const miseAJourLigneMultiple = (id, champ, valeur) => {
                 setLignesMultiples(lignesMultiples.map(r => {
                     if (r.id !== id) return r;
@@ -1359,17 +1355,17 @@
                                             </div>
                                         </div>
                                         <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden flex flex-col flex-1 min-h-[400px]">
-                                            <div className="p-6 bg-slate-50 border-b flex justify-between items-center shrink-0"><h3 className="font-black text-slate-800 uppercase tracking-tight flex items-center gap-2"><Icone nom="bouclier-ok" taille={16} classe="text-emerald-500"/> Formations Réalisées & En cours (Détail)</h3><span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{formations.filter(passeFiltres).filter(f => ['Terminé', 'En cours'].includes(f.status)).length} Session(s)</span></div>
+                                            <div className="p-6 bg-slate-50 border-b flex justify-between items-center shrink-0"><h3 className="font-black text-slate-800 uppercase tracking-tight flex items-center gap-2"><Icone nom="bouclier-ok" taille={16} classe="text-emerald-500"/> Détail de toutes les sessions actives</h3><span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{formations.filter(t => !t?.isTTT && t.status !== 'Annulé' && passeFiltres(t)).length} Session(s)</span></div>
                                             <div className="overflow-auto custom-scrollbar flex-1 relative">
                                                 <table className="w-full text-left"><thead className="bg-white sticky top-0 z-10 shadow-sm border-b"><tr><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Semaine / Date</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Formation</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Site</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Agents</th><th className="px-6 py-4 text-[10px] font-black uppercase text-blue-600 text-right">Vol. Prévu (H)</th><th className="px-6 py-4 text-[10px] font-black uppercase text-emerald-600 text-right">Vol. Réalisé (H)</th></tr></thead>
                                                     <tbody className="divide-y divide-slate-100">
-                                                        {formations.filter(passeFiltres).filter(f => ['Terminé', 'En cours'].includes(f.status)).sort((a,b) => String(a.week || '').localeCompare(String(b.week || ''), undefined, {numeric:true})).map(f => {
+                                                        {formations.filter(t => !t?.isTTT && t.status !== 'Annulé' && passeFiltres(t)).sort((a,b) => String(a.week || '').localeCompare(String(b.week || ''), undefined, {numeric:true})).map(f => {
                                                             const hPrevues = (parseFloat(f.duration) || 0) * 7 * (parseInt(f.agents) || 0);
-                                                            const hRealisees = (parseFloat(f.duration) || 0) * 7 * (parseInt(f.agentsRealises) || 0);
+                                                            const hRealisees = ['Terminé', 'En cours'].includes(f.status) ? ((parseFloat(f.duration) || 0) * 7 * (parseInt(f.agentsRealises) || 0)) : 0;
                                                             return (
                                                                 <tr key={f.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => openEditModal(f)}>
                                                                     <td className="px-6 py-3"><div className="font-black text-blue-600 text-xs truncate max-w-[80px]" title={f.week}>{f.week}</div><div className="text-[10px] text-slate-400 font-bold mt-0.5">{f.startDate}</div></td>
-                                                                    <td className="px-6 py-3"><div className="font-black text-slate-800 uppercase text-[11px] leading-tight">{f.isTTT ? '🎓 ' : ''}{f.name}</div><div className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{f.type}</div></td>
+                                                                    <td className="px-6 py-3"><div className="font-black text-slate-800 uppercase text-[11px] leading-tight">{f.name}</div><div className="flex gap-2 items-center mt-0.5"><div className="text-[9px] font-bold text-slate-400 uppercase">{f.type}</div><div className={`text-[8px] font-black uppercase px-1.5 rounded ${getStatusColor(f.status)}`}>{f.status}</div></div></td>
                                                                     <td className="px-6 py-3 font-bold text-slate-600 text-xs"><div className="flex items-center gap-1.5"><Icone nom="marqueur" taille={10} classe="text-rose-500" /> {f.site}</div></td>
                                                                     <td className="px-6 py-3 text-center font-black text-slate-700 text-xs"><div className="flex flex-col items-center"><span className="text-rose-600" title="Prévus">{f.agents > 0 ? f.agents : '-'} P.</span><span className="text-[9px] text-emerald-600" title="Formés">{f.agentsRealises || 0} F.</span></div></td>
                                                                     <td className="px-6 py-3 text-right font-black text-blue-600 text-sm bg-blue-50/30">{formatHeures(hPrevues)}</td>
@@ -1649,7 +1645,7 @@
                                                                                         <div className="text-slate-400">Statut :</div><div className="font-bold text-right truncate">{s.status}</div>
                                                                                     </div>
                                                                                     {s.comment && <div className="mt-1 text-[9px] text-slate-300 whitespace-pre-wrap italic border-t border-slate-800 pt-1">"{s.comment}"</div>}
-                                                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900"></div>
+                                                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-900"></div>
                                                                                 </div>
                                                                             </div>
                                                                         );
