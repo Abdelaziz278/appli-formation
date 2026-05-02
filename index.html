@@ -84,7 +84,7 @@
                 'poubelle': 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6',
                 'cercle-ok': 'M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3',
                 'modifier': 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z',
-                'copier': 'M9 15H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M13 19h4a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z',
+                'copier': 'M9 15H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2v2M13 19h4a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z',
                 'chargement': 'M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83',
                 'cloche': 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
                 'user-plus': 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm10-1h6m-3-3v6',
@@ -126,6 +126,7 @@
                 case 'Spécialisation': return 'bg-purple-50 border-purple-400 text-purple-900 shadow-purple-100 hover:shadow-purple-200';
                 case 'Projet Genesys': return 'bg-indigo-50 border-indigo-400 text-indigo-900 shadow-indigo-100 hover:shadow-indigo-200';
                 case 'PSF': return 'bg-slate-50 border-slate-400 text-slate-900 shadow-slate-100 hover:shadow-slate-200';
+                case 'Congé / Absence': return 'bg-slate-200 border-slate-400 text-slate-700 shadow-slate-100 hover:shadow-slate-200 opacity-90';
                 default: return 'bg-slate-50 border-slate-400 text-slate-900 shadow-slate-100 hover:shadow-slate-200';
             }
         };
@@ -139,6 +140,7 @@
                 case 'Spécialisation': return 'bg-purple-200 text-purple-800';
                 case 'Projet Genesys': return 'bg-indigo-200 text-indigo-800';
                 case 'PSF': return 'bg-slate-200 text-slate-800';
+                case 'Congé / Absence': return 'bg-slate-600 text-white';
                 default: return 'bg-slate-200 text-slate-800';
             }
         };
@@ -273,7 +275,7 @@
         const SITES_TTT = ["Rabat", "Meknès", "Rabat & Meknès"];
         const TRAINERS = ["Rachid", "Rekia", "Ahmed", "Othmane", "Formateur Nespresso"];
         const PRISES_EN_CHARGE = ["Concentrix", "Nespresso"];
-        const TYPES = ["FIM", "Formation continue", "Spécialisation", "Projet Genesys", "PSF"];
+        const TYPES = ["FIM", "Formation continue", "Spécialisation", "Projet Genesys", "PSF", "Congé / Absence"];
         const STATUTS = ["Planifié", "En cours", "Terminé", "Annulé", "En attente de validation", "Arbitrage requis", "Sélection des agents en cours", "À planifier"];
         const CIBLES_PSF = ["SAV", "Compte client", "Digital", "Commande", "Delivery", "Tous les collaborateurs"];
         const MINUTES_PSF = [15, 20, 25, 30, 45, 60, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345, 360, 375, 390, 405, 420];
@@ -493,6 +495,7 @@
             const [modalAjout, setModalAjout] = useState(false);
             const [modalAjoutPSF, setModalAjoutPSF] = useState(false);
             const [modalTTT, setModalTTT] = useState(false);
+            const [modalConge, setModalConge] = useState(false);
             const [modalMultiple, setModalMultiple] = useState(false);
             const [modalMultiplePSF, setModalMultiplePSF] = useState(false);
             const [modalMultipleTTT, setModalMultipleTTT] = useState(false);
@@ -745,8 +748,23 @@
             // --- FONCTIONS FIREBASE ---
             const validerFormation = async () => {
                 const isPSF = modalAjoutPSF;
+                const isConge = modalConge;
                 const formToSave = isPSF ? nouvelleFormationPSF : nouvelleFormation;
                 if(!formToSave.name) return;
+                
+                if (isConge) {
+                    if (new Date(formToSave.endDate) < new Date(formToSave.startDate)) {
+                        alert("La date de fin ne peut pas être avant la date de début.");
+                        return;
+                    }
+                    const start = new Date(formToSave.startDate);
+                    const end = new Date(formToSave.endDate);
+                    start.setHours(0,0,0,0);
+                    end.setHours(0,0,0,0);
+                    formToSave.duration = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+                    formToSave.week = 'S' + getISOWeek(start);
+                }
+                
                 if (conflitActuel && !formToSave.isValidated) { alert("Veuillez autoriser le chevauchement."); return; }
                 const data = { ...formToSave, duration: parseFloat(formToSave.duration) || 0, agents: parseInt(formToSave.agents) || 0, agentsRealises: parseInt(formToSave.agentsRealises) || 0, updatedAt: new Date().toISOString() };
                 const { colName } = getDbInfo();
@@ -760,7 +778,7 @@
                     }
                 } catch (err) { console.error(err); }
 
-                setModalAjout(false); setModalTTT(false); setModalAjoutPSF(false); setEditionEnCours(false);
+                setModalAjout(false); setModalTTT(false); setModalAjoutPSF(false); setModalConge(false); setEditionEnCours(false);
                 setNouvelleFormation(defaultFormation); setNouvelleFormationPSF(defaultFormationPSF); setDateTemp('');
             };
 
@@ -1036,19 +1054,34 @@
                 if(!peutEditer) return;
                 if (t.type === 'PSF') { setNouvelleFormationPSF({ ...defaultFormationPSF, ...t, dates: t.dates || [t.startDate] }); setEditionEnCours(true); setModalAjoutPSF(true); } 
                 else if (t.isTTT) { setNouvelleFormation({ ...defaultFormation, cible: t.cible || ['Tous les formateurs'], ...t }); setEditionEnCours(true); setModalTTT(true); } 
+                else if (t.type === 'Congé / Absence') {
+                    const start = new Date(t.startDate);
+                    const end = new Date(start);
+                    end.setDate(start.getDate() + ((t.duration || 1) - 1));
+                    setNouvelleFormation({ ...defaultFormation, ...t, endDate: end.toISOString().split('T')[0] });
+                    setEditionEnCours(true); 
+                    setModalConge(true);
+                }
                 else { setNouvelleFormation({ ...defaultFormation, ...t }); setEditionEnCours(true); setModalAjout(true); }
             };
             
             const dupliquerFormation = (t) => {
                 if(!peutEditer) return;
                 if (t.type === 'PSF') { setNouvelleFormationPSF({ ...defaultFormationPSF, ...t, id: undefined, name: `${t?.name || ''} (Copie)`, isValidated: false, dates: t.dates || [t.startDate] }); setEditionEnCours(false); setModalAjoutPSF(true); } 
+                else if (t.type === 'Congé / Absence') {
+                    const start = new Date(t.startDate);
+                    const end = new Date(start);
+                    end.setDate(start.getDate() + ((t.duration || 1) - 1));
+                    setNouvelleFormation({ ...defaultFormation, ...t, id: undefined, name: `${t?.name || ''} (Copie)`, isValidated: false, endDate: end.toISOString().split('T')[0] });
+                    setEditionEnCours(false); 
+                    setModalConge(true);
+                }
                 else { setNouvelleFormation({ ...defaultFormation, ...t, id: undefined, name: `${t?.name || ''} (Copie)`, isValidated: false }); setEditionEnCours(false); t?.isTTT ? setModalTTT(true) : setModalAjout(true); }
             };
 
             const gererDeconnexion = async () => {
                 try { await signOut(auth); } catch(err) { console.error(err); }
             };
-
 
             const renderTableEnsemble = (data) => (
                 <div className="overflow-x-auto">
@@ -1060,6 +1093,9 @@
                             {data.map(t => {
                                 if(!t) return null;
                                 const conflits = hasConflict(t);
+                                const agentsPrevus = parseInt(t.agents) || 0;
+                                const agentsRealises = parseInt(t.agentsRealises) || 0;
+                                const pourcentage = agentsPrevus > 0 ? Math.min(Math.round((agentsRealises / agentsPrevus) * 100), 100) : 0;
                                 return (
                                     <tr key={t.id} className={`hover:bg-slate-50 transition-colors ${conflits && !t.isValidated ? 'bg-rose-50/50' : (conflits && t.isValidated ? 'bg-amber-50/30' : '')}`}>
                                         <td className="px-6 py-5"><span className="font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-lg text-sm truncate block max-w-[100px]">{t.week}</span></td>
@@ -1072,9 +1108,23 @@
                                                     {t.status === 'À planifier' && t.type === 'Spécialisation' && t.week && t.week.includes(targetWeekDisplay) && <span title="Action requise : Sélection agent S-2" className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded text-[9px] font-black border border-rose-200 shadow-sm animate-pulse"><Icone nom="user-plus" taille={10} /> Sélection S-2</span>}
                                                 </div>
                                             </div>
-                                            <div className="text-[10px] font-bold uppercase mt-2 tracking-wider flex flex-wrap gap-2 items-center">
-                                                <span className={`px-2 py-0.5 rounded-md shadow-sm leading-none ${getTypeBadgeColor(t.type, t.isTTT, false, true)}`}>{t.isTTT ? 'TTT' : t.type}</span>
-                                                <span className="flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md"><Icone nom="utilisateurs" taille={10}/> <span className="text-rose-600 font-black">{t.agents} prévus</span> <span className="text-slate-400">/ <span className="text-emerald-600 font-black">{t.agentsRealises || 0} formés</span></span></span>
+                                            <div className="text-[10px] font-bold uppercase mt-2 tracking-wider flex flex-col gap-1 items-start w-full max-w-[250px]">
+                                                <div className="flex flex-wrap gap-2 items-center">
+                                                    <span className={`px-2 py-0.5 rounded-md shadow-sm leading-none ${getTypeBadgeColor(t.type, t.isTTT, false, true)}`}>{t.isTTT ? 'TTT' : t.type}</span>
+                                                    {t.type !== 'Congé / Absence' && (
+                                                        <span className="flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
+                                                            <Icone nom="utilisateurs" taille={10}/> 
+                                                            <span className="text-rose-600 font-black">{agentsPrevus} P.</span> 
+                                                            <span className="text-slate-400">/ <span className="text-emerald-600 font-black">{agentsRealises} F.</span></span>
+                                                            <span className={`ml-1 text-[9px] font-black ${pourcentage >= 100 ? 'text-emerald-500' : 'text-blue-500'}`}>({pourcentage}%)</span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {t.type !== 'Congé / Absence' && (
+                                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mt-1 shadow-inner">
+                                                        <div className={`h-full transition-all duration-500 ${pourcentage >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${pourcentage}%` }}></div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-center">
@@ -1101,25 +1151,45 @@
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b">
-                            <tr><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400">Semaine/Date</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400">Désignation</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Statut</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400">Durée</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Agents</th>{peutEditer && <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-right">Actions</th>}</tr>
+                            <tr><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400">Semaine/Date</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400">Désignation</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Statut</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400">Durée</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-center w-32">Remplissage</th>{peutEditer && <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-right">Actions</th>}</tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {data.map(t => (
-                                <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className={`px-4 py-4 font-black ${weekColorClass}`}><div className="truncate max-w-[100px] mb-1">{t.week}</div>{t.dates && t.dates.length > 1 ? (<div className="text-[9px] text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded w-max">{t.dates.length} dates</div>) : (<div className="text-[9px] text-slate-400 font-bold">{t.startDate}</div>)}</td>
-                                    <td className="px-4 py-4">
-                                        <div className="font-black text-slate-800 uppercase flex flex-col items-start gap-1 text-xs"><span>{t.name}</span><div className="flex gap-1 flex-wrap mt-1">{isSMinus1(t) && <span title="Action requise : Demande de planification S-1" className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded text-[8px] font-black border border-violet-200 shadow-sm animate-pulse"><Icone nom="cloche" taille={10} /> S-1</span>}{t.deadline && <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded text-[8px] font-black border border-rose-200 shadow-sm"><Icone nom="horloge" taille={10} /> {t.deadline}</span>}</div></div>
-                                        {t.comment && <div className="text-[10px] text-slate-500 mt-1 mb-2 whitespace-pre-wrap leading-tight">{t.comment}</div>}
-                                        <div className="text-[9px] uppercase font-bold mt-1 flex flex-wrap items-center gap-2"><span className="text-slate-400">{t.trainer} | {t.site}</span>{t.cible && t.cible.length > 0 && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">{t.cible.join(', ')}</span>}</div>
-                                    </td>
-                                    <td className="px-4 py-4 text-center"><select disabled={!peutEditer} value={t.status || ''} onChange={(e) => mettreAJourStatutDirect(t.id, e.target.value)} className={`px-2 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(t.status)} shadow-sm outline-none appearance-none text-center transition-all ${peutEditer ? 'cursor-pointer hover:brightness-95' : 'cursor-not-allowed opacity-80'}`} style={{ textAlignLast: 'center' }}>{STATUTS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
-                                    <td className="px-4 py-4 font-bold text-slate-500 text-xs bg-slate-50/50">{formaterDuree(t)}</td>
-                                    <td className="px-4 py-4 text-center font-black text-slate-800 text-xs"><div className="flex flex-col items-center"><span className="text-rose-600" title="Prévus">{t.agents} P.</span><span className="text-[9px] text-emerald-600 mt-0.5" title="Formés">{t.agentsRealises || 0} F.</span></div></td>
-                                    {peutEditer && (
-                                        <td className="px-4 py-4 text-right space-x-1"><button onClick={() => dupliquerFormation(t)} className="text-slate-300 hover:text-blue-600 p-1 transition-colors"><Icone nom="copier" taille={14}/></button><button onClick={() => openEditModal(t)} className="text-slate-300 hover:text-emerald-600 transition-colors p-1"><Icone nom="modifier" taille={14}/></button><button onClick={() => deleteTraining(t.id)} className="text-slate-300 hover:text-rose-500 transition-colors p-1"><Icone nom="poubelle" taille={14}/></button></td>
-                                    )}
-                                </tr>
-                            ))}
+                            {data.map(t => {
+                                const agentsPrevus = parseInt(t.agents) || 0;
+                                const agentsRealises = parseInt(t.agentsRealises) || 0;
+                                const pourcentage = agentsPrevus > 0 ? Math.min(Math.round((agentsRealises / agentsPrevus) * 100), 100) : 0;
+                                return (
+                                    <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className={`px-4 py-4 font-black ${weekColorClass}`}><div className="truncate max-w-[100px] mb-1">{t.week}</div>{t.dates && t.dates.length > 1 ? (<div className="text-[9px] text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded w-max">{t.dates.length} dates</div>) : (<div className="text-[9px] text-slate-400 font-bold">{t.startDate}</div>)}</td>
+                                        <td className="px-4 py-4">
+                                            <div className="font-black text-slate-800 uppercase flex flex-col items-start gap-1 text-xs"><span>{t.name}</span><div className="flex gap-1 flex-wrap mt-1">{isSMinus1(t) && <span title="Action requise : Demande de planification S-1" className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded text-[8px] font-black border border-violet-200 shadow-sm animate-pulse"><Icone nom="cloche" taille={10} /> S-1</span>}{t.deadline && <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded text-[8px] font-black border border-rose-200 shadow-sm"><Icone nom="horloge" taille={10} /> {t.deadline}</span>}</div></div>
+                                            {t.comment && <div className="text-[10px] text-slate-500 mt-1 mb-2 whitespace-pre-wrap leading-tight">{t.comment}</div>}
+                                            <div className="text-[9px] uppercase font-bold mt-1 flex flex-wrap items-center gap-2"><span className="text-slate-400">{t.trainer} | {t.site}</span>{t.cible && t.cible.length > 0 && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">{t.cible.join(', ')}</span>}</div>
+                                        </td>
+                                        <td className="px-4 py-4 text-center"><select disabled={!peutEditer} value={t.status || ''} onChange={(e) => mettreAJourStatutDirect(t.id, e.target.value)} className={`px-2 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(t.status)} shadow-sm outline-none appearance-none text-center transition-all ${peutEditer ? 'cursor-pointer hover:brightness-95' : 'cursor-not-allowed opacity-80'}`} style={{ textAlignLast: 'center' }}>{STATUTS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
+                                        <td className="px-4 py-4 font-bold text-slate-500 text-xs bg-slate-50/50">{formaterDuree(t)}</td>
+                                        <td className="px-4 py-4">
+                                            {t.type !== 'Congé / Absence' ? (
+                                                <div className="flex flex-col gap-1.5 w-20 mx-auto">
+                                                    <div className="flex justify-between items-center text-[10px] font-black">
+                                                        <span className="text-rose-600" title="Prévus">{agentsPrevus} P.</span>
+                                                        <span className="text-emerald-600" title="Formés">{agentsRealises} F.</span>
+                                                    </div>
+                                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden shadow-inner">
+                                                        <div className={`h-full transition-all duration-500 ${pourcentage >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${pourcentage}%` }}></div>
+                                                    </div>
+                                                    <div className="text-[8px] text-right font-bold text-slate-400">{pourcentage}%</div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-[9px] text-slate-400 font-bold italic">N/A</div>
+                                            )}
+                                        </td>
+                                        {peutEditer && (
+                                            <td className="px-4 py-4 text-right space-x-1"><button onClick={() => dupliquerFormation(t)} className="text-slate-300 hover:text-blue-600 p-1 transition-colors"><Icone nom="copier" taille={14}/></button><button onClick={() => openEditModal(t)} className="text-slate-300 hover:text-emerald-600 transition-colors p-1"><Icone nom="modifier" taille={14}/></button><button onClick={() => deleteTraining(t.id)} className="text-slate-300 hover:text-rose-500 transition-colors p-1"><Icone nom="poubelle" taille={14}/></button></td>
+                                        )}
+                                    </tr>
+                                );
+                            })}
                             {data.length === 0 && <tr><td colSpan={peutEditer ? "6" : "5"} className="p-8 text-center text-slate-400 font-bold text-xs">Aucune session trouvée.</td></tr>}
                         </tbody>
                     </table>
@@ -1360,17 +1430,32 @@
                                         <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden flex flex-col flex-1 min-h-[400px]">
                                             <div className="p-6 bg-slate-50 border-b flex justify-between items-center shrink-0"><h3 className="font-black text-slate-800 uppercase tracking-tight flex items-center gap-2"><Icone nom="bouclier-ok" taille={16} classe="text-emerald-500"/> Détail de toutes les sessions actives</h3><span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{formations.filter(t => !t?.isTTT && t.status !== 'Annulé' && passeFiltres(t)).length} Session(s)</span></div>
                                             <div className="overflow-auto custom-scrollbar flex-1 relative">
-                                                <table className="w-full text-left"><thead className="bg-white sticky top-0 z-10 shadow-sm border-b"><tr><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Semaine / Date</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Formation</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Site</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Agents</th><th className="px-6 py-4 text-[10px] font-black uppercase text-blue-600 text-right">Vol. Prévu (H)</th><th className="px-6 py-4 text-[10px] font-black uppercase text-emerald-600 text-right">Vol. Réalisé (H)</th></tr></thead>
+                                                <table className="w-full text-left"><thead className="bg-white sticky top-0 z-10 shadow-sm border-b"><tr><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Semaine / Date</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Formation</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Site</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-center w-32">Remplissage</th><th className="px-6 py-4 text-[10px] font-black uppercase text-blue-600 text-right">Vol. Prévu (H)</th><th className="px-6 py-4 text-[10px] font-black uppercase text-emerald-600 text-right">Vol. Réalisé (H)</th></tr></thead>
                                                     <tbody className="divide-y divide-slate-100">
                                                         {formations.filter(t => !t?.isTTT && t.status !== 'Annulé' && passeFiltres(t)).sort((a,b) => String(a.week || '').localeCompare(String(b.week || ''), undefined, {numeric:true})).map(f => {
                                                             const hPrevues = (parseFloat(f.duration) || 0) * 7 * (parseInt(f.agents) || 0);
                                                             const hRealisees = ['Terminé', 'En cours'].includes(f.status) ? ((parseFloat(f.duration) || 0) * 7 * (parseInt(f.agentsRealises) || 0)) : 0;
+                                                            const pourcentage = (parseInt(f.agents) || 0) > 0 ? Math.min(Math.round(((parseInt(f.agentsRealises) || 0) / (parseInt(f.agents) || 0)) * 100), 100) : 0;
                                                             return (
                                                                 <tr key={f.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => openEditModal(f)}>
                                                                     <td className="px-6 py-3"><div className="font-black text-blue-600 text-xs truncate max-w-[80px]" title={f.week}>{f.week}</div><div className="text-[10px] text-slate-400 font-bold mt-0.5">{f.startDate}</div></td>
                                                                     <td className="px-6 py-3"><div className="font-black text-slate-800 uppercase text-[11px] leading-tight">{f.name}</div><div className="flex gap-2 items-center mt-0.5"><div className="text-[9px] font-bold text-slate-400 uppercase">{f.type}</div><div className={`text-[8px] font-black uppercase px-1.5 rounded ${getStatusColor(f.status)}`}>{f.status}</div></div></td>
                                                                     <td className="px-6 py-3 font-bold text-slate-600 text-xs"><div className="flex items-center gap-1.5"><Icone nom="marqueur" taille={10} classe="text-rose-500" /> {f.site}</div></td>
-                                                                    <td className="px-6 py-3 text-center font-black text-slate-700 text-xs"><div className="flex flex-col items-center"><span className="text-rose-600" title="Prévus">{f.agents > 0 ? f.agents : '-'} P.</span><span className="text-[9px] text-emerald-600" title="Formés">{f.agentsRealises || 0} F.</span></div></td>
+                                                                    <td className="px-6 py-3 text-center">
+                                                                        {f.type !== 'Congé / Absence' ? (
+                                                                            <div className="flex flex-col gap-1 w-full max-w-[80px] mx-auto">
+                                                                                <div className="flex justify-between items-center text-[10px] font-black">
+                                                                                    <span className="text-rose-600">{f.agents > 0 ? f.agents : '-'} P.</span>
+                                                                                    <span className="text-emerald-600">{f.agentsRealises || 0} F.</span>
+                                                                                </div>
+                                                                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden shadow-inner">
+                                                                                    <div className={`h-full transition-all duration-500 ${pourcentage >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${pourcentage}%` }}></div>
+                                                                                </div>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-[9px] text-slate-400 font-bold italic">N/A</span>
+                                                                        )}
+                                                                    </td>
                                                                     <td className="px-6 py-3 text-right font-black text-blue-600 text-sm bg-blue-50/30">{formatHeures(hPrevues)}</td>
                                                                     <td className="px-6 py-3 text-right font-black text-emerald-600 text-sm bg-emerald-50/30 border-l border-emerald-100">{formatHeures(hRealisees)}</td>
                                                                 </tr>
@@ -1564,7 +1649,7 @@
                                                                 const larg = Math.max((parseFloat(t.duration) / chronologieDonnees.totalSpan) * 100, 0.5); 
                                                                 const yPos = 30 + (t.level * 80); 
                                                                 return (
-                                                                    <div key={t.id} onClick={() => openEditModal(t)} className={`absolute h-14 rounded-2xl flex flex-col justify-center px-4 text-[10px] font-black border-2 shadow-lg hover:scale-[1.03] hover:z-[100] ${peutEditer ? 'cursor-pointer' : 'cursor-default'} transition-all group ${t.isTTT ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-amber-100' : (site === 'Rabat' ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-rose-100' : 'bg-blue-50 border-blue-300 text-blue-900 shadow-blue-100')}`} style={{ left: `${(diff / chronologieDonnees.totalSpan) * 100}%`, width: `${larg}%`, top: `${yPos}px` }}>
+                                                                    <div key={t.id} onClick={() => openEditModal(t)} className={`absolute h-14 rounded-2xl flex flex-col justify-center px-4 text-[10px] font-black border-2 shadow-lg hover:scale-[1.03] hover:z-[100] ${peutEditer ? 'cursor-pointer' : 'cursor-default'} transition-all group ${t.isTTT ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-amber-100' : (site === 'Rabat' ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-rose-100' : 'bg-blue-50 border-blue-300 text-blue-900 shadow-blue-100')} ${t.type === 'Congé / Absence' ? '!bg-slate-200 !border-slate-400 !text-slate-700 !shadow-none opacity-90' : ''}`} style={{ left: `${(diff / chronologieDonnees.totalSpan) * 100}%`, width: `${larg}%`, top: `${yPos}px` }}>
                                                                         <div className="truncate uppercase mb-0.5 leading-none">{t.isTTT && '🎓 '}{t.name}</div>
                                                                         <div className="opacity-70 text-[9px] font-bold truncate tracking-tighter uppercase">{t.trainer} {t.agents > 0 ? `• ${t.agents} P. / ${t.agentsRealises || 0} F.` : ''} • {formaterDuree(t)}</div>
                                                                         <div className="opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute z-[9999] top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex flex-col gap-2 pointer-events-none transition-all duration-300">
@@ -1594,8 +1679,41 @@
                             {vue === 'planning' && (
                                 <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 p-4 flex flex-col h-[calc(100vh-120px)] w-full overflow-hidden">
                                     <div className="flex flex-col xl:flex-row xl:justify-between xl:items-end mb-4 gap-4 border-b border-slate-100 pb-3 shrink-0">
-                                        <div><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight flex items-center gap-2"><Icone nom="utilisateurs" classe="text-blue-500" taille={20}/> Planning Formateurs</h2></div>
-                                        <div className="flex flex-col gap-3"><div className="flex flex-wrap gap-2 text-[8px] font-black uppercase"><span className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded">FIM</span><span className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 border-l-4 border-blue-400 text-blue-900 rounded">Continue</span><span className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-50 border-l-4 border-purple-400 text-purple-900 rounded">Spécialisation</span><span className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 border-l-4 border-amber-400 text-amber-900 rounded">TTT</span></div></div>
+                                        <div className="flex items-center gap-4">
+                                            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight flex items-center gap-2"><Icone nom="utilisateurs" classe="text-blue-500" taille={20}/> Planning Formateurs</h2>
+                                            {peutEditer && (
+                                                <button
+                                                    onClick={() => {
+                                                        setNouvelleFormation({
+                                                            ...defaultFormation,
+                                                            name: 'CONGÉ',
+                                                            type: 'Congé / Absence',
+                                                            status: 'Terminé',
+                                                            duration: 1, // 1 jour
+                                                            agents: 0,
+                                                            agentsRealises: 0,
+                                                            comment: 'Absence planifiée',
+                                                            startDate: new Date().toISOString().split('T')[0],
+                                                            endDate: new Date().toISOString().split('T')[0]
+                                                        });
+                                                        setEditionEnCours(false);
+                                                        setModalConge(true);
+                                                    }}
+                                                    className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase transition-all shadow-md active:scale-95"
+                                                >
+                                                    <Icone nom="plus" taille={12} /> Poser un congé
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex flex-wrap gap-2 text-[8px] font-black uppercase">
+                                                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 border-l-4 border-emerald-400 text-emerald-900 rounded">FIM</span>
+                                                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 border-l-4 border-blue-400 text-blue-900 rounded">Continue</span>
+                                                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-50 border-l-4 border-purple-400 text-purple-900 rounded">Spécialisation</span>
+                                                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 border-l-4 border-amber-400 text-amber-900 rounded">TTT</span>
+                                                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-200 border-l-4 border-slate-500 text-slate-700 rounded">Congé / Absence</span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="flex-1 w-full overflow-auto rounded-2xl border border-slate-200 shadow-inner relative custom-scrollbar bg-slate-50/50">
                                         <div className="w-full min-w-[800px]" style={{ display: 'grid', gridTemplateColumns: `60px repeat(${TRAINERS.length}, minmax(0, 1fr))` }}>
@@ -1635,16 +1753,16 @@
                                                                                 <div className="font-black text-[9px] leading-tight uppercase line-clamp-2">{s.name}</div>
                                                                                 <div className="flex flex-wrap items-center gap-1 text-[8px] font-bold opacity-80 mt-1">
                                                                                     <span className="flex items-center gap-0.5"><Icone nom="horloge" taille={8}/> {formaterDuree(s)}</span>
-                                                                                    <span className="flex items-center gap-0.5 truncate max-w-[50px]"><Icone nom="marqueur" taille={8}/> {s.site.split(' ')[0]}</span>
+                                                                                    {s.type !== 'Congé / Absence' && <span className="flex items-center gap-0.5 truncate max-w-[50px]"><Icone nom="marqueur" taille={8}/> {s.site.split(' ')[0]}</span>}
                                                                                 </div>
                                                                                 <div className="opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute z-[9999] top-full mt-2 left-1/2 -translate-x-1/2 w-56 bg-slate-900 text-white p-3 rounded-xl shadow-2xl flex flex-col gap-1 pointer-events-none transition-all duration-200">
                                                                                     <div className="font-black text-xs uppercase text-blue-300 border-b border-slate-700 pb-1.5 mb-1 leading-tight">{s.name}</div>
                                                                                     <div className="grid grid-cols-2 gap-y-1 gap-x-2 text-[9px]">
                                                                                         <div className="text-slate-400">Type :</div><div className="font-bold text-right truncate">{s.type}</div>
-                                                                                        <div className="text-slate-400">Site :</div><div className="font-bold text-right truncate">{s.site}</div>
+                                                                                        {s.type !== 'Congé / Absence' && <><div className="text-slate-400">Site :</div><div className="font-bold text-right truncate">{s.site}</div></>}
                                                                                         <div className="text-slate-400">Début :</div><div className="font-bold text-right truncate">{s.startDate} ({formaterDuree(s)})</div>
                                                                                         <div className="text-slate-400">Formateur :</div><div className="font-bold text-right truncate">{s.trainer}</div>
-                                                                                        <div className="text-slate-400">Effectif :</div><div className="font-bold text-right truncate">{s.agents}P / {s.agentsRealises}F</div>
+                                                                                        {s.type !== 'Congé / Absence' && <><div className="text-slate-400">Effectif :</div><div className="font-bold text-right truncate">{s.agents}P / {s.agentsRealises}F</div></>}
                                                                                         <div className="text-slate-400">Statut :</div><div className="font-bold text-right truncate">{s.status}</div>
                                                                                     </div>
                                                                                     {s.comment && <div className="mt-1 text-[9px] text-slate-300 whitespace-pre-wrap italic border-t border-slate-800 pt-1">"{s.comment}"</div>}
@@ -1676,6 +1794,72 @@
                         <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Date début</label><input type="date" className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 shadow-inner" value={nouvelleFormation.startDate || ''} min={getWeekDateRange(nouvelleFormation.week)?.min || ''} max={getWeekDateRange(nouvelleFormation.week)?.max || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, startDate: e.target.value})} /></div>
                         
                         <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Formateur</label><select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 transition-all shadow-sm" value={nouvelleFormation.trainer || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, trainer: e.target.value})}>{TRAINERS.map(t => <option key={t}>{t}</option>)}</select></div><div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Budget</label><select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 transition-all shadow-sm" value={nouvelleFormation.funding || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, funding: e.target.value})}>{PRISES_EN_CHARGE.map(p => <option key={p}>{p}</option>)}</select></div><div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-blue-500 font-bold uppercase tracking-widest">Commentaire / Justification {conflitActuel && <span className="text-rose-500 font-black">(OBLIGATOIRE)</span>}</label><textarea className={`w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 transition-all min-h-[80px] shadow-inner ${conflitActuel && !nouvelleFormation.comment ? 'border-rose-500 bg-rose-50' : ''}`} value={nouvelleFormation.comment || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, comment: e.target.value})} placeholder="Justifiez la décision..." /></div></div><div className="p-8 bg-slate-50 flex justify-end gap-4 border-t"><button onClick={() => setModalAjout(false)} className="font-black uppercase text-xs text-slate-400 px-4 hover:text-slate-600 transition-colors tracking-widest">Annuler</button><button onClick={validerFormation} disabled={conflitActuel && !nouvelleFormation.isValidated} className={`bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all uppercase tracking-widest ${conflitActuel && !nouvelleFormation.isValidated ? 'opacity-50 grayscale' : 'hover:bg-blue-500 shadow-blue-500/20'}`}>{editionEnCours ? 'Mettre à jour' : 'Confirmer'}</button></div></div></div>}
+
+                        {modalConge && peutEditer && (
+                            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-6">
+                                <div className="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in duration-300 border border-slate-700/10">
+                                    <div className="p-8 bg-slate-700 text-white flex justify-between items-center">
+                                        <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+                                            <Icone nom="utilisateurs" taille={24}/> {editionEnCours ? 'Modifier le congé' : 'Saisir un congé / absence'}
+                                        </h2>
+                                        <button onClick={() => setModalConge(false)} className="text-2xl font-black hover:text-slate-300 transition-colors">×</button>
+                                    </div>
+                                    <div className="p-10 grid grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
+                                        {conflitActuel && (
+                                            <div className="col-span-2 bg-rose-50 border-2 border-rose-200 p-4 rounded-2xl flex items-start gap-4 shadow-sm animate-pulse">
+                                                <Icone nom="alerte-triangle" className="text-rose-600 mt-1" taille={24}/>
+                                                <div>
+                                                    <p className="font-black text-rose-800 text-sm uppercase">Chevauchement Détecté !</p>
+                                                    <p className="text-rose-600 text-xs font-bold leading-tight mt-1">{nouvelleFormation.trainer} a déjà une session planifiée à ces dates.</p>
+                                                    <label className="flex items-center gap-2 mt-4 cursor-pointer">
+                                                        <input type="checkbox" className="w-5 h-5 accent-rose-600 rounded" checked={nouvelleFormation.isValidated} onChange={e => setNouvelleFormation({...nouvelleFormation, isValidated: e.target.checked})} />
+                                                        <span className="text-xs font-black text-rose-800 uppercase tracking-widest">Autoriser ce chevauchement</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Motif (Désignation)</label>
+                                            <input className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 shadow-inner" value={nouvelleFormation.name || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, name: e.target.value})} placeholder="ex: Congé Annuel, Maladie..." />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Formateur</label>
+                                            <select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 transition-all shadow-sm" value={nouvelleFormation.trainer || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, trainer: e.target.value})}>
+                                                {TRAINERS.map(t => <option key={t}>{t}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Site d'affectation</label>
+                                            <select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 transition-all shadow-sm" value={nouvelleFormation.site || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, site: e.target.value})}>
+                                                {SITES_TTT.map(s => <option key={s}>{s}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Date de début (inclus)</label>
+                                            <input type="date" className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 shadow-inner" value={nouvelleFormation.startDate || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, startDate: e.target.value, week: 'S' + getISOWeek(new Date(e.target.value))})} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Date de fin (inclus)</label>
+                                            <input type="date" className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 shadow-inner" value={nouvelleFormation.endDate || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, endDate: e.target.value})} min={nouvelleFormation.startDate} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Semaine ISO (Début)</label>
+                                            <input className="w-full bg-slate-100 text-slate-500 rounded-2xl p-4 font-bold outline-none border cursor-not-allowed" value={nouvelleFormation.week || ''} readOnly />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Commentaire</label>
+                                            <textarea className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 transition-all min-h-[80px] shadow-inner" value={nouvelleFormation.comment || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, comment: e.target.value})} placeholder="Détails supplémentaires..." />
+                                        </div>
+                                    </div>
+                                    <div className="p-8 bg-slate-50 flex justify-end gap-4 border-t">
+                                        <button onClick={() => setModalConge(false)} className="font-black uppercase text-xs text-slate-400 px-4 hover:text-slate-600 transition-colors tracking-widest">Annuler</button>
+                                        <button onClick={validerFormation} disabled={conflitActuel && !nouvelleFormation.isValidated} className={`bg-slate-700 text-white px-10 py-4 rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all uppercase tracking-widest ${conflitActuel && !nouvelleFormation.isValidated ? 'opacity-50 grayscale' : 'hover:bg-slate-600 shadow-slate-500/20'}`}>
+                                            {editionEnCours ? 'Mettre à jour' : 'Confirmer le congé'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         
                         {modalAjoutPSF && peutEditer && <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-6"><div className="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in duration-300 border border-slate-700/10"><div className="p-8 bg-emerald-600 text-white flex justify-between items-center"><h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2"><Icone nom="medaille" taille={24}/> {editionEnCours ? 'Modifier la session PSF' : 'Saisie de formation PSF'}</h2><button onClick={() => setModalAjoutPSF(false)} className="text-2xl font-black hover:text-emerald-200 transition-colors">×</button></div><div className="p-10 grid grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">{conflitActuel && <div className="col-span-2 bg-rose-50 border-2 border-rose-200 p-4 rounded-2xl flex items-start gap-4 shadow-sm animate-pulse"><Icone nom="alerte-triangle" className="text-rose-600 mt-1" taille={24}/><div><p className="font-black text-rose-800 text-sm uppercase">Chevauchement Détecté !</p><p className="text-rose-600 text-xs font-bold leading-tight mt-1">{nouvelleFormationPSF.trainer} est déjà planifié.</p><label className="flex items-center gap-2 mt-4 cursor-pointer"><input type="checkbox" className="w-5 h-5 accent-rose-600 rounded" checked={nouvelleFormationPSF.isValidated} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, isValidated: e.target.checked})} /><span className="text-xs font-black text-rose-800 uppercase tracking-widest">Autoriser ce chevauchement</span></label></div></div>}
                         <div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-emerald-600 font-bold tracking-widest">Formation (Nom)</label><input className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-emerald-500 transition-all shadow-inner" value={nouvelleFormationPSF.name || ''} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, name: e.target.value})} placeholder="ex: Atelier Qualité" /></div>
