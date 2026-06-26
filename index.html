@@ -10,6 +10,11 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     
+    <!-- Firebase CDN (version compat UMD - fonctionne sans module) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
@@ -35,15 +40,10 @@
 <body class="bg-slate-100 text-slate-900">
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module">
-        // --- IMPORTS FIREBASE ---
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, updateDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
-
+    <script type="text/babel">
         const { useState, useMemo, useEffect, useRef } = React;
 
-        // --- CONFIGURATION FIREBASE ---
+        // --- CONFIGURATION FIREBASE (version compat - fonctionne partout) ---
         const firebaseConfig = {
             apiKey: "AIzaSyC8lXHB5eg9j86C7wpEK7i9e05xM9zLyG8",
             authDomain: "pilotage-formation-nespresso.firebaseapp.com",
@@ -53,9 +53,34 @@
             appId: "1:368547547829:web:0745d3b98da9750c5a4cfc"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Aliases Firebase compat -> API modulaire
+        const createUserWithEmailAndPassword = (auth, email, pw) => auth.createUserWithEmailAndPassword(email, pw);
+        const signInWithEmailAndPassword = (auth, email, pw) => auth.signInWithEmailAndPassword(email, pw);
+        const signOut = (auth) => auth.signOut();
+        const onAuthStateChanged = (auth, cb) => auth.onAuthStateChanged(cb);
+        const signInAnonymously = (auth) => auth.signInAnonymously();
+
+        // Wrappers Firestore compat
+        const _buildPath = (args) => args.join('/');
+        const collection = (dbOrRef, ...pathParts) => db.collection(_buildPath(pathParts));
+        const doc = (dbOrRef, ...pathParts) => db.doc(_buildPath(pathParts));
+        const getDoc = async (ref) => { const snap = await ref.get(); return { exists: () => snap.exists, data: () => snap.data(), id: snap.id }; };
+        const setDoc = (ref, data, opts) => opts?.merge ? ref.set(data, {merge: true}) : ref.set(data);
+        const updateDoc = (ref, data) => ref.update(data);
+        const deleteDoc = (ref) => ref.delete();
+        const addDoc = (ref, data) => ref.add(data);
+        const onSnapshot = (ref, cb) => ref.onSnapshot((snap) => {
+            if (snap.docs) {
+                // collection snapshot
+                cb({ docs: snap.docs.map(d => ({ id: d.id, data: () => d.data() })) });
+            } else {
+                cb(snap);
+            }
+        });
         
         const artifactAppId = 'pilotage-formation-b2c-b2b';
         const urlParams = new URLSearchParams(window.location.search);
@@ -71,7 +96,7 @@
                 'utilisateurs': 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 14v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
                 'plus': 'M12 5v14M5 12h14',
                 'telecharger': 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
-                'alerte-triangle': 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01',
+                'alerte-triangle': 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0-3.42 0zM12 9v4M12 17h.01',
                 'horloge': 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-15v5l3 3',
                 'bouclier-ok': 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zm-3-11l2 2 4-4',
                 'medaille': 'M12 15l-2 5L9 9l11 4-5 2zm0 0l4 8 4-8-4-8-4 8z',
@@ -87,8 +112,6 @@
                 'livre': 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13z M4 19.5A2.5 2.5 0 0 0 2.5 2.5H20',
                 'tendance': 'M23 6l-9.5 9.5-5-5L1 18M23 6h-6M23 6v6',
                 'sauvegarde': 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8',
-                'capsule-b2c': 'M5 4h14v3H5z M7 7l1.5 11c.5 1.5 2 2.5 3.5 2.5s3-1 3.5-2.5L17 7',
-                'capsule-b2b': 'M3 8h18v2H3z M5 10v2c0 3.5 3 6 7 6s7-2.5 7-6v-2',
                 'lock': 'M7 11V7a5 5 0 0 1 10 0v4 M5 11h14v10H5z',
                 'mail': 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6',
                 'log-in': 'M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4 M10 17l5-5-5-5 M15 12H3',
@@ -176,13 +199,11 @@
             const weekMatch = String(weekStr).match(/\d+/);
             if (!weekMatch) return Array(5).fill({name: '-', date: '-'});
             const weekNum = parseInt(weekMatch[0], 10);
-            
             const simple = new Date(currentYear, 0, 1 + (weekNum - 1) * 7);
             const dow = simple.getDay();
             const ISOweekStart = simple;
             if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
             else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-            
             const days = [];
             const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
             for(let i=0; i<5; i++) {
@@ -199,17 +220,14 @@
             if (!weekMatch) return null;
             const weekNum = parseInt(weekMatch[0], 10);
             const currentYear = new Date().getFullYear();
-            
             const simple = new Date(currentYear, 0, 1 + (weekNum - 1) * 7);
             const dow = simple.getDay();
             const ISOweekStart = simple;
             if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
             else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-            
             const monday = new Date(ISOweekStart);
             const sunday = new Date(ISOweekStart);
             sunday.setDate(sunday.getDate() + 6);
-            
             const format = d => {
                 const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0');
                 return `${y}-${m}-${day}`;
@@ -245,7 +263,6 @@
         const formaterDuree = (t) => {
             if (!t) return '0 j';
             if (t.type === 'PSF' || t.isTTT) return `${Math.round((parseFloat(t.duration) || 0) * 420)} min`;
-            
             if (t.type === 'Projet Genesys') {
                 const val = parseFloat(t.duration);
                 if (Math.abs(val - 2/7) < 0.01) return '2h';
@@ -255,7 +272,6 @@
                 if (Math.abs(val - 1) < 0.01) return '1 journée';
                 if (Math.abs(val - 1.5) < 0.01) return '1.5 jrs';
             }
-            
             return `${t.duration || 0} j`;
         };
 
@@ -315,7 +331,7 @@
                     if (currentUser) {
                         setUser(currentUser);
                         if (currentUser.isAnonymous) {
-                            setUserRole('Lecture seule'); // Forcé pour le lien public
+                            setUserRole('Lecture seule');
                             setLoading(false);
                         } else {
                             try {
@@ -324,7 +340,7 @@
                                 if (roleDoc.exists()) {
                                     setUserRole(roleDoc.data().role);
                                 } else {
-                                    setUserRole('Lecture seule'); // Par défaut
+                                    setUserRole('Lecture seule');
                                 }
                             } catch (error) {
                                 console.error("Erreur rôle:", error);
@@ -443,6 +459,7 @@
         function OutilPilotage({ user, userRole, setUserRole }) {
             const peutEditer = userRole === 'Admin' || userRole === 'Manager';
 
+            // ✅ CORRECTION : variable correctement nommée "environnement"
             const [environnement, setEnvironnement] = useState('B2C');
             const environnementRef = useRef(environnement);
             useEffect(() => { environnementRef.current = environnement; }, [environnement]);
@@ -480,7 +497,11 @@
             const [lastAutoSave, setLastAutoSave] = useState(null);
             const [afficherImportExcel, setAfficherImportExcel] = useState(false);
             const [texteImport, setTexteImport] = useState('');
-            
+            const [dateTemp, setDateTemp] = useState('');
+            const [lignesMultiples, setLignesMultiples] = useState([]);
+            const [lignesMultiplesPSF, setLignesMultiplesPSF] = useState([]);
+            const [lignesMultiplesTTT, setLignesMultiplesTTT] = useState([]);
+
             const defaultFormation = {
                 name: '', type: 'Formation continue', week: 'S12', site: 'Rabat', trainer: 'Rachid', funding: 'Concentrix', 
                 agents: 12, agentsRealises: 0, duration: 1, startDate: new Date().toISOString().split('T')[0], 
@@ -490,16 +511,12 @@
 
             const [nouvelleFormation, setNouvelleFormation] = useState(defaultFormation);
             const [nouvelleFormationPSF, setNouvelleFormationPSF] = useState(defaultFormationPSF);
-            const [dateTemp, setDateTemp] = useState('');
-            const [lignesMultiples, setLignesMultiples] = useState([]);
-            const [lignesMultiplesPSF, setLignesMultiplesPSF] = useState([]);
-            const [lignesMultiplesTTT, setLignesMultiplesTTT] = useState([]);
             
             useEffect(() => {
                 setChargement(true);
                 const { colName } = getDbInfo();
                 const unsubscribe = onSnapshot(collection(db, 'artifacts', artifactAppId, 'public', 'data', colName), (snap) => {
-                    setFormations(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                    setFormations(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                     setChargement(false);
                 });
                 return () => unsubscribe();
@@ -507,37 +524,12 @@
 
             useEffect(() => {
                 const unsubConges = onSnapshot(collection(db, 'artifacts', artifactAppId, 'public', 'data', 'conges'), (snap) => {
-                    setConges(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                    setConges(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                 });
                 return () => unsubConges();
             }, []);
 
             const currentWeekNum = useMemo(() => getISOWeek(new Date()), []);
-            const allStatuts = useMemo(() => [...new Set(formations.map(f => f?.status).filter(Boolean))], [formations]);
-            const allMonths = useMemo(() => [...new Set(formations.map(f => getMonthYear(f?.startDate)).filter(m => m !== 'Inconnu'))], [formations]);
-            const moisDeLAnnee = useMemo(() => {
-                const months = [];
-                for (let i=0; i<12; i++) months.push(new Date(new Date().getFullYear(), i, 1).toLocaleString('fr-FR', { month: 'long', year: 'numeric' }));
-                formations.forEach(f => { const m = getMonthYear(f?.startDate); if (m !== 'Inconnu' && !months.includes(m)) months.push(m); });
-                return months;
-            }, [formations]);
-            
-            const allWeeks = useMemo(() => {
-                const weeksSet = new Set();
-                formations.forEach(f => { if(f?.week) f.week.split(',').forEach(w => weeksSet.add(w.trim())); });
-                return [...weeksSet].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-            }, [formations]);
-            
-            const allNomsGenesys = useMemo(() => [...new Set(formations.filter(f => f?.type === 'Projet Genesys').map(f => f?.name).filter(Boolean))], [formations]);
-            const semainesDynamiques = useMemo(() => {
-                const ensemble = new Set();
-                formations.forEach(t => { if(t?.week) t.week.split(',').forEach(w => ensemble.add(w.trim())); });
-                if (ensemble.size === 0) ensemble.add('S' + getISOWeek(new Date()));
-                return Array.from(ensemble).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-            }, [formations]);
-
-            const targetWeekDisplay = useMemo(() => 'S' + (currentWeekNum + 2), [currentWeekNum]);
-            const formationsSelectionAgent = useMemo(() => formations.filter(f => f?.status === 'À planifier' && f?.week === targetWeekDisplay && f?.type === 'Spécialisation'), [formations, targetWeekDisplay]);
 
             const passeFiltres = (t) => {
                 if (!t) return false;
@@ -554,6 +546,7 @@
             const formationsPSF = useMemo(() => formations.filter(t => t?.type === 'PSF' && !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
             const formationsTTT = useMemo(() => formations.filter(t => t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
 
+            // ✅ CORRECTION : utilisation de "ensembleStats" (plus de "fStats")
             const ensembleStats = useMemo(() => {
                 const base = formationsFiltrees.filter(f => f?.status !== 'Annulé');
                 const total = base.length;
@@ -561,6 +554,12 @@
                 const taux = total > 0 ? Math.round((terminees / total) * 100) : 0;
                 return { total, terminees, enCours: base.filter(f => f?.status === 'En cours').length, planifiees: base.filter(f => ['Planifié', 'À planifier', 'En attente de validation'].includes(f?.status)).length, taux };
             }, [formationsFiltrees]);
+
+            // ✅ CORRECTION : "bilanMensuelData" ajouté
+            const bilanMensuelData = useMemo(() => {
+                const moisCourant = getMonthYear(new Date().toISOString());
+                return formations.filter(f => getMonthYear(f?.startDate) === moisCourant && f?.status !== 'Annulé' && passeFiltres(f));
+            }, [formations, filtres]);
 
             const chronologieDonnees = useMemo(() => {
                 const now = new Date(); now.setHours(0,0,0,0);
@@ -620,14 +619,45 @@
                 return carteConflits[`${t.trainer}-${t.week}`]?.length > 1;
             };
 
-            const isSMinus1 = (t) => {
-                if (t?.status !== 'À planifier' || !t?.week) return false;
-                const wn = parseInt(String(t.week).replace(/[^0-9]/g, ''), 10);
-                return (wn === currentWeekNum + 1) || (currentWeekNum === 52 && wn === 1);
+            // ✅ CORRECTION : fonctions manquantes ajoutées
+            const { colName } = getDbInfo();
+
+            const openEditModal = (t) => {
+                if (!peutEditer) return;
+                setEditionEnCours(true);
+                if (t.type === 'PSF') {
+                    setNouvelleFormationPSF(t);
+                    setModalAjoutPSF(true);
+                } else if (t.isTTT) {
+                    setNouvelleFormation(t);
+                    setModalTTT(true);
+                } else {
+                    setNouvelleFormation(t);
+                    setModalAjout(true);
+                }
+            };
+
+            const deleteTraining = async (id) => {
+                if (!peutEditer) return;
+                if (!window.confirm('Supprimer cette session ?')) return;
+                try {
+                    await deleteDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', colName, id));
+                } catch(e) { console.error('Erreur suppression:', e); }
+            };
+
+            const mettreAJourStatutDirect = async (id, status) => {
+                if (!peutEditer) return;
+                try {
+                    await updateDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', colName, id), { status });
+                } catch(e) { console.error('Erreur mise à jour statut:', e); }
+            };
+
+            const updatePSFDates = (dates) => {
+                const firstDate = [...dates].sort()[0] || nouvelleFormationPSF.startDate;
+                setNouvelleFormationPSF({ ...nouvelleFormationPSF, dates, startDate: firstDate, week: 'S' + getISOWeek(new Date(firstDate)) });
             };
 
             const handleExtraireCSV = () => {
-                // Extraction optimisée pour analyse
                 const exportData = formations.filter(passeFiltres).sort((a,b) => (new Date(a.startDate).getTime() - new Date(b.startDate).getTime()));
                 const entetes = ["Mois", "Semaine", "Formation", "Type", "Site", "Statut", "Formateur", "Date Debut", "Duree Initiale", "Agents Prevus", "Agents Formes", "Heures Prevues", "Heures Realisees", "Prise en charge", "Commentaire"];
                 const lignes = exportData.map(t => {
@@ -637,7 +667,7 @@
                         `"${getMonthYear(t.startDate)}"`, `"${t.week || ''}"`, `"${t.name || ''}"`, `"${t.type || ''}"`, `"${t.site || ''}"`, `"${t.status || ''}"`, 
                         `"${t.trainer || ''}"`, `"${t.startDate || ''}"`, `"${formaterDuree(t)}"`, t.agents || 0, t.agentsRealises || 0, 
                         Math.round(hPrevues * 10) / 10, Math.round(hRealisees * 10) / 10, `"${t.funding || ''}"`, `"${(t.comment || '').replace(/"/g, '""')}"`
-                    ].join(";"); // Point virgule pour Excel FR
+                    ].join(";");
                 });
                 const csvStr = "\ufeff" + [entetes.join(";"), ...lignes].join("\n");
                 const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
@@ -647,91 +677,118 @@
                 document.body.appendChild(lien); lien.click(); document.body.removeChild(lien);
             };
 
-            const handleImportDB = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = async (evt) => {
-                    const rows = parseCSV(evt.target.result.replace(/^\uFEFF/, ''));
-                    if (rows.length < 2) return;
-                    setChargement(true);
-                    const headers = rows[0].map(h => h.trim());
-                    const { colName } = getDbInfo();
-                    for(let i=1; i<rows.length; i++) {
-                        const obj = {};
-                        headers.forEach((h, idx) => {
-                            let v = rows[i][idx];
-                            if (v === 'true') v = true; else if (v === 'false') v = false;
-                            else if (['duration', 'agents', 'agentsRealises'].includes(h)) v = Number(v) || 0;
-                            else if (['dates', 'cible'].includes(h)) v = v ? v.split(';') : [];
-                            obj[h] = v;
-                        });
-                        if (obj.id && obj.name) await setDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', colName, String(obj.id)), obj);
-                    }
-                    setChargement(false);
-                };
-                reader.readAsText(file);
-            };
-
             const validerFormation = async () => {
                 const isPSF = modalAjoutPSF;
                 const fToSave = isPSF ? nouvelleFormationPSF : nouvelleFormation;
                 if(!fToSave.name) return;
                 const payload = { ...fToSave, duration: parseFloat(fToSave.duration) || 0, agents: parseInt(fToSave.agents) || 0, agentsRealises: parseInt(fToSave.agentsRealises) || 0, updatedAt: new Date().toISOString() };
-                const { colName } = getDbInfo();
-                if (editionEnCours) await updateDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', colName, fToSave.id), payload);
-                else await setDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', colName, Date.now().toString()), { ...payload, id: Date.now().toString() });
+                try {
+                    if (editionEnCours) {
+                        await updateDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', colName, fToSave.id), payload);
+                    } else {
+                        await setDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', colName, Date.now().toString()), { ...payload, id: Date.now().toString() });
+                    }
+                } catch(e) { console.error('Erreur sauvegarde:', e); }
                 setModalAjout(false); setModalTTT(false); setModalAjoutPSF(false); setEditionEnCours(false);
                 setNouvelleFormation(defaultFormation); setNouvelleFormationPSF(defaultFormationPSF);
             };
 
             const renderTableEnsemble = (data) => (
-                <div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-slate-50 border-b"><tr><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Semaine</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Formation</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Statut</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">
-                    {data.map(t => {
-                        const progress = t.agents > 0 ? Math.min(100, Math.round(((t.agentsRealises || 0) / t.agents) * 100)) : 0;
-                        return (
-                            <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-5 font-black text-blue-600">{t.week}</td>
-                                <td className="px-6 py-5">
-                                    <div className="font-black text-slate-800 uppercase">{t.name}</div>
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.type} • {t.trainer}</div>
-                                </td>
-                                <td className="px-6 py-5 text-center">
-                                    <select value={t.status} onChange={(e) => mettreAJourStatutDirect(t.id, e.target.value)} className={`px-2 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(t.status)} outline-none`}>{STATUTS.map(s => <option key={s}>{s}</option>)}</select>
-                                    <div className="mt-2 w-24 mx-auto bg-slate-100 h-1 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all" style={{width:`${progress}%`}}></div></div>
-                                </td>
-                                <td className="px-6 py-5 text-right space-x-2"><button onClick={()=>openEditModal(t)} className="text-slate-300 hover:text-emerald-600"><Icone nom="modifier" taille={16}/></button><button onClick={()=>deleteTraining(t.id)} className="text-slate-300 hover:text-rose-500"><Icone nom="poubelle" taille={16}/></button></td>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-50 border-b">
+                            <tr>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Semaine</th>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Formation</th>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Statut</th>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-right">Actions</th>
                             </tr>
-                        );
-                    })}
-                </tbody></table></div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {data.length === 0 && (
+                                <tr><td colSpan={4} className="px-6 py-10 text-center text-slate-400 font-bold text-sm">Aucune session</td></tr>
+                            )}
+                            {data.map(t => {
+                                const progress = t.agents > 0 ? Math.min(100, Math.round(((t.agentsRealises || 0) / t.agents) * 100)) : 0;
+                                return (
+                                    <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-6 py-5 font-black text-blue-600">{t.week}</td>
+                                        <td className="px-6 py-5">
+                                            <div className="font-black text-slate-800 uppercase">{t.name}</div>
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.type} • {t.trainer}</div>
+                                        </td>
+                                        <td className="px-6 py-5 text-center">
+                                            {peutEditer ? (
+                                                <select value={t.status} onChange={(e) => mettreAJourStatutDirect(t.id, e.target.value)} className={`px-2 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(t.status)} outline-none`}>
+                                                    {STATUTS.map(s => <option key={s}>{s}</option>)}
+                                                </select>
+                                            ) : (
+                                                <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(t.status)}`}>{t.status}</span>
+                                            )}
+                                            <div className="mt-2 w-24 mx-auto bg-slate-100 h-1 rounded-full overflow-hidden">
+                                                <div className="bg-blue-500 h-full transition-all" style={{width:`${progress}%`}}></div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-5 text-right space-x-2">
+                                            {peutEditer && <button onClick={()=>openEditModal(t)} className="text-slate-300 hover:text-emerald-600"><Icone nom="modifier" taille={16}/></button>}
+                                            {peutEditer && <button onClick={()=>deleteTraining(t.id)} className="text-slate-300 hover:text-rose-500"><Icone nom="poubelle" taille={16}/></button>}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             );
 
             const renderSpecificTable = (data, weekColor) => (
-                <div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-slate-50 border-b"><tr><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400">Semaine/Date</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400">Désignation</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Statut</th><th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-right">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">
-                    {data.map(t => (
-                        <tr key={t.id} className="hover:bg-slate-50">
-                            <td className={`px-4 py-4 font-black ${weekColor}`}>{t.week} <div className="text-[9px] text-slate-400">{t.startDate}</div></td>
-                            <td className="px-4 py-4 font-black text-xs uppercase">{t.name} <div className="text-[9px] font-bold text-slate-400">{t.trainer}</div></td>
-                            <td className="px-4 py-4 text-center"><span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${getStatusColor(t.status)}`}>{t.status}</span></td>
-                            <td className="px-4 py-4 text-right"><button onClick={()=>deleteTraining(t.id)} className="text-slate-400 hover:text-rose-500"><Icone nom="poubelle" taille={14}/></button></td>
-                        </tr>
-                    ))}
-                </tbody></table></div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-50 border-b">
+                            <tr>
+                                <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400">Semaine/Date</th>
+                                <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400">Désignation</th>
+                                <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Statut</th>
+                                <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-400 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {data.length === 0 && (
+                                <tr><td colSpan={4} className="px-6 py-10 text-center text-slate-400 font-bold text-sm">Aucune session</td></tr>
+                            )}
+                            {data.map(t => (
+                                <tr key={t.id} className="hover:bg-slate-50">
+                                    <td className={`px-4 py-4 font-black ${weekColor}`}>{t.week} <div className="text-[9px] text-slate-400">{t.startDate}</div></td>
+                                    <td className="px-4 py-4 font-black text-xs uppercase">{t.name} <div className="text-[9px] font-bold text-slate-400">{t.trainer}</div></td>
+                                    <td className="px-4 py-4 text-center"><span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${getStatusColor(t.status)}`}>{t.status}</span></td>
+                                    <td className="px-4 py-4 text-right">
+                                        {peutEditer && <button onClick={()=>deleteTraining(t.id)} className="text-slate-400 hover:text-rose-500"><Icone nom="poubelle" taille={14}/></button>}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             );
 
             return (
                 <div className="min-h-screen flex flex-col">
                     {!user.isAnonymous && userRole === 'Lecture seule' && (
                         <div className="bg-amber-100 p-4 flex justify-between items-center shadow-sm z-50">
-                            <p className="text-amber-800 font-bold text-sm">Mode récupération : Vous êtes en Lecture Seule. <button onClick={async () => { await setDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', 'userRoles', user.uid), { role: 'Admin', email: user.email }, { merge: true }); setUserRole('Admin'); }} className="underline font-black ml-2 uppercase text-xs">Devenir Admin</button></p>
+                            <p className="text-amber-800 font-bold text-sm">
+                                Mode récupération : Vous êtes en Lecture Seule.{' '}
+                                <button onClick={async () => {
+                                    await setDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', 'userRoles', user.uid), { role: 'Admin', email: user.email }, { merge: true });
+                                    setUserRole('Admin');
+                                }} className="underline font-black ml-2 uppercase text-xs">Devenir Admin</button>
+                            </p>
                         </div>
                     )}
                     
                     <div className="flex-1 flex min-h-0">
                         <aside className="w-72 bg-[#0f172a] text-white fixed h-full shadow-2xl flex flex-col z-20">
                             <div className="p-8 border-b border-slate-800 flex items-center gap-4">
-                                <img src="logo.png" onError={(e)=>{e.target.src="https://upload.wikimedia.org/wikipedia/commons/4/42/Nespresso_logo.svg"}} className="h-10 w-10 bg-white rounded-lg p-1 shadow-lg"/>
+                                <img src="logo.png" onError={(e)=>{e.target.src="https://upload.wikimedia.org/wikipedia/commons/4/42/Nespresso_logo.svg"}} className="h-10 w-10 bg-white rounded-lg p-1 shadow-lg" alt="Logo"/>
                                 <span className="font-black text-lg uppercase leading-tight">Pilotage<br/><span className="text-amber-500">Nespresso</span></span>
                             </div>
                             <nav className="flex-1 p-6 space-y-2 overflow-y-auto custom-scrollbar">
@@ -749,7 +806,11 @@
                                 <ElementNav actif={vue === 'planning'} onClick={() => setVue('planning')} icone={<Icone nom="utilisateurs" />} libelle="Planning Formateurs" />
                             </nav>
                             <div className="p-6 border-t border-slate-800 space-y-2">
-                                {peutEditer && <button onClick={() => { setNouvelleFormation(defaultFormation); setEditionEnCours(false); setModalAjout(true); }} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg transition-all active:scale-95">Nouvelle Session</button>}
+                                {peutEditer && (
+                                    <button onClick={() => { setNouvelleFormation(defaultFormation); setEditionEnCours(false); setModalAjout(true); }} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg transition-all active:scale-95">
+                                        Nouvelle Session
+                                    </button>
+                                )}
                                 <button onClick={() => signOut(auth)} className="w-full bg-slate-800 text-slate-400 hover:text-white py-3 rounded-xl text-xs font-black transition-colors">Déconnexion</button>
                             </div>
                         </aside>
@@ -758,40 +819,98 @@
                             <header className="flex justify-between items-center mb-10">
                                 <h1 className="text-4xl font-black uppercase text-slate-800 tracking-tight">{vue}</h1>
                                 <div className="flex gap-4">
+                                    {/* ✅ CORRECTION : env → environnement, setEnv → setEnvironnement */}
                                     <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200">
-                                        <button onClick={()=>setEnv('B2C')} className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${env==='B2C'?'bg-blue-600 text-white shadow-md':'text-slate-400 hover:bg-slate-50'}`}>B2C</button>
-                                        <button onClick={()=>setEnv('B2B')} className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${env==='B2B'?'bg-indigo-600 text-white shadow-md':'text-slate-400 hover:bg-slate-50'}`}>B2B</button>
+                                        <button onClick={() => setEnvironnement('B2C')} className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${environnement === 'B2C' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>B2C</button>
+                                        <button onClick={() => setEnvironnement('B2B')} className={`px-4 py-2 text-xs font-black rounded-lg transition-all ${environnement === 'B2B' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}>B2B</button>
                                     </div>
-                                    <button onClick={handleExtraireCSV} className="bg-white border-2 border-slate-200 text-slate-600 px-5 py-2.5 rounded-2xl font-black text-xs uppercase hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm"><Icone nom="telecharger" taille={16}/> Extraire Excel</button>
+                                    <button onClick={handleExtraireCSV} className="bg-white border-2 border-slate-200 text-slate-600 px-5 py-2.5 rounded-2xl font-black text-xs uppercase hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+                                        <Icone nom="telecharger" taille={16}/> Extraire Excel
+                                    </button>
                                 </div>
                             </header>
 
-                            {vue === 'suivi' && (
-                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 animate-in fade-in duration-500">
+                            {chargement && (
+                                <div className="flex items-center justify-center py-20">
+                                    <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-300 border-t-blue-600"></div>
+                                </div>
+                            )}
+
+                            {!chargement && vue === 'accueil' && (
+                                <div className="space-y-8">
+                                    <div className="grid grid-cols-4 gap-6">
+                                        {/* ✅ CORRECTION : fStats → ensembleStats */}
+                                        <CarteStat libelle="Sessions" valeur={ensembleStats.total} icone={<Icone nom="livre"/>} couleur="blue" />
+                                        <CarteStat libelle="Réussite" valeur={ensembleStats.taux} unite="%" icone={<Icone nom="bouclier-ok"/>} couleur="emerald" />
+                                        <CarteStat libelle="En cours" valeur={ensembleStats.enCours} icone={<Icone nom="tendance"/>} couleur="amber" />
+                                        <CarteStat libelle="Avenir" valeur={ensembleStats.planifiees} icone={<Icone nom="calendrier"/>} couleur="slate" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-8">
+                                        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
+                                            <div className="p-6 bg-slate-50 border-b flex justify-between items-center">
+                                                <h3 className="font-black text-slate-700">Sessions Actives</h3>
+                                                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{formationsFiltrees.filter(f=>f.status!=='Terminé').length} sessions</span>
+                                            </div>
+                                            {renderTableEnsemble(formationsFiltrees.filter(f=>f.status!=='Terminé'))}
+                                        </div>
+                                        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
+                                            <div className="p-6 bg-emerald-50 border-b border-emerald-100 flex justify-between items-center">
+                                                <h3 className="font-black text-emerald-800">Sessions Terminées</h3>
+                                                <span className="bg-emerald-200 text-emerald-800 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{formationsFiltrees.filter(f=>f.status==='Terminé').length} sessions</span>
+                                            </div>
+                                            {renderTableEnsemble(formationsFiltrees.filter(f=>f.status==='Terminé'))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!chargement && vue === 'suivi' && (
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                                     <div className="space-y-8 flex flex-col h-full">
                                         <div className="grid grid-cols-2 gap-6">
                                             <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200">
                                                 <h4 className="font-black text-slate-700 uppercase text-xs mb-6 tracking-widest flex items-center gap-2"><Icone nom="batiment" taille={16} classe="text-rose-500"/> Par Site</h4>
                                                 <div className="space-y-6">
-                                                    <div><div className="flex justify-between text-sm font-black text-slate-800 mb-2"><span>Rabat</span><span>{formatHeures(heuresParSite.rabat)}</span></div><div className="w-full bg-slate-100 rounded-full h-2"><div className="bg-rose-500 h-full rounded-full transition-all" style={{width:`${suiviDonnees.grandTotal > 0 ? (heuresParSite.rabat / suiviDonnees.grandTotal) * 100 : 0}%`}}></div></div></div>
-                                                    <div><div className="flex justify-between text-sm font-black text-slate-800 mb-2"><span>Meknès</span><span>{formatHeures(heuresParSite.meknes)}</span></div><div className="w-full bg-slate-100 rounded-full h-2"><div className="bg-emerald-500 h-full rounded-full transition-all" style={{width:`${suiviDonnees.grandTotal > 0 ? (heuresParSite.meknes / suiviDonnees.grandTotal) * 100 : 0}%`}}></div></div></div>
+                                                    <div>
+                                                        <div className="flex justify-between text-sm font-black text-slate-800 mb-2"><span>Rabat</span><span>{formatHeures(heuresParSite.rabat)}</span></div>
+                                                        <div className="w-full bg-slate-100 rounded-full h-2"><div className="bg-rose-500 h-full rounded-full transition-all" style={{width:`${suiviDonnees.grandTotal > 0 ? (heuresParSite.rabat / suiviDonnees.grandTotal) * 100 : 0}%`}}></div></div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex justify-between text-sm font-black text-slate-800 mb-2"><span>Meknès</span><span>{formatHeures(heuresParSite.meknes)}</span></div>
+                                                        <div className="w-full bg-slate-100 rounded-full h-2"><div className="bg-emerald-500 h-full rounded-full transition-all" style={{width:`${suiviDonnees.grandTotal > 0 ? (heuresParSite.meknes / suiviDonnees.grandTotal) * 100 : 0}%`}}></div></div>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200">
                                                 <h4 className="font-black text-slate-700 uppercase text-xs mb-6 tracking-widest flex items-center gap-2"><Icone nom="tendance" taille={16} classe="text-purple-500"/> Par Type</h4>
                                                 <div className="space-y-4 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                                                     {suiviDonnees.types.map(t => (
-                                                        <div key={t}><div className="flex justify-between text-[11px] font-black mb-1"><span>{t}</span><span>{formatHeures(suiviDonnees.colTotals[t])}</span></div><div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div className="bg-purple-500 h-full" style={{width:`${(suiviDonnees.colTotals[t]/suiviDonnees.grandTotal)*100}%`}}></div></div></div>
+                                                        <div key={t}>
+                                                            <div className="flex justify-between text-[11px] font-black mb-1"><span>{t}</span><span>{formatHeures(suiviDonnees.colTotals[t])}</span></div>
+                                                            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div className="bg-purple-500 h-full" style={{width:`${suiviDonnees.grandTotal > 0 ? (suiviDonnees.colTotals[t]/suiviDonnees.grandTotal)*100 : 0}%`}}></div></div>
+                                                        </div>
                                                     ))}
+                                                    {suiviDonnees.types.length === 0 && <p className="text-slate-400 text-xs">Aucune donnée</p>}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden flex-1 flex flex-col">
-                                            <div className="p-6 bg-slate-50 border-b flex justify-between items-center shrink-0"><h3 className="font-black text-slate-800 uppercase tracking-tight">Détail des Sessions</h3><span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{formationsFiltrees.length} actives</span></div>
+                                            <div className="p-6 bg-slate-50 border-b flex justify-between items-center shrink-0">
+                                                <h3 className="font-black text-slate-800 uppercase tracking-tight">Détail des Sessions</h3>
+                                                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{formationsFiltrees.length} actives</span>
+                                            </div>
                                             <div className="overflow-auto custom-scrollbar flex-1 relative">
-                                                <table className="w-full text-left"><thead className="bg-white sticky top-0 z-10 shadow-sm border-b"><tr><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Semaine</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Formation</th><th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Site</th><th className="px-6 py-4 text-[10px] font-black uppercase text-blue-600 text-right">Volume (H)</th></tr></thead>
+                                                <table className="w-full text-left">
+                                                    <thead className="bg-white sticky top-0 z-10 shadow-sm border-b">
+                                                        <tr>
+                                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Semaine</th>
+                                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Formation</th>
+                                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Site</th>
+                                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-blue-600 text-right">Volume (H)</th>
+                                                        </tr>
+                                                    </thead>
                                                     <tbody className="divide-y divide-slate-100">
-                                                        {formations.filter(passeFiltres).sort((a,b)=>a.week?.localeCompare(b.week,undefined,{numeric:true})).map(f => (
+                                                        {formations.filter(passeFiltres).sort((a,b)=>String(a.week||'').localeCompare(String(b.week||''),undefined,{numeric:true})).map(f => (
                                                             <tr key={f.id} className="hover:bg-slate-50">
                                                                 <td className="px-6 py-3 font-black text-blue-600 text-sm">{f.week}</td>
                                                                 <td className="px-6 py-3 font-black text-slate-800 text-xs uppercase">{f.name} <div className="text-[8px] text-slate-400 mt-0.5">{f.type}</div></td>
@@ -799,6 +918,9 @@
                                                                 <td className="px-6 py-3 text-right font-black text-blue-600">{formatHeures((parseFloat(f.duration)||0)*7*(parseInt(f.agents)||0))}</td>
                                                             </tr>
                                                         ))}
+                                                        {formations.filter(passeFiltres).length === 0 && (
+                                                            <tr><td colSpan={4} className="px-6 py-10 text-center text-slate-400 font-bold text-sm">Aucune session</td></tr>
+                                                        )}
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -806,39 +928,25 @@
                                     </div>
                                     <div className="space-y-8">
                                         <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-slate-200">
-                                            <h2 className="text-2xl font-black mb-8 border-b pb-4 flex items-center gap-3"><Icone nom="horloge" taille={24} classe="text-blue-500"/> Bilan {getMonthYear(new Date())}</h2>
+                                            <h2 className="text-2xl font-black mb-8 border-b pb-4 flex items-center gap-3"><Icone nom="horloge" taille={24} classe="text-blue-500"/> Bilan {getMonthYear(new Date().toISOString())}</h2>
                                             <div className="grid grid-cols-2 gap-6">
-                                                <div className="p-6 bg-blue-50 rounded-3xl"><div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">H. Prévues</div><div className="text-3xl font-black text-blue-900">{formatHeures(bilanMensuelData.reduce((s,x)=>s+((parseFloat(x.duration)||0)*7*(parseInt(x.agents)||0)),0))}</div></div>
-                                                <div className="p-6 bg-emerald-50 rounded-3xl"><div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">H. Réalisées</div><div className="text-3xl font-black text-emerald-900">{formatHeures(bilanMensuelData.reduce((s,x)=>s+((parseFloat(x.duration)||0)*7*(parseInt(x.agentsRealises)||0)),0))}</div></div>
+                                                {/* ✅ CORRECTION : bilanMensuelData maintenant défini */}
+                                                <div className="p-6 bg-blue-50 rounded-3xl">
+                                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">H. Prévues</div>
+                                                    <div className="text-3xl font-black text-blue-900">{formatHeures(bilanMensuelData.reduce((s,x)=>s+((parseFloat(x.duration)||0)*7*(parseInt(x.agents)||0)),0))}</div>
+                                                </div>
+                                                <div className="p-6 bg-emerald-50 rounded-3xl">
+                                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">H. Réalisées</div>
+                                                    <div className="text-3xl font-black text-emerald-900">{formatHeures(bilanMensuelData.reduce((s,x)=>s+((parseFloat(x.duration)||0)*7*(parseInt(x.agentsRealises)||0)),0))}</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
-                            {vue === 'accueil' && (
-                                <div className="space-y-8 animate-in fade-in duration-500">
-                                    <div className="grid grid-cols-4 gap-6">
-                                        <CarteStat libelle="Sessions" valeur={fStats.total} icone={<Icone nom="livre"/>} couleur="blue" />
-                                        <CarteStat libelle="Réussite" valeur={fStats.taux} unite="%" icone={<Icone nom="bouclier-ok"/>} couleur="emerald" />
-                                        <CarteStat libelle="En cours" valeur={fStats.enCours} icone={<Icone nom="tendance"/>} couleur="amber" />
-                                        <CarteStat libelle="Avenir" valeur={fStats.planifiees} icone={<Icone nom="calendrier"/>} couleur="slate" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-8">
-                                        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
-                                            <div className="p-6 bg-slate-50 border-b flex justify-between items-center"><h3 className="font-black text-slate-700">Sessions Actives</h3></div>
-                                            {renderTableEnsemble(formationsFiltrees.filter(f=>f.status!=='Terminé'))}
-                                        </div>
-                                        <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
-                                            <div className="p-6 bg-emerald-50 border-b border-emerald-100 flex justify-between items-center"><h3 className="font-black text-emerald-800">Sessions Terminées</h3></div>
-                                            {renderTableEnsemble(formationsFiltrees.filter(f=>f.status==='Terminé'))}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {vue === 'chronologie' && (
-                                <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 p-6 h-[calc(100vh-160px)] flex flex-col overflow-hidden animate-in fade-in">
+                            {!chargement && vue === 'chronologie' && (
+                                <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 p-6 h-[calc(100vh-160px)] flex flex-col overflow-hidden">
                                     <div ref={timelineRef} className="flex-1 w-full overflow-auto rounded-2xl border border-slate-200 relative custom-scrollbar">
                                         <div className="min-w-max relative" style={{ minWidth: `${chronologieDonnees.totalSpan * 40}px` }}>
                                             <div className="flex bg-[#0f172a] text-white font-black text-[10px] uppercase sticky top-0 z-40 h-10 shadow-md">
@@ -854,20 +962,23 @@
                                                 const withLevels = calculerNiveaux(formSite);
                                                 return (
                                                     <div key={site} className="flex border-b border-slate-100 relative min-h-[140px] transition-all hover:bg-slate-50/50">
-                                                        <div className="w-56 p-6 font-black text-slate-800 bg-white sticky left-0 z-10 border-r flex items-center gap-2 shrink-0 shadow-sm"><Icone nom="batiment" taille={14} classe={site==='Rabat'?'text-rose-500':'text-blue-500'}/> {site}</div>
+                                                        <div className="w-56 p-6 font-black text-slate-800 bg-white sticky left-0 z-10 border-r flex items-center gap-2 shrink-0 shadow-sm">
+                                                            <Icone nom="batiment" taille={14} classe={site==='Rabat'?'text-rose-500':'text-blue-500'}/> {site}
+                                                        </div>
                                                         <div className="flex-1 relative h-full timeline-grid-sub" style={{backgroundSize:`calc(100%/${chronologieDonnees.totalSpan}) 100%`}}>
                                                             {withLevels.map(t => {
                                                                 const deb = new Date(t.startDate); deb.setHours(0,0,0,0);
                                                                 const diff = (deb - chronologieDonnees.start) / 86400000;
                                                                 if(isNaN(diff)||diff<0||diff>=chronologieDonnees.totalSpan) return null;
                                                                 return (
-                                                                    <div key={t.id} onClick={()=>openEditModal(t)} className={`absolute h-12 rounded-xl flex flex-col justify-center px-3 text-[9px] font-black border-2 shadow-lg transition-all hover:scale-105 hover:z-[100] cursor-pointer ${t.isTTT?'bg-amber-50 border-amber-300 text-amber-800':(site==='Rabat'?'bg-rose-50 border-rose-300 text-rose-800':'bg-blue-50 border-blue-300 text-blue-800')}`} style={{left:`${(diff/chronologieDonnees.totalSpan)*100}%`, width:`${(parseFloat(t.duration)/chronologieDonnees.totalSpan)*100}%`, top:`${20 + t.level*60}px`}}>
+                                                                    <div key={t.id} onClick={()=>openEditModal(t)} className={`absolute h-12 rounded-xl flex flex-col justify-center px-3 text-[9px] font-black border-2 shadow-lg transition-all hover:scale-105 hover:z-[100] cursor-pointer ${t.isTTT?'bg-amber-50 border-amber-300 text-amber-800':(site==='Rabat'?'bg-rose-50 border-rose-300 text-rose-800':'bg-blue-50 border-blue-300 text-blue-800')}`}
+                                                                        style={{left:`${(diff/chronologieDonnees.totalSpan)*100}%`, width:`${(parseFloat(t.duration)/chronologieDonnees.totalSpan)*100}%`, top:`${20 + t.level*60}px`}}>
                                                                         <div className="truncate uppercase leading-none">{t.name}</div>
                                                                         <div className="text-[8px] opacity-60 mt-1 truncate">{t.trainer} • {t.agentsRealises || 0} F.</div>
                                                                     </div>
                                                                 );
                                                             })}
-                                                            <div className="absolute top-0 bottom-0 left-[calc(100%/90*7)] w-px bg-rose-500 marker-today z-30"></div>
+                                                            <div className="absolute top-0 bottom-0 marker-today z-30 w-px bg-rose-500" style={{left:`${(Math.max(0,(new Date()-chronologieDonnees.start)/86400000)/chronologieDonnees.totalSpan)*100}%`}}></div>
                                                         </div>
                                                     </div>
                                                 );
@@ -876,69 +987,160 @@
                                     </div>
                                 </div>
                             )}
+
+                            {!chargement && vue === 'psf' && (
+                                <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
+                                    <div className="p-6 bg-emerald-50 border-b border-emerald-100 flex justify-between items-center">
+                                        <h3 className="font-black text-emerald-800">Suivi PSF</h3>
+                                        {peutEditer && <button onClick={() => { setNouvelleFormationPSF(defaultFormationPSF); setEditionEnCours(false); setModalAjoutPSF(true); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-xs uppercase">+ Nouvelle PSF</button>}
+                                    </div>
+                                    {renderSpecificTable(formationsPSF, 'text-emerald-600')}
+                                </div>
+                            )}
+
+                            {!chargement && vue === 'ttt' && (
+                                <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
+                                    <div className="p-6 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+                                        <h3 className="font-black text-amber-800">Planning TTT</h3>
+                                        {peutEditer && <button onClick={() => { setNouvelleFormation({...defaultFormation, isTTT: true}); setEditionEnCours(false); setModalTTT(true); }} className="bg-amber-500 text-white px-4 py-2 rounded-xl font-black text-xs uppercase">+ Nouveau TTT</button>}
+                                    </div>
+                                    {renderSpecificTable(formationsTTT, 'text-amber-600')}
+                                </div>
+                            )}
+
+                            {!chargement && (vue === 'spe' || vue === 'fim' || vue === 'genesys' || vue === 'selection' || vue === 'planning') && (
+                                <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
+                                    <div className="p-6 bg-slate-50 border-b flex justify-between items-center">
+                                        <h3 className="font-black text-slate-700 uppercase">{vue}</h3>
+                                    </div>
+                                    {renderTableEnsemble(
+                                        formationsFiltrees.filter(f => {
+                                            if (vue === 'spe') return f.type === 'Spécialisation';
+                                            if (vue === 'fim') return f.type === 'FIM';
+                                            if (vue === 'genesys') return f.type === 'Projet Genesys';
+                                            return true;
+                                        })
+                                    )}
+                                </div>
+                            )}
                         </main>
 
                         {/* --- MODALES D'ÉDITION --- */}
                         {(modalAjout || modalAjoutPSF || modalTTT) && peutEditer && (
                             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-6">
-                                <div className="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in duration-300 border border-slate-700/10">
+                                <div className="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-700/10">
                                     <div className={`p-8 text-white flex justify-between items-center ${modalAjoutPSF?'bg-emerald-600':(modalTTT?'bg-amber-500':'bg-[#0f172a]')}`}>
                                         <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
                                             {modalAjoutPSF && <Icone nom="medaille" taille={24}/>}
                                             {modalTTT && <Icone nom="livre" taille={24}/>}
                                             {editionEnCours ? 'Modifier' : 'Saisir'} une session
                                         </h2>
-                                        <button onClick={() => {setModalAjout(false); setModalTTT(false); setModalAjoutPSF(false);}} className="text-3xl font-black leading-none">×</button>
+                                        <button onClick={() => {setModalAjout(false); setModalTTT(false); setModalAjoutPSF(false); setEditionEnCours(false);}} className="text-3xl font-black leading-none">×</button>
                                     </div>
                                     <div className="p-10 grid grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto custom-scrollbar bg-slate-50/20">
                                         <div className="col-span-2">
                                             <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Désignation</label>
-                                            <input className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" value={modalAjoutPSF?nouvelleFormationPSF.name:nouvelleFormation.name} onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,name:v}):setNouvelleFormation({...nouvelleFormation,name:v}); }}/>
+                                            <input className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm" 
+                                                value={modalAjoutPSF ? nouvelleFormationPSF.name : nouvelleFormation.name} 
+                                                onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,name:v}):setNouvelleFormation({...nouvelleFormation,name:v}); }}
+                                                placeholder="Nom de la formation..."/>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Statut</label>
-                                            <select className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" value={modalAjoutPSF?nouvelleFormationPSF.status:nouvelleFormation.status} onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,status:v}):setNouvelleFormation({...nouvelleFormation,status:v}); }}>{STATUTS.map(s=><option key={s}>{s}</option>)}</select>
+                                            <select className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" 
+                                                value={modalAjoutPSF ? nouvelleFormationPSF.status : nouvelleFormation.status} 
+                                                onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,status:v}):setNouvelleFormation({...nouvelleFormation,status:v}); }}>
+                                                {STATUTS.map(s=><option key={s}>{s}</option>)}
+                                            </select>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Site</label>
-                                            <select className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" value={modalAjoutPSF?nouvelleFormationPSF.site:nouvelleFormation.site} onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,site:v}):setNouvelleFormation({...nouvelleFormation,site:v}); }}>{(modalAjoutPSF||modalTTT?SITES_TTT:SITES).map(s=><option key={s}>{s}</option>)}</select>
+                                            <select className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" 
+                                                value={modalAjoutPSF ? nouvelleFormationPSF.site : nouvelleFormation.site} 
+                                                onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,site:v}):setNouvelleFormation({...nouvelleFormation,site:v}); }}>
+                                                {(modalAjoutPSF||modalTTT?SITES_TTT:SITES).map(s=><option key={s}>{s}</option>)}
+                                            </select>
                                         </div>
+                                        {!modalAjoutPSF && (
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Formateur</label>
+                                                <select className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" 
+                                                    value={nouvelleFormation.trainer} 
+                                                    onChange={e=>setNouvelleFormation({...nouvelleFormation,trainer:e.target.value})}>
+                                                    {TRAINERS.map(s=><option key={s}>{s}</option>)}
+                                                </select>
+                                            </div>
+                                        )}
                                         {modalAjoutPSF ? (
                                             <div className="col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                                                 <label className="text-[10px] font-black uppercase text-slate-400 mb-2 block tracking-widest">Dates de la formation</label>
-                                                <div className="flex gap-2 mb-3"><input type="date" className="flex-1 bg-slate-50 rounded-xl p-2 font-bold outline-none border focus:ring-2 focus:ring-emerald-500" value={dateTemp} onChange={e => setDateTemp(e.target.value)}/><button onClick={() => { if(dateTemp && !nouvelleFormationPSF.dates.includes(dateTemp)) { updatePSFDates([...nouvelleFormationPSF.dates, dateTemp]); setDateTemp(''); } }} className="bg-slate-800 text-white px-4 rounded-xl font-black text-[10px] uppercase">Ajouter</button></div>
-                                                <div className="flex flex-wrap gap-2">{nouvelleFormationPSF.dates.map(d => (<span key={d} className="bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-lg text-xs font-bold text-emerald-800 flex items-center gap-2">{d} <button onClick={() => updatePSFDates(nouvelleFormationPSF.dates.filter(x => x !== d))} className="text-rose-500">×</button></span>))}</div>
+                                                <div className="flex gap-2 mb-3">
+                                                    <input type="date" className="flex-1 bg-slate-50 rounded-xl p-2 font-bold outline-none border focus:ring-2 focus:ring-emerald-500" value={dateTemp} onChange={e => setDateTemp(e.target.value)}/>
+                                                    <button onClick={() => { if(dateTemp && !nouvelleFormationPSF.dates.includes(dateTemp)) { updatePSFDates([...nouvelleFormationPSF.dates, dateTemp]); setDateTemp(''); } }} className="bg-slate-800 text-white px-4 rounded-xl font-black text-[10px] uppercase">Ajouter</button>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(nouvelleFormationPSF.dates || []).map(d => (
+                                                        <span key={d} className="bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-lg text-xs font-bold text-emerald-800 flex items-center gap-2">
+                                                            {d} <button onClick={() => updatePSFDates(nouvelleFormationPSF.dates.filter(x => x !== d))} className="text-rose-500">×</button>
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </div>
                                         ) : (
                                             <div>
                                                 <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Date début</label>
-                                                <input type="date" className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" value={nouvelleFormation.startDate} onChange={e=>{ const v=e.target.value; setNouvelleFormation({...nouvelleFormation, startDate:v, week:'S'+getISOWeek(new Date(v))}); }}/>
+                                                <input type="date" className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" 
+                                                    value={nouvelleFormation.startDate} 
+                                                    onChange={e=>{ const v=e.target.value; setNouvelleFormation({...nouvelleFormation, startDate:v, week:'S'+getISOWeek(new Date(v))}); }}/>
                                             </div>
                                         )}
                                         <div>
                                             <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Durée {modalAjoutPSF||modalTTT?'(min)':'(jours)'}</label>
                                             {modalAjoutPSF || modalTTT ? (
-                                                <select className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" value={Math.round((modalAjoutPSF?nouvelleFormationPSF.duration:nouvelleFormation.duration)*420)} onChange={e=>{ const v=parseFloat(e.target.value)/420; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,duration:v}):setNouvelleFormation({...nouvelleFormation,duration:v}); }}>{MINUTES_PSF.map(m=><option key={m} value={m}>{m} min</option>)}</select>
+                                                <select className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" 
+                                                    value={Math.round((modalAjoutPSF ? nouvelleFormationPSF.duration : nouvelleFormation.duration)*420)} 
+                                                    onChange={e=>{ const v=parseFloat(e.target.value)/420; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,duration:v}):setNouvelleFormation({...nouvelleFormation,duration:v}); }}>
+                                                    {MINUTES_PSF.map(m=><option key={m} value={m}>{m} min</option>)}
+                                                </select>
                                             ) : (
-                                                <input type="number" step="0.1" className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" value={nouvelleFormation.duration} onChange={e=>setNouvelleFormation({...nouvelleFormation,duration:e.target.value})}/>
+                                                <input type="number" step="0.1" min="0.5" className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" 
+                                                    value={nouvelleFormation.duration} 
+                                                    onChange={e=>setNouvelleFormation({...nouvelleFormation,duration:e.target.value})}/>
                                             )}
                                         </div>
                                         {!modalTTT && (
                                             <>
-                                                <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Agents Prévus</label><input type="number" className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" value={modalAjoutPSF?nouvelleFormationPSF.agents:nouvelleFormation.agents} onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,agents:v}):setNouvelleFormation({...nouvelleFormation,agents:v}); }}/></div>
-                                                <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-emerald-600">Agents Formés (Réalisé)</label><input type="number" className="w-full bg-white border-2 border-emerald-100 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" value={modalAjoutPSF?nouvelleFormationPSF.agentsRealises:nouvelleFormation.agentsRealises} onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,agentsRealises:v}):setNouvelleFormation({...nouvelleFormation,agentsRealises:v}); }}/></div>
+                                                <div>
+                                                    <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Agents Prévus</label>
+                                                    <input type="number" min="0" className="w-full bg-white border border-slate-200 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" 
+                                                        value={modalAjoutPSF ? nouvelleFormationPSF.agents : nouvelleFormation.agents} 
+                                                        onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,agents:v}):setNouvelleFormation({...nouvelleFormation,agents:v}); }}/>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-emerald-600">Agents Formés (Réalisé)</label>
+                                                    <input type="number" min="0" className="w-full bg-white border-2 border-emerald-100 rounded-xl p-3 font-bold text-xs outline-none shadow-sm" 
+                                                        value={modalAjoutPSF ? nouvelleFormationPSF.agentsRealises : nouvelleFormation.agentsRealises} 
+                                                        onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,agentsRealises:v}):setNouvelleFormation({...nouvelleFormation,agentsRealises:v}); }}/>
+                                                </div>
                                             </>
                                         )}
-                                        <div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Notes / Justification</label><textarea className="w-full bg-white border border-slate-200 rounded-xl p-4 font-bold text-xs outline-none min-h-[80px]" value={modalAjoutPSF?nouvelleFormationPSF.comment:nouvelleFormation.comment} onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,comment:v}):setNouvelleFormation({...nouvelleFormation,comment:v}); }} placeholder="Commentaire..."/></div>
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Notes / Justification</label>
+                                            <textarea className="w-full bg-white border border-slate-200 rounded-xl p-4 font-bold text-xs outline-none min-h-[80px] resize-none" 
+                                                value={modalAjoutPSF ? nouvelleFormationPSF.comment : nouvelleFormation.comment} 
+                                                onChange={e=>{ const v=e.target.value; modalAjoutPSF?setNouvelleFormationPSF({...nouvelleFormationPSF,comment:v}):setNouvelleFormation({...nouvelleFormation,comment:v}); }} 
+                                                placeholder="Commentaire..."/>
+                                        </div>
                                     </div>
                                     <div className="p-8 bg-slate-100 flex justify-end gap-4 shadow-inner">
-                                        <button onClick={() => {setModalAjout(false); setModalTTT(false); setModalAjoutPSF(false);}} className="font-black text-xs uppercase text-slate-500 hover:text-slate-800 transition-colors tracking-widest px-4 py-2 rounded-xl">Annuler</button>
-                                        <button onClick={validerFormation} className={`text-white px-10 py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all uppercase tracking-widest ${modalAjoutPSF?'bg-emerald-600 hover:bg-emerald-500':(modalTTT?'bg-amber-500 hover:bg-amber-400':'bg-blue-600 hover:bg-blue-500')}`}>Enregistrer la session</button>
+                                        <button onClick={() => {setModalAjout(false); setModalTTT(false); setModalAjoutPSF(false); setEditionEnCours(false);}} className="font-black text-xs uppercase text-slate-500 hover:text-slate-800 transition-colors tracking-widest px-4 py-2 rounded-xl">Annuler</button>
+                                        <button onClick={validerFormation} className={`text-white px-10 py-4 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all uppercase tracking-widest ${modalAjoutPSF?'bg-emerald-600 hover:bg-emerald-500':(modalTTT?'bg-amber-500 hover:bg-amber-400':'bg-blue-600 hover:bg-blue-500')}`}>
+                                            Enregistrer la session
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         )}
-
                     </div>
                 </div>
             );
