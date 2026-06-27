@@ -14,12 +14,6 @@
     
     <!-- Babel pour JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script>
-        // Configuration stricte pour forcer le runtime classique de React et éviter l'erreur jsx-runtime
-        Babel.registerPreset("react-classic", {
-            presets: [[Babel.availablePresets["react"], { "runtime": "classic" }]]
-        });
-    </script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
@@ -37,18 +31,16 @@
         
         @keyframes pulse-red { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
         .marker-today { animation: pulse-red 2s infinite; }
-        
-        .bg-striped { background-image: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px); }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-900">
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module" data-presets="react-classic">
+    <script type="text/babel" data-type="module">
         // --- IMPORTS FIREBASE ---
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, deleteDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, updateDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
         const { useState, useMemo, useEffect, useRef } = React;
 
@@ -66,11 +58,14 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         
+        // Identifiant unique pour sauvegarder les données de l'outil dans Firestore
         const artifactAppId = 'pilotage-formation-b2c-b2b';
+
+        // Détection si on est sur un lien partagé public
         const urlParams = new URLSearchParams(window.location.search);
         const isSharedLink = urlParams.get('share') === 'public';
 
-        // --- COMPOSANTS UTILITAIRES ---
+        // --- FONCTIONS & COMPOSANTS UTILITAIRES DE VOTRE OUTIL ---
         const Icone = ({ nom, taille = 20, classe = "" }) => {
             const chemins = {
                 'calendrier': 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
@@ -89,7 +84,7 @@
                 'poubelle': 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6',
                 'cercle-ok': 'M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3',
                 'modifier': 'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z',
-                'copier': 'M9 15H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M13 19h4a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z',
+                'copier': 'M9 15H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2v2M13 19h4a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2z',
                 'chargement': 'M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83',
                 'cloche': 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
                 'user-plus': 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm10-1h6m-3-3v6',
@@ -102,9 +97,7 @@
                 'mail': 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6',
                 'log-in': 'M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4 M10 17l5-5-5-5 M15 12H3',
                 'log-out': 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
-                'globe': 'M2 12A10 10 0 0 0 22 12A10 10 0 0 0 2 12 M2 12h20 M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z',
-                'map': 'M9 20l-6-3V4l6 3m0 13l6-3m-6 3V7m6 10l6 3V7l-6-3m0 13V4',
-                'soleil': 'M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z'
+                'globe': 'M2 12A10 10 0 0 0 22 12A10 10 0 0 0 2 12 M2 12h20 M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'
             };
             return <svg width={taille} height={taille} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={classe}><path d={chemins[nom] || ''} /></svg>;
         };
@@ -271,16 +264,16 @@
             return `${t.duration || 0} j`;
         };
 
-        const isOverlap = (start1, end1, start2, end2) => {
-            return new Date(start1) <= new Date(end2) && new Date(end1) >= new Date(start2);
+        const safeSaveLocal = (data, currentEnv) => { 
+            try { 
+                const key = currentEnv === 'B2C' ? 'pilotage_b2c_data' : 'pilotage_b2b_data';
+                localStorage.setItem(key, JSON.stringify(data)); 
+            } catch(e) {} 
         };
 
         const SITES = ["Rabat", "Meknès"];
         const SITES_TTT = ["Rabat", "Meknès", "Rabat & Meknès"];
-        
-        // Liste de base (actualisée avec Ghada et Abdel)
-        const BASE_TRAINERS = ["Rachid", "Ghada", "Ahmed", "Othmane", "Abdel", "Formateur Nespresso"];
-        
+        const TRAINERS = ["Rachid", "Rekia", "Ahmed", "Othmane", "Formateur Nespresso"];
         const PRISES_EN_CHARGE = ["Concentrix", "Nespresso"];
         const TYPES = ["FIM", "Formation continue", "Spécialisation", "Projet Genesys", "PSF", "Congé / Absence"];
         const STATUTS = ["Planifié", "En cours", "Terminé", "Annulé", "En attente de validation", "Arbitrage requis", "Sélection des agents en cours", "À planifier"];
@@ -288,13 +281,15 @@
         const MINUTES_PSF = [15, 20, 25, 30, 45, 60, 90, 105, 120, 135, 150, 165, 180, 195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345, 360, 375, 390, 405, 420];
         const DUREES_TTT = [...MINUTES_PSF];
         const GENESYS_DUREES = [
-            { label: '2h', val: 2/7 }, { label: '3h', val: 3/7 }, { label: '3h30', val: 3.5/7 },
-            { label: '4h', val: 4/7 }, { label: '1 journée', val: 1 }, { label: '1.5 jrs', val: 1.5 }
+            { label: '2h', val: 2/7 },
+            { label: '3h', val: 3/7 },
+            { label: '3h30', val: 3.5/7 },
+            { label: '4h', val: 4/7 },
+            { label: '1 journée', val: 1 },
+            { label: '1.5 jrs', val: 1.5 }
         ];
         const JOUR_EN_MINUTES = 420;
 
-        const Field = ({l, c="", children}) => (<div className="flex flex-col gap-1"><label className={`text-[10px] font-black uppercase text-slate-400 mb-1 block tracking-widest ${c}`}>{l}</label>{children}</div>);
-        
         const ElementNav = ({ actif, onClick, icone, libelle, badge }) => (
             <button onClick={onClick} className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl font-bold transition-all ${actif ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/20' : 'text-slate-400 hover:bg-slate-800'}`}>
                 <div className="flex items-center gap-4">{icone} <span className="tracking-tight uppercase text-[11px]">{libelle}</span></div>
@@ -310,16 +305,22 @@
             </div>
         );
 
-        // --- APP PRINCIPALE ---
+
+        // --- WRAPPER D'AUTHENTIFICATION PRINCIPAL ---
         function App() {
             const [user, setUser] = useState(null);
             const [userRole, setUserRole] = useState(null);
             const [loading, setLoading] = useState(true);
 
             useEffect(() => {
+                // Gestion du lien partagé public
                 const checkAnonymous = async () => {
                     if (isSharedLink) {
-                        try { await signInAnonymously(auth); } catch (e) { console.error("Erreur connexion anonyme:", e); }
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (e) {
+                            console.error("Erreur de connexion anonyme:", e);
+                        }
                     }
                 };
                 checkAnonymous();
@@ -328,7 +329,7 @@
                     if (currentUser) {
                         setUser(currentUser);
                         if (currentUser.isAnonymous) {
-                            setUserRole('Lecture seule'); 
+                            setUserRole('Lecture seule'); // Forcé pour le lien public
                             setLoading(false);
                         } else {
                             try {
@@ -337,7 +338,7 @@
                                 if (roleDoc.exists()) {
                                     setUserRole(roleDoc.data().role);
                                 } else {
-                                    setUserRole('Lecture seule');
+                                    setUserRole('Lecture seule'); // Par défaut
                                 }
                             } catch (error) {
                                 console.error("Erreur rôle:", error);
@@ -383,7 +384,10 @@
 
             const gererSoumission = async (e) => {
                 e.preventDefault();
-                setErreur(''); setSucces(''); setChargement(true);
+                setErreur('');
+                setSucces('');
+                setChargement(true);
+
                 try {
                     if (estInscription) {
                         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -404,7 +408,9 @@
                         case 'auth/weak-password': setErreur('Le mot de passe doit faire au moins 6 caractères.'); break;
                         default: setErreur('Erreur : ' + error.message);
                     }
-                } finally { setChargement(false); }
+                } finally {
+                    setChargement(false);
+                }
             };
 
             return (
@@ -413,15 +419,19 @@
                         <div className="bg-[#0f172a] p-10 text-center relative overflow-hidden">
                             <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500 rounded-full mix-blend-screen filter blur-[40px] opacity-40"></div>
                             <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-500 rounded-full mix-blend-screen filter blur-[40px] opacity-40"></div>
+                            
                             <div className="relative z-10">
                                 <img src="logo.png" onError={(e)=>{e.target.onerror=null; e.target.src="https://upload.wikimedia.org/wikipedia/commons/4/42/Nespresso_logo.svg"}} alt="Nespresso" className="h-16 w-16 rounded-2xl shadow-lg object-cover mx-auto mb-4 bg-black border border-slate-800" />
-                                <h2 className="text-2xl font-black text-white uppercase tracking-widest">{estInscription ? 'Créer un accès' : 'Espace Sécurisé'}</h2>
+                                <h2 className="text-2xl font-black text-white uppercase tracking-widest">
+                                    {estInscription ? 'Créer un accès' : 'Espace Sécurisé'}
+                                </h2>
                                 <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-2">Pilotage Formation Nespresso</p>
                             </div>
                         </div>
                         <div className="p-8">
                             {erreur && <div className="mb-6 p-4 bg-rose-50 border-l-4 border-rose-500 text-rose-700 text-xs font-bold rounded-r-lg flex items-center gap-2"><Icone nom="alerte-triangle" taille={16}/>{erreur}</div>}
                             {succes && <div className="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 text-xs font-bold rounded-r-lg flex items-center gap-2"><Icone nom="cercle-ok" taille={16}/>{succes}</div>}
+
                             <form onSubmit={gererSoumission} className="space-y-5">
                                 <div>
                                     <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Email professionnel</label>
@@ -452,10 +462,12 @@
             );
         }
 
-        // --- OUTIL PILOTAGE ---
+        // --- VOTRE OUTIL PRINCIPAL (Protégé par les rôles) ---
         function OutilPilotage({ user, userRole, setUserRole }) {
+            // VERIFICATION DES DROITS (RBAC)
             const peutEditer = userRole === 'Admin' || userRole === 'Manager';
 
+            // --- DEBUT DU CODE ORIGINAL DE VOTRE APP ---
             const [environnement, setEnvironnement] = useState('B2C');
             const environnementRef = useRef(environnement);
             useEffect(() => { environnementRef.current = environnement; }, [environnement]);
@@ -469,11 +481,6 @@
             const [formations, setFormations] = useState([]);
             const [vue, setVue] = useState('accueil');
             
-            const [conges, setConges] = useState([]);
-            const [modalConge, setModalConge] = useState(false);
-            const defaultConge = { trainer: '', startDate: new Date().toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0], type: 'Congé Annuel', comment: '' };
-            const [nouveauConge, setNouveauConge] = useState(defaultConge);
-
             const timelineRef = useRef(null); 
             
             const baseFiltres = { sites: [], budgets: [], statuts: [], semaines: [], mois: [], types: [], noms: [] };
@@ -485,26 +492,35 @@
             const filtres = filtresParVue[vue] || baseFiltres;
             const setFiltres = (nouveauxFiltres) => setFiltresParVue(prev => ({ ...prev, [vue]: nouveauxFiltres }));
             
-            // État unifié pour la modale multiple (null = fermée, 'standard', 'PSF', 'TTT')
-            const [modalMultipleMode, setModalMultipleMode] = useState(null); 
-            const [modalEditionMode, setModalEditionMode] = useState(null);
+            const [modalAjout, setModalAjout] = useState(false);
+            const [modalAjoutPSF, setModalAjoutPSF] = useState(false);
+            const [modalTTT, setModalTTT] = useState(false);
+            const [modalConge, setModalConge] = useState(false);
+            const [modalMultiple, setModalMultiple] = useState(false);
+            const [modalMultiplePSF, setModalMultiplePSF] = useState(false);
+            const [modalMultipleTTT, setModalMultipleTTT] = useState(false);
             const [editionEnCours, setEditionEnCours] = useState(false);
+            const [lastAutoSave, setLastAutoSave] = useState(null);
+            
             const [afficherImportExcel, setAfficherImportExcel] = useState(false);
             const [texteImport, setTexteImport] = useState('');
             
-            const defaultFormation = { name: '', type: 'Formation continue', week: 'S' + getISOWeek(new Date()), site: 'Rabat', trainer: '', funding: 'Concentrix', agents: 12, agentsRealises: 0, duration: 1, startDate: new Date().toISOString().split('T')[0], status: 'Planifié', comment: '', isValidated: false, isTTT: false, cible: [] };
+            const defaultFormation = {
+                name: '', type: 'Formation continue', week: 'S12', site: 'Rabat', trainer: 'Rachid', funding: 'Concentrix', 
+                agents: 12, agentsRealises: 0, duration: 1, startDate: new Date().toISOString().split('T')[0], 
+                status: 'Planifié', comment: '', isValidated: false, isTTT: false, cible: []
+            };
             const defaultFormationPSF = { ...defaultFormation, type: 'PSF', duration: 60/JOUR_EN_MINUTES, dates: [], cible: [], deadline: '' };
 
             const [nouvelleFormation, setNouvelleFormation] = useState(defaultFormation);
             const [nouvelleFormationPSF, setNouvelleFormationPSF] = useState(defaultFormationPSF);
             const [dateTemp, setDateTemp] = useState('');
 
-            // Listes pour le tableau multiple
             const [lignesMultiples, setLignesMultiples] = useState([]);
             const [lignesMultiplesPSF, setLignesMultiplesPSF] = useState([]);
             const [lignesMultiplesTTT, setLignesMultiplesTTT] = useState([]);
             
-            // Récupération des données depuis Firestore
+            // --- Récupération des données depuis Firestore ---
             useEffect(() => {
                 setChargement(true);
                 const { colName, localKey } = getDbInfo();
@@ -515,6 +531,7 @@
                     setChargement(false);
                 }, (error) => {
                     console.error("Erreur Firestore :", error);
+                    // Fallback Local Storage
                     const localData = localStorage.getItem(localKey);
                     if (localData) { try { setFormations(JSON.parse(localData)); } catch(e){} }
                     setChargement(false);
@@ -523,54 +540,37 @@
                 return () => unsubscribe();
             }, [environnement]);
 
-            useEffect(() => {
-                const unsubConges = onSnapshot(collection(db, 'artifacts', artifactAppId, 'public', 'data', 'conges'), (snap) => {
-                    setConges(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                });
-                return () => unsubConges();
-            }, []);
-
             const formationsRef = useRef(formations);
             useEffect(() => { formationsRef.current = formations; }, [formations]);
 
-            // LISTE DYNAMIQUE DES FORMATEURS (Base + Actifs saisis)
-            const activeTrainers = useMemo(() => {
-                const list = new Set(BASE_TRAINERS);
-                formations.forEach(f => {
-                    if (f.trainer && !f.trainer.includes(',') && f.trainer !== 'Tous formateurs' && f.trainer !== 'Tous les formateurs') list.add(f.trainer.trim());
-                    if (f.isTTT && f.cible) {
-                        f.cible.forEach(c => {
-                            if (c !== 'Tous les formateurs') list.add(c.trim());
-                        });
-                    }
-                });
-                conges.forEach(c => {
-                    if (c.trainer) list.add(c.trainer.trim());
-                });
-                return Array.from(list).sort();
-            }, [formations, conges]);
-
-            const [lastAutoSave, setLastAutoSave] = useState(null);
             useEffect(() => {
                 const autoSaveFn = () => {
                     if (formationsRef.current && formationsRef.current.length > 0) {
-                        // Export local désactivé par défaut pour éviter le spam, on garde juste le visuel
+                        exportDB(formationsRef.current, true);
                         setLastAutoSave(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
                     }
                 };
                 const intervalId = setInterval(autoSaveFn, 86400000);
-                return () => clearInterval(intervalId);
+                const handleBeforeUnload = () => { autoSaveFn(); };
+                window.addEventListener('beforeunload', handleBeforeUnload);
+                return () => { clearInterval(intervalId); window.removeEventListener('beforeunload', handleBeforeUnload); };
             }, []);
 
             const centerTimelineOnToday = () => {
-                if (timelineRef.current) {
-                    const tM = timelineRef.current.querySelector('.marker-today');
-                    if (tM && tM.parentElement) tM.parentElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                const timelineContainer = timelineRef.current;
+                if (timelineContainer) {
+                    const todayMarker = timelineContainer.querySelector('.marker-today');
+                    if (todayMarker && todayMarker.parentElement) {
+                        todayMarker.parentElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
                 }
             };
 
             useEffect(() => {
-                if (vue === 'chronologie') setTimeout(centerTimelineOnToday, 500);
+                if (vue === 'chronologie') {
+                    const timer = setTimeout(() => centerTimelineOnToday(), 500);
+                    return () => clearTimeout(timer);
+                }
             }, [vue, formations]);
 
             const currentWeekNum = useMemo(() => getISOWeek(new Date()), []);
@@ -620,51 +620,58 @@
 
             const passeFiltres = (t) => {
                 if (!t) return false;
-                if (filtres.sites?.length && !filtres.sites.includes(t.site)) return false;
-                if (filtres.statuts?.length && !filtres.statuts.includes(t.status)) return false;
-                if (filtres.types?.length && !filtres.types.includes(t.type)) return false;
-                if (filtres.noms?.length && !filtres.noms.includes(t.name)) return false;
-                if (filtres.semaines?.length && (!t.week || !filtres.semaines.some(sw => t.week.includes(sw)))) return false;
-                if (filtres.mois?.length && !filtres.mois.includes(getMonthYear(t.startDate))) return false;
+                if (filtres.sites && filtres.sites.length > 0 && !filtres.sites.includes(t.site)) return false;
+                if (filtres.budgets && filtres.budgets.length > 0 && !filtres.budgets.includes(t.funding)) return false;
+                if (filtres.statuts && filtres.statuts.length > 0 && !filtres.statuts.includes(t.status)) return false;
+                if (filtres.types && filtres.types.length > 0 && !filtres.types.includes(t.type)) return false;
+                if (filtres.noms && filtres.noms.length > 0 && !filtres.noms.includes(t.name)) return false;
+                if (filtres.semaines && filtres.semaines.length > 0) {
+                    if (!t.week) return false;
+                    if (!filtres.semaines.some(sw => t.week.includes(sw))) return false;
+                }
+                if (filtres.mois && filtres.mois.length > 0 && !filtres.mois.includes(getMonthYear(t.startDate))) return false;
                 return true;
             };
 
-            const formationsFiltrees = useMemo(() => formations.filter(t => !t?.isTTT && passeFiltres(t)).sort((a,b)=>String(a?.week || '').localeCompare(String(b?.week || ''),undefined,{numeric:true})), [formations, filtres]);
-            const formationsPSF = useMemo(() => formations.filter(t => t?.type === 'PSF' && !t?.isTTT && passeFiltres(t)).sort((a,b)=>String(a?.week || '').localeCompare(String(b?.week || ''),undefined,{numeric:true})), [formations, filtres]);
-            const formationsSpe = useMemo(() => formations.filter(t => t?.type === 'Spécialisation' && !t?.isTTT && passeFiltres(t)).sort((a,b)=>String(a?.week || '').localeCompare(String(b?.week || ''),undefined,{numeric:true})), [formations, filtres]);
-            const formationsFim = useMemo(() => formations.filter(t => t?.type === 'FIM' && !t?.isTTT && passeFiltres(t)).sort((a,b)=>String(a?.week || '').localeCompare(String(b?.week || ''),undefined,{numeric:true})), [formations, filtres]);
-            const formationsGenesys = useMemo(() => formations.filter(t => t?.type === 'Projet Genesys' && !t?.isTTT && passeFiltres(t)).sort((a,b)=>String(a?.week || '').localeCompare(String(b?.week || ''),undefined,{numeric:true})), [formations, filtres]);
-            const formationsTTT = useMemo(() => formations.filter(t => t?.isTTT && passeFiltres(t)).sort((a,b)=>String(a?.week || '').localeCompare(String(b?.week || ''),undefined,{numeric:true})), [formations, filtres]);
+            const formationsFiltrees = useMemo(() => formations.filter(t => !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
+            const formationsPSF = useMemo(() => formations.filter(t => t?.type === 'PSF' && !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
+            const formationsSpe = useMemo(() => formations.filter(t => t?.type === 'Spécialisation' && !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
+            const formationsFim = useMemo(() => formations.filter(t => t?.type === 'FIM' && !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
+            const formationsGenesys = useMemo(() => formations.filter(t => t?.type === 'Projet Genesys' && !t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
+            const formationsTTT = useMemo(() => formations.filter(t => t?.isTTT && passeFiltres(t)).sort((a, b) => String(a?.week || '').localeCompare(String(b?.week || ''), undefined, { numeric: true })), [formations, filtres]);
 
             // EXCLUSION DES ANNULATIONS DES CALCULS DE BILAN ET RÉPARTITION
-            const bilanMensuelData = useMemo(() => formations.filter(t => t && !t.isTTT && t.status !== 'Annulé' && passeFiltres(t) && (!filtres.mois?.length || filtres.mois.includes(getMonthYear(t.startDate)))), [formations, filtres]);
-            const bilanHebdoData = useMemo(() => formations.filter(t => t && !t.isTTT && t.status !== 'Annulé' && passeFiltres(t) && (!filtres.semaines?.length || (t.week && filtres.semaines.some(sw => t.week.includes(sw))))), [formations, filtres]);
+            const bilanMensuelData = useMemo(() => formations.filter(t => t && !t.isTTT && t.status !== 'Annulé' && passeFiltres(t) && (!filtres.mois || filtres.mois.length === 0 || filtres.mois.includes(getMonthYear(t.startDate)))), [formations, filtres]);
+            const bilanHebdoData = useMemo(() => formations.filter(t => t && !t.isTTT && t.status !== 'Annulé' && passeFiltres(t) && (!filtres.semaines || filtres.semaines.length === 0 || (t.week && filtres.semaines.some(sw => t.week.includes(sw))))), [formations, filtres]);
 
             const suiviDonnees = useMemo(() => {
                 const base = formations.filter(t => !t?.isTTT && t?.status !== 'Annulé' && passeFiltres(t));
                 const typesSet = new Set();
-                let grandTotal = 0; const colTotals = {};
+                let grandTotal = 0; let totalAgents = 0; const colTotals = {};
                 base.forEach(t => {
+                    if(!t) return;
                     const type = t.type || 'Autre';
                     const hours = (parseFloat(t.duration) || 0) * 7 * (parseInt(t.agents) || 0);
                     if (!colTotals[type]) colTotals[type] = 0;
-                    colTotals[type] += hours; typesSet.add(type); grandTotal += hours;
+                    colTotals[type] += hours; typesSet.add(type); grandTotal += hours; totalAgents += parseInt(t.agents) || 0;
                 });
-                return { types: Array.from(typesSet).sort(), colTotals, grandTotal };
+                return { types: Array.from(typesSet).sort(), colTotals, grandTotal, totalAgents };
             }, [formations, filtres]);
 
             const heuresParSite = useMemo(() => {
                 let rabat = 0, meknes = 0;
                 formations.filter(t => !t?.isTTT && t?.status !== 'Annulé' && passeFiltres(t)).forEach(t => {
+                    if(!t) return;
                     const h = (parseFloat(t.duration) || 0) * 7 * (parseInt(t.agents) || 0);
                     if (t.site === 'Rabat') rabat += h;
-                    else if (t.site === 'Meknès') meknes += h;
-                    else { rabat += h/2; meknes += h/2; } 
+                    if (t.site === 'Meknès') meknes += h;
+                    if (t.site === 'Rabat & Meknès') { rabat += h/2; meknes += h/2; } 
                 });
                 return { rabat, meknes };
             }, [formations, filtres]);
 
             const ensembleStats = useMemo(() => {
+                // On exclut les annulations de l'affichage global de l'Accueil aussi
                 const base = formationsFiltrees.filter(f => f?.status !== 'Annulé');
                 const total = base.length;
                 const terminees = base.filter(f => f?.status === 'Terminé').length;
@@ -678,7 +685,7 @@
                 const map = {};
                 formations.filter(t => t?.type !== 'PSF').forEach(t => {
                     if(!t || !t.week) return;
-                    if (t.isTTT && t.cible?.length > 0) {
+                    if (t.isTTT && t.cible && t.cible.length > 0) {
                         t.cible.forEach(c => {
                             if(c === 'Tous les formateurs') return;
                             const cle = `${c}-${t.week}`;
@@ -693,30 +700,37 @@
             }, [formations]);
 
             const conflitActuel = useMemo(() => {
-                const formToCheck = modalEditionMode === 'PSF' || modalMultipleMode === 'PSF' ? nouvelleFormationPSF : nouvelleFormation;
+                const formToCheck = modalAjoutPSF ? nouvelleFormationPSF : nouvelleFormation;
                 if (!formToCheck.week || formToCheck.type === 'PSF') return false;
                 
                 if (formToCheck.isTTT && formToCheck.cible) {
                     return formToCheck.cible.some(c => {
                         if (c === 'Tous les formateurs') return false;
-                        return formations.filter(t => t?.type !== 'PSF' && t?.id !== formToCheck.id && t?.week === formToCheck.week && (t.trainer === c || (t.isTTT && t.cible?.includes(c)))).length > 0;
+                        const existants = formations.filter(t => t?.type !== 'PSF' && t?.id !== formToCheck.id && t?.week === formToCheck.week && (t.trainer === c || (t.isTTT && t.cible && t.cible.includes(c))));
+                        return existants.length > 0;
                     });
                 } else if (formToCheck.trainer) {
-                    return formations.filter(t => t?.type !== 'PSF' && t?.id !== formToCheck.id && t?.week === formToCheck.week && (t.trainer === formToCheck.trainer || (t.isTTT && t.cible?.includes(formToCheck.trainer)))).length > 0;
+                    const existants = formations.filter(t => t?.type !== 'PSF' && t?.id !== formToCheck.id && t?.week === formToCheck.week && (t.trainer === formToCheck.trainer || (t.isTTT && t.cible && t.cible.includes(formToCheck.trainer))));
+                    return existants.length > 0;
                 }
                 return false;
-            }, [nouvelleFormation, nouvelleFormationPSF, modalEditionMode, modalMultipleMode, formations]);
+            }, [nouvelleFormation, nouvelleFormationPSF, modalAjoutPSF, formations]);
 
             const hasConflict = (t) => {
                 if (!t) return false;
-                if (t.isTTT && t.cible?.length > 0) return t.cible.some(c => carteConflits[`${c}-${t.week}`]?.length > 1);
+                if (t.isTTT && t.cible && t.cible.length > 0) {
+                    return t.cible.some(c => carteConflits[`${c}-${t.week}`]?.length > 1);
+                }
                 return carteConflits[`${t.trainer}-${t.week}`]?.length > 1;
             };
 
             const isSMinus1 = (t) => {
                 if (t?.status !== 'À planifier' || !t?.week) return false;
-                const wn = parseInt(String(t.week).replace(/[^0-9]/g, ''), 10);
-                return (wn === currentWeekNum + 1) || (currentWeekNum === 52 && wn === 1);
+                const weekStr = String(t.week).replace(/[^0-9]/g, '');
+                if (!weekStr) return false;
+                const formationWeekNum = parseInt(weekStr, 10);
+                if (isNaN(formationWeekNum)) return false;
+                return (formationWeekNum === currentWeekNum + 1) || (currentWeekNum === 52 && formationWeekNum === 1);
             };
 
             const rappelsPSF = useMemo(() => formations.filter(t => t?.type === 'PSF' && isSMinus1(t)), [formations, currentWeekNum]);
@@ -726,14 +740,14 @@
             const stats = useMemo(() => ({ nbSelection: formationsSelectionAgent.length }), [formationsSelectionAgent]);
 
             const updatePSFDates = (newDates) => {
-                const sortedDates = [...newDates].sort();
+                const sortedDates = newDates.sort();
                 const weeks = [...new Set(sortedDates.map(d => 'S' + getISOWeek(new Date(d))))].join(', ');
                 setNouvelleFormationPSF(prev => ({ ...prev, dates: sortedDates, startDate: sortedDates[0] || '', week: weeks }));
             };
 
-            // --- FONCTIONS FIREBASE & EXTRACTION ---
+            // --- FONCTIONS FIREBASE ---
             const validerFormation = async () => {
-                const isPSF = modalEditionMode === 'PSF';
+                const isPSF = modalAjoutPSF;
                 const isConge = modalConge;
                 const formToSave = isPSF ? nouvelleFormationPSF : nouvelleFormation;
                 if(!formToSave.name) return;
@@ -764,7 +778,7 @@
                     }
                 } catch (err) { console.error(err); }
 
-                setModalEditionMode(null); setEditionEnCours(false);
+                setModalAjout(false); setModalTTT(false); setModalAjoutPSF(false); setModalConge(false); setEditionEnCours(false);
                 setNouvelleFormation(defaultFormation); setNouvelleFormationPSF(defaultFormationPSF); setDateTemp('');
             };
 
@@ -783,7 +797,7 @@
                 } catch (err) { console.error(err); }
             };
 
-            const enregistrerMultiples = async (mode) => {
+            const enregistrerMultiples = async (mode = 'standard') => {
                 const lignes = mode === 'PSF' ? lignesMultiplesPSF : (mode === 'TTT' ? lignesMultiplesTTT : lignesMultiples);
                 if (lignes.find(r => !r.name)) { alert("Nom manquant dans une des lignes."); return; }
                 setChargement(true);
@@ -793,7 +807,7 @@
                     for (const item of payload) {
                         await setDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', colName, item.id), item);
                     } 
-                    setModalMultipleMode(null);
+                    setModalMultiple(false); setModalMultiplePSF(false); setModalMultipleTTT(false);
                     if(mode === 'PSF') setLignesMultiplesPSF([]);
                     else if(mode === 'TTT') setLignesMultiplesTTT([]);
                     else setLignesMultiples([]);
@@ -809,7 +823,9 @@
                         if (valeur === 'PSF') newDuration = 15/JOUR_EN_MINUTES;
                         else if (valeur === 'Projet Genesys') newDuration = 2/7;
                         else if (r.type === 'PSF' || r.type === 'Projet Genesys') newDuration = 1;
-                    } else if (champ === 'duration') newDuration = valeur;
+                    } else if (champ === 'duration') {
+                        newDuration = valeur;
+                    }
                     return { ...r, [champ]: valeur, duration: newDuration };
                 }));
             };
@@ -819,8 +835,8 @@
             const exportDB = (dataToExport = formations, isAuto = false) => {
                 const actualData = Array.isArray(dataToExport) ? dataToExport : formations;
                 const entetes = ["id", "name", "type", "week", "site", "trainer", "funding", "agents", "agentsRealises", "duration", "startDate", "status", "comment", "isValidated", "isTTT", "dates", "cible", "deadline"];
-                const lignes = actualData.map(t => entetes.map(key => `"${String(t[key] !== undefined && t[key] !== null ? (Array.isArray(t[key]) ? t[key].join(';') : t[key]) : '').replace(/"/g, '""')}"`).join(';'));
-                const csvStr = "\ufeff" + [entetes.join(';'), ...lignes].join("\n");
+                const lignes = actualData.map(t => entetes.map(key => `"${String(t[key] !== undefined && t[key] !== null ? (Array.isArray(t[key]) ? t[key].join(';') : t[key]) : '').replace(/"/g, '""')}"`).join(','));
+                const csvStr = "\ufeff" + [entetes.join(','), ...lignes].join("\n");
                 const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
                 const lien = document.createElement("a"); lien.setAttribute("href", url); 
@@ -866,23 +882,29 @@
             };
 
             const handleExtraireCSV = () => {
-                // EXCTRACTION EXCEL OPTIMISEE POUR ANALYSE CROISEE
-                const exportData = formations.filter(passeFiltres).sort((a,b) => (new Date(a.startDate).getTime() - new Date(b.startDate).getTime()));
-                const entetes = ["Mois", "Semaine", "Formation", "Type", "Site", "Statut", "Formateur", "Date Debut", "Duree Initiale", "Agents Prevus", "Agents Formes", "Heures Prevues", "Heures Realisees", "Prise en charge", "Commentaire"];
-                const lignes = exportData.map(t => {
-                    const hPrevues = (parseFloat(t.duration) || 0) * 7 * (parseInt(t.agents) || 0);
-                    const hRealisees = (parseFloat(t.duration) || 0) * 7 * (parseInt(t.agentsRealises) || 0);
-                    return [
-                        `"${getMonthYear(t.startDate)}"`, `"${t.week || ''}"`, `"${t.name || ''}"`, `"${t.type || ''}"`, `"${t.site || ''}"`, `"${t.status || ''}"`, 
-                        `"${t.trainer || ''}"`, `"${t.startDate || ''}"`, `"${formaterDuree(t)}"`, t.agents || 0, t.agentsRealises || 0, 
-                        String(Math.round(hPrevues * 10) / 10).replace('.', ','), String(Math.round(hRealisees * 10) / 10).replace('.', ','), `"${t.funding || ''}"`, `"${(t.comment || '').replace(/"/g, '""')}"`
-                    ].join(";");
+                const exportData = [...formations].sort((a, b) => {
+                    const da = new Date(a?.startDate || 0).getTime();
+                    const db = new Date(b?.startDate || 0).getTime();
+                    return (isNaN(da) ? 0 : da) - (isNaN(db) ? 0 : db);
                 });
-                const csvStr = "\ufeff" + [entetes.join(";"), ...lignes].join("\n");
+                const nomVue = "Globale_Complete";
+                
+                const entetes = ["Mois", "Semaine", "Formation", "Type", "Site", "Statut", "Formateur", "Date Debut", "Duree Initiale", "Agents Prevus", "Agents Formes", "Heures Prevues", "Heures Realisees", "Budget", "Commentaire"];
+                const lignes = exportData.map(t => {
+                    const hPrevues = (parseFloat(t?.duration) || 0) * 7 * (parseInt(t?.agents) || 0);
+                    const hRealisees = (parseFloat(t?.duration) || 0) * 7 * (parseInt(t?.agentsRealises) || 0);
+                    const mois = getMonthYear(t?.startDate);
+                    return [
+                        `"${mois}"`, `"${t?.week || ''}"`, `"${t?.name || ''}"`, `"${t?.type || ''}"`, `"${t?.site || ''}"`, `"${t?.status || ''}"`, 
+                        `"${(t?.cible && t?.cible.length > 0) ? t.cible.join('; ') : (t?.trainer || '')}"`, `"${t?.startDate || ''}"`, `"${formaterDuree(t)}"`, 
+                        t?.agents || 0, t?.agentsRealises || 0, Math.round(hPrevues * 10) / 10, Math.round(hRealisees * 10) / 10, `"${t?.funding || ''}"`, 
+                        `"${(t?.comment || '').replace(/"/g, '""')}"`
+                    ];
+                });
+                const csvStr = "\ufeff" + [entetes.join(","), ...lignes.map(r => r.join(","))].join("\n");
                 const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
-                const lien = document.createElement("a"); lien.setAttribute("href", url); 
-                lien.setAttribute("download", `Extraction_Pilotage_${environnement}_${new Date().toISOString().split('T')[0]}.csv`);
+                const lien = document.createElement("a"); lien.setAttribute("href", url); lien.setAttribute("download", `Extraction_${environnement}_${nomVue}_${new Date().toISOString().split('T')[0]}.csv`);
                 document.body.appendChild(lien); lien.click(); document.body.removeChild(lien);
             };
 
@@ -991,7 +1013,7 @@
                         let site = 'Rabat'; const sr = (cols[5] || '').toLowerCase();
                         if (sr.includes('mek') && sr.includes('rab')) site = 'Rabat & Meknès'; else if (sr.includes('mek')) site = 'Meknès';
                         let formateur = 'Rachid'; const fr = (cols[8] || '').toLowerCase();
-                        if (fr) { const find = activeTrainers.find(t => t.toLowerCase().includes(fr) || fr.includes(t.toLowerCase())); if (find) formateur = find; else formateur = cols[8]; }
+                        if (fr) { const find = TRAINERS.find(t => t.toLowerCase().includes(fr) || fr.includes(t.toLowerCase())); if (find) formateur = find; else formateur = cols[8]; }
                         
                         let durationVal = 1;
                         if (parsedType === 'Projet Genesys') {
@@ -1030,8 +1052,8 @@
 
             const openEditModal = (t) => { 
                 if(!peutEditer) return;
-                if (t.type === 'PSF') { setNouvelleFormationPSF({ ...defaultFormationPSF, ...t, dates: t.dates || [t.startDate] }); setEditionEnCours(true); setModalEditionMode('PSF'); } 
-                else if (t.isTTT) { setNouvelleFormation({ ...defaultFormation, cible: t.cible || ['Tous les formateurs'], ...t }); setEditionEnCours(true); setModalEditionMode('TTT'); } 
+                if (t.type === 'PSF') { setNouvelleFormationPSF({ ...defaultFormationPSF, ...t, dates: t.dates || [t.startDate] }); setEditionEnCours(true); setModalAjoutPSF(true); } 
+                else if (t.isTTT) { setNouvelleFormation({ ...defaultFormation, cible: t.cible || ['Tous les formateurs'], ...t }); setEditionEnCours(true); setModalTTT(true); } 
                 else if (t.type === 'Congé / Absence') {
                     const start = new Date(t.startDate);
                     const end = new Date(start);
@@ -1040,12 +1062,12 @@
                     setEditionEnCours(true); 
                     setModalConge(true);
                 }
-                else { setNouvelleFormation({ ...defaultFormation, ...t }); setEditionEnCours(true); setModalEditionMode('standard'); }
+                else { setNouvelleFormation({ ...defaultFormation, ...t }); setEditionEnCours(true); setModalAjout(true); }
             };
             
             const dupliquerFormation = (t) => {
                 if(!peutEditer) return;
-                if (t.type === 'PSF') { setNouvelleFormationPSF({ ...defaultFormationPSF, ...t, id: undefined, name: `${t?.name || ''} (Copie)`, isValidated: false, dates: t.dates || [t.startDate] }); setEditionEnCours(false); setModalEditionMode('PSF'); } 
+                if (t.type === 'PSF') { setNouvelleFormationPSF({ ...defaultFormationPSF, ...t, id: undefined, name: `${t?.name || ''} (Copie)`, isValidated: false, dates: t.dates || [t.startDate] }); setEditionEnCours(false); setModalAjoutPSF(true); } 
                 else if (t.type === 'Congé / Absence') {
                     const start = new Date(t.startDate);
                     const end = new Date(start);
@@ -1054,22 +1076,11 @@
                     setEditionEnCours(false); 
                     setModalConge(true);
                 }
-                else { setNouvelleFormation({ ...defaultFormation, ...t, id: undefined, name: `${t?.name || ''} (Copie)`, isValidated: false }); setEditionEnCours(false); t?.isTTT ? setModalEditionMode('TTT') : setModalEditionMode('standard'); }
+                else { setNouvelleFormation({ ...defaultFormation, ...t, id: undefined, name: `${t?.name || ''} (Copie)`, isValidated: false }); setEditionEnCours(false); t?.isTTT ? setModalTTT(true) : setModalAjout(true); }
             };
 
             const gererDeconnexion = async () => {
                 try { await signOut(auth); } catch(err) { console.error(err); }
-            };
-
-            const sauvegarderConge = async () => {
-                if(!nouveauConge.trainer || !nouveauConge.startDate || !nouveauConge.endDate) return alert("Dates obligatoires");
-                await setDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', 'conges', Date.now().toString()), nouveauConge);
-                setNouveauConge(defaultConge);
-                setModalConge(false);
-            };
-
-            const supprimerConge = async (id) => {
-                if(window.confirm("Supprimer ce congé ?")) await deleteDoc(doc(db, 'artifacts', artifactAppId, 'public', 'data', 'conges', id));
             };
 
             const renderTableEnsemble = (data) => (
@@ -1097,25 +1108,28 @@
                                                     {t.status === 'À planifier' && t.type === 'Spécialisation' && t.week && t.week.includes(targetWeekDisplay) && <span title="Action requise : Sélection agent S-2" className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded text-[9px] font-black border border-rose-200 shadow-sm animate-pulse"><Icone nom="user-plus" taille={10} /> Sélection S-2</span>}
                                                 </div>
                                             </div>
-                                            <div className="text-[10px] font-bold uppercase mt-2 tracking-wider flex flex-wrap gap-2 items-center">
-                                                <span className={`px-2 py-0.5 rounded-md shadow-sm leading-none ${getTypeBadgeColor(t.type, t.isTTT, false, true)}`}>{t.isTTT ? 'TTT' : t.type}</span>
-                                                <span className="flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md"><Icone nom="utilisateurs" taille={10}/> <span className="text-rose-600 font-black">{t.agents || 0} prévus</span> <span className="text-slate-400">/ <span className="text-emerald-600 font-black">{t.agentsRealises || 0} formés</span></span></span>
+                                            <div className="text-[10px] font-bold uppercase mt-2 tracking-wider flex flex-col gap-1 items-start w-full max-w-[250px]">
+                                                <div className="flex flex-wrap gap-2 items-center">
+                                                    <span className={`px-2 py-0.5 rounded-md shadow-sm leading-none ${getTypeBadgeColor(t.type, t.isTTT, false, true)}`}>{t.isTTT ? 'TTT' : t.type}</span>
+                                                    {t.type !== 'Congé / Absence' && (
+                                                        <span className="flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
+                                                            <Icone nom="utilisateurs" taille={10}/> 
+                                                            <span className="text-rose-600 font-black">{agentsPrevus} P.</span> 
+                                                            <span className="text-slate-400">/ <span className="text-emerald-600 font-black">{agentsRealises} F.</span></span>
+                                                            <span className={`ml-1 text-[9px] font-black ${pourcentage >= 100 ? 'text-emerald-500' : 'text-blue-500'}`}>({pourcentage}%)</span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {t.type !== 'Congé / Absence' && (
+                                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mt-1 shadow-inner">
+                                                        <div className={`h-full transition-all duration-500 ${pourcentage >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${pourcentage}%` }}></div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-5 text-center">
                                             <div className="font-bold flex items-center justify-center gap-2 mb-2 text-slate-600"><Icone nom="marqueur" taille={12} classe={t.site === 'Rabat' ? 'text-rose-500' : 'text-blue-500'} /> {t.site}</div>
-                                            <select disabled={!peutEditer} value={t.status || ''} onChange={(e) => mettreAJourStatutDirect(t.id, e.target.value)} className={`px-2 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(t.status)} shadow-sm outline-none ${peutEditer ? 'cursor-pointer hover:brightness-95' : 'cursor-not-allowed opacity-80'} appearance-none text-center transition-all w-full max-w-[120px]`} style={{ textAlignLast: 'center' }}>{STATUTS.map(s => <option key={s} value={s}>{s}</option>)}</select>
-                                            {!t.isTTT && (
-                                                <div className="mt-3 w-full max-w-[120px] mx-auto">
-                                                    <div className="flex justify-between text-[8px] font-black text-slate-400 mb-1">
-                                                        <span>PROG.</span>
-                                                        <span className={progressText}>{progress}%</span>
-                                                    </div>
-                                                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden shadow-inner">
-                                                        <div className={`h-1.5 rounded-full transition-all duration-1000 ${progressColor}`} style={{ width: `${progress}%` }}></div>
-                                                    </div>
-                                                </div>
-                                            )}
+                                            <select disabled={!peutEditer} value={t.status || ''} onChange={(e) => mettreAJourStatutDirect(t.id, e.target.value)} className={`px-2 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(t.status)} shadow-sm outline-none ${peutEditer ? 'cursor-pointer hover:brightness-95' : 'cursor-not-allowed opacity-80'} appearance-none text-center transition-all`} style={{ textAlignLast: 'center' }}>{STATUTS.map(s => <option key={s} value={s}>{s}</option>)}</select>
                                         </td>
                                         <td className="px-6 py-5 font-black text-slate-700">{t.trainer} {conflits && <Icone nom={t.isValidated ? "bouclier-ok" : "alerte-triangle"} taille={14} classe={t.isValidated ? "text-emerald-500" : "text-rose-500"} />}</td>
                                         {peutEditer && (
@@ -1145,48 +1159,35 @@
                                 const agentsRealises = parseInt(t.agentsRealises) || 0;
                                 const pourcentage = agentsPrevus > 0 ? Math.min(Math.round((agentsRealises / agentsPrevus) * 100), 100) : 0;
                                 return (
-                                <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className={`px-4 py-4 font-black ${weekColorClass}`}><div className="truncate max-w-[100px] mb-1">{t.week}</div>{t.dates && t.dates.length > 1 ? (<div className="text-[9px] text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded w-max">{t.dates.length} dates</div>) : (<div className="text-[9px] text-slate-400 font-bold">{t.startDate}</div>)}</td>
-                                    <td className="px-4 py-4">
-                                        <div className="font-black text-slate-800 uppercase flex flex-col items-start gap-1 text-xs"><span>{t.name}</span><div className="flex gap-1 flex-wrap mt-1">{isSMinus1(t) && <span title="Action requise : Demande de planification S-1" className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded text-[8px] font-black border border-violet-200 shadow-sm animate-pulse"><Icone nom="cloche" taille={10} /> S-1</span>}{t.deadline && <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded text-[8px] font-black border border-rose-200 shadow-sm"><Icone nom="horloge" taille={10} /> {t.deadline}</span>}</div></div>
-                                        {t.comment && <div className="text-[10px] text-slate-500 mt-1 mb-2 whitespace-pre-wrap leading-tight">{t.comment}</div>}
-                                        <div className="text-[9px] uppercase font-bold mt-1 flex flex-wrap items-center gap-2"><span className="text-slate-400">{t.trainer} | {t.site}</span>{t.cible && t.cible.length > 0 && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">{t.cible.join(', ')}</span>}</div>
-                                    </td>
-                                    <td className="px-4 py-4 text-center">
-                                        <select disabled={!peutEditer} value={t.status || ''} onChange={(e) => mettreAJourStatutDirect(t.id, e.target.value)} className={`px-2 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(t.status)} shadow-sm outline-none appearance-none text-center transition-all w-full max-w-[120px] ${peutEditer ? 'cursor-pointer hover:brightness-95' : 'cursor-not-allowed opacity-80'}`} style={{ textAlignLast: 'center' }}>{STATUTS.map(s => <option key={s} value={s}>{s}</option>)}</select>
-                                        {!t.isTTT && (
-                                            <div className="mt-3 w-full max-w-[120px] mx-auto">
-                                                <div className="flex justify-between text-[8px] font-black text-slate-400 mb-1">
-                                                    <span>PROG.</span>
-                                                    <span className={progressText}>{progress}%</span>
+                                    <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className={`px-4 py-4 font-black ${weekColorClass}`}><div className="truncate max-w-[100px] mb-1">{t.week}</div>{t.dates && t.dates.length > 1 ? (<div className="text-[9px] text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded w-max">{t.dates.length} dates</div>) : (<div className="text-[9px] text-slate-400 font-bold">{t.startDate}</div>)}</td>
+                                        <td className="px-4 py-4">
+                                            <div className="font-black text-slate-800 uppercase flex flex-col items-start gap-1 text-xs"><span>{t.name}</span><div className="flex gap-1 flex-wrap mt-1">{isSMinus1(t) && <span title="Action requise : Demande de planification S-1" className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded text-[8px] font-black border border-violet-200 shadow-sm animate-pulse"><Icone nom="cloche" taille={10} /> S-1</span>}{t.deadline && <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded text-[8px] font-black border border-rose-200 shadow-sm"><Icone nom="horloge" taille={10} /> {t.deadline}</span>}</div></div>
+                                            {t.comment && <div className="text-[10px] text-slate-500 mt-1 mb-2 whitespace-pre-wrap leading-tight">{t.comment}</div>}
+                                            <div className="text-[9px] uppercase font-bold mt-1 flex flex-wrap items-center gap-2"><span className="text-slate-400">{t.trainer} | {t.site}</span>{t.cible && t.cible.length > 0 && <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">{t.cible.join(', ')}</span>}</div>
+                                        </td>
+                                        <td className="px-4 py-4 text-center"><select disabled={!peutEditer} value={t.status || ''} onChange={(e) => mettreAJourStatutDirect(t.id, e.target.value)} className={`px-2 py-1 rounded-full text-[9px] font-black uppercase border ${getStatusColor(t.status)} shadow-sm outline-none appearance-none text-center transition-all ${peutEditer ? 'cursor-pointer hover:brightness-95' : 'cursor-not-allowed opacity-80'}`} style={{ textAlignLast: 'center' }}>{STATUTS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
+                                        <td className="px-4 py-4 font-bold text-slate-500 text-xs bg-slate-50/50">{formaterDuree(t)}</td>
+                                        <td className="px-4 py-4">
+                                            {t.type !== 'Congé / Absence' ? (
+                                                <div className="flex flex-col gap-1.5 w-20 mx-auto">
+                                                    <div className="flex justify-between items-center text-[10px] font-black">
+                                                        <span className="text-rose-600" title="Prévus">{agentsPrevus} P.</span>
+                                                        <span className="text-emerald-600" title="Formés">{agentsRealises} F.</span>
+                                                    </div>
+                                                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden shadow-inner">
+                                                        <div className={`h-full transition-all duration-500 ${pourcentage >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${pourcentage}%` }}></div>
+                                                    </div>
+                                                    <div className="text-[8px] text-right font-bold text-slate-400">{pourcentage}%</div>
                                                 </div>
-                                                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden shadow-inner">
-                                                    <div className={`h-1.5 rounded-full transition-all duration-1000 ${progressColor}`} style={{ width: `${progress}%` }}></div>
-                                                </div>
-                                            </div>
+                                            ) : (
+                                                <div className="text-center text-[9px] text-slate-400 font-bold italic">N/A</div>
+                                            )}
+                                        </td>
+                                        {peutEditer && (
+                                            <td className="px-4 py-4 text-right space-x-1"><button onClick={() => dupliquerFormation(t)} className="text-slate-300 hover:text-blue-600 p-1 transition-colors"><Icone nom="copier" taille={14}/></button><button onClick={() => openEditModal(t)} className="text-slate-300 hover:text-emerald-600 transition-colors p-1"><Icone nom="modifier" taille={14}/></button><button onClick={() => deleteTraining(t.id)} className="text-slate-300 hover:text-rose-500 transition-colors p-1"><Icone nom="poubelle" taille={14}/></button></td>
                                         )}
-                                    </td>
-                                    <td className="px-4 py-4 font-bold text-slate-500 text-xs bg-slate-50/50">{formaterDuree(t)}</td>
-                                    <td className="px-4 py-4">
-                                        {t.type !== 'Congé / Absence' ? (
-                                            <div className="flex flex-col gap-1.5 w-20 mx-auto">
-                                                <div className="flex justify-between items-center text-[10px] font-black">
-                                                    <span className="text-rose-600" title="Prévus">{agentsPrevus} P.</span>
-                                                    <span className="text-emerald-600" title="Formés">{agentsRealises} F.</span>
-                                                </div>
-                                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden shadow-inner">
-                                                    <div className={`h-full transition-all duration-500 ${pourcentage >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${pourcentage}%` }}></div>
-                                                </div>
-                                                <div className="text-[8px] text-right font-bold text-slate-400">{pourcentage}%</div>
-                                            </div>
-                                        ) : (
-                                            <div className="text-center text-[9px] text-slate-400 font-bold italic">N/A</div>
-                                        )}
-                                    </td>
-                                    {peutEditer && (
-                                        <td className="px-4 py-4 text-right space-x-1"><button onClick={() => dupliquerFormation(t)} className="text-slate-300 hover:text-blue-600 p-1 transition-colors"><Icone nom="copier" taille={14}/></button><button onClick={() => openEditModal(t)} className="text-slate-300 hover:text-emerald-600 transition-colors p-1"><Icone nom="modifier" taille={14}/></button><button onClick={() => deleteTraining(t.id)} className="text-slate-300 hover:text-rose-500 transition-colors p-1"><Icone nom="poubelle" taille={14}/></button></td>
-                                    )}
-                                </tr>
+                                    </tr>
                                 );
                             })}
                             {data.length === 0 && <tr><td colSpan={peutEditer ? "6" : "5"} className="p-8 text-center text-slate-400 font-bold text-xs">Aucune session trouvée.</td></tr>}
@@ -1199,10 +1200,6 @@
 
             return (
                 <div className="min-h-screen flex flex-col">
-                    <datalist id="trainers-list">
-                        {activeTrainers.map(t => <option key={t} value={t} />)}
-                    </datalist>
-
                     {/* BANDEAU DE RECUPERATION ADMIN POUR LE CREATEUR */}
                     {!user.isAnonymous && userRole === 'Lecture seule' && (
                         <div className="bg-amber-100 border-l-4 border-amber-500 p-4 flex justify-between items-center shadow-sm z-50">
@@ -1254,11 +1251,12 @@
                                 <ElementNav actif={vue === 'planning'} onClick={() => setVue('planning')} icone={<Icone nom="utilisateurs" />} libelle="Planning Formateurs" />
                             </nav>
                             <div className="p-6 space-y-3 shrink-0 pb-24">
+                                
                                 {/* BOUTONS ACTIONS (RBAC) */}
                                 {peutEditer && (
                                     <>
-                                        <button onClick={() => { setNouvelleFormation(defaultFormation); setEditionEnCours(false); setModalEditionMode('standard'); }} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-black shadow-xl transition-all active:scale-95 text-xs uppercase tracking-widest"><Icone nom="plus" /> Nouvelle Session</button>
-                                        <button onClick={() => { setModalMultipleMode('standard'); }} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-black shadow-xl transition-all border border-slate-700 active:scale-95 text-[10px] tracking-widest uppercase"><Icone nom="copier" taille={16} /> Saisie Multiple</button>
+                                        <button onClick={() => { setNouvelleFormation(defaultFormation); setEditionEnCours(false); setModalAjout(true); }} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-black shadow-xl transition-all active:scale-95 text-xs uppercase tracking-widest"><Icone nom="plus" /> Nouvelle Session</button>
+                                        <button onClick={() => { setLignesMultiples([{ id: Date.now().toString(), name: '', type: 'Formation continue', week: 'S12', site: 'Rabat', trainer: 'Rachid', funding: 'Concentrix', agents: 12, agentsRealises: 0, duration: 1, startDate: new Date().toISOString().split('T')[0], status: 'Planifié', comment: '', isValidated: false }]); setModalMultiple(true); }} className="w-full bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-black shadow-xl transition-all border border-slate-700 active:scale-95 text-[10px] tracking-widest uppercase"><Icone nom="copier" taille={16} /> Saisie Multiple</button>
                                     </>
                                 )}
                                 
@@ -1283,7 +1281,7 @@
 
                         {/* CONTENU PRINCIPAL */}
                         <main className="flex-1 min-w-0 ml-72 p-10 pb-20 overflow-y-auto">
-                            {/* HEADER HAUT DROITE */}
+                            {/* HEADER HAUT DROITE (AJOUTÉ POUR L'AUTHENTIFICATION) */}
                             <header className="flex justify-between items-start mb-10 gap-6">
                                 <div className="shrink-0 flex items-center gap-4">
                                     <h1 className="text-4xl font-black text-slate-800 tracking-tight">
@@ -1292,27 +1290,22 @@
                                     {vue === 'chronologie' && (
                                         <button onClick={centerTimelineOnToday} className="bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-xs font-black uppercase shadow-sm hover:bg-rose-200 transition-colors mt-2">Aujourd'hui</button>
                                     )}
-                                    {vue === 'planning' && peutEditer && (
-                                        <button onClick={() => setModalConge(true)} className="bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-black uppercase shadow-sm hover:bg-slate-700 transition-colors flex items-center gap-2 mt-2">
-                                            <Icone nom="soleil" taille={14} /> Gérer les congés
-                                        </button>
-                                    )}
                                 </div>
                                 
                                 {/* CONTROLES AUTHENTIFICATION ET ACTIONS VUES */}
                                 <div className="flex-1 flex justify-end gap-3 flex-wrap items-center">
+                                    
                                     {peutEditer && vue === 'psf' && (
                                         <>
-                                            <button onClick={() => { setNouvelleFormationPSF(defaultFormationPSF); setEditionEnCours(false); setModalEditionMode('PSF'); }} className="bg-emerald-600 border-2 border-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-emerald-50 hover:text-emerald-700 transition-all shadow-lg active:scale-95"><Icone nom="plus" taille={16} /> Saisie de formation PSF</button>
-                                            <button onClick={() => { setModalMultipleMode('PSF'); }} className="bg-emerald-100 border-2 border-emerald-200 text-emerald-800 px-5 py-3 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-emerald-200 transition-all shadow-sm active:scale-95"><Icone nom="copier" taille={16} /> Saisie Multiple PSF</button>
+                                            <button onClick={() => { setNouvelleFormationPSF(defaultFormationPSF); setEditionEnCours(false); setModalAjoutPSF(true); }} className="bg-emerald-600 border-2 border-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-emerald-50 hover:text-emerald-700 transition-all shadow-lg active:scale-95"><Icone nom="plus" taille={16} /> Saisie de formation PSF</button>
+                                            <button onClick={() => { setLignesMultiplesPSF([{ id: Date.now().toString(), name: '', type: 'PSF', dates: [], week: '', site: 'Rabat', trainer: 'Rachid', funding: 'Concentrix', agents: 12, agentsRealises: 0, duration: 60/420, startDate: new Date().toISOString().split('T')[0], status: 'Planifié', comment: '', cible: [], deadline: '', isValidated: true }]); setModalMultiplePSF(true); }} className="bg-emerald-100 border-2 border-emerald-200 text-emerald-800 px-5 py-3 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-emerald-200 transition-all shadow-sm active:scale-95"><Icone nom="copier" taille={16} /> Saisie Multiple PSF</button>
                                         </>
                                     )}
                                     {peutEditer && vue === 'ttt' && (
-                                        <button onClick={() => { setModalMultipleMode('TTT'); }} className="bg-amber-100 border-2 border-amber-200 text-amber-800 px-5 py-3 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-amber-200 transition-all shadow-sm active:scale-95"><Icone nom="copier" taille={16} /> Saisie Multiple TTT</button>
+                                        <button onClick={() => { setLignesMultiplesTTT([{ id: Date.now().toString(), name: '', type: 'FIM', startDate: new Date().toISOString().split('T')[0], week: 'S'+getISOWeek(new Date()), cible: ['Tous les formateurs'], comment: '', duration: 60/420, site: 'Rabat & Meknès', status: 'Planifié', isValidated: true, isTTT: true, trainer: 'Tous les formateurs' }]); setModalMultipleTTT(true); }} className="bg-amber-100 border-2 border-amber-200 text-amber-800 px-5 py-3 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-amber-200 transition-all shadow-sm active:scale-95"><Icone nom="copier" taille={16} /> Saisie Multiple TTT</button>
                                     )}
                                     
-                                    {/* --- BOUTON D'EXTRACTION EXCEL ADAPTÉ --- */}
-                                    <button onClick={handleExtraireCSV} className="bg-white border-2 border-slate-200 px-5 py-3 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-slate-50 text-slate-600 transition-all shadow-sm"><Icone nom="telecharger" taille={16} /> {vue === 'suivi' ? 'Extraire Vue (Excel)' : 'Extraire CSV Base'}</button>
+                                    <button onClick={handleExtraireCSV} className="bg-white border-2 border-slate-200 px-5 py-3 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-slate-50 text-slate-600 transition-all shadow-sm"><Icone nom="telecharger" taille={16} /> EXTRAIRE CSV</button>
 
                                     {peutEditer && (
                                         <button onClick={() => {
@@ -1337,7 +1330,6 @@
                             </header>
 
                             {/* --- BLOC DES VUES --- */}
-
                             {['accueil', 'psf', 'spe', 'fim', 'genesys', 'ttt', 'suivi'].includes(vue) && (
                                 <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-200 mb-8 space-y-4">
                                     {['accueil', 'suivi'].includes(vue) && (
@@ -1345,7 +1337,7 @@
                                             <span className="text-[10px] font-black uppercase text-slate-400 w-24 shrink-0">Type de form.</span>
                                             <div className="flex flex-wrap gap-2 flex-1">
                                                 <button onClick={() => setFiltres({...filtres, types: []})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${(!filtres.types || filtres.types.length === 0) ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Tous</button>
-                                                {TYPES.map(opt => <button key={opt} onClick={() => { const arr = filtres.types || []; setFiltres({...filtres, types: arr.includes(opt) ? arr.filter(x => x !== opt) : [...arr, opt]}); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${(filtres.types || []).includes(opt) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
+                                                {TYPES.map(opt => <button key={opt} onClick={() => setFiltres({...filtres, types: (filtres.types || []).includes(opt) ? (filtres.types || []).filter(x => x !== opt) : [...(filtres.types || []), opt]})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${((filtres.types || []).includes(opt)) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
                                             </div>
                                         </div>
                                     )}
@@ -1355,7 +1347,7 @@
                                             <span className="text-[10px] font-black uppercase text-slate-400 w-24 shrink-0">Nom Formation</span>
                                             <div className="flex items-center gap-2 flex-1 overflow-x-auto custom-scrollbar pb-2">
                                                 <button onClick={() => setFiltres({...filtres, noms: []})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${(!filtres.noms || filtres.noms.length === 0) ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Toutes</button>
-                                                {allNomsGenesys.map(opt => <button key={opt} onClick={() => { const arr = filtres.noms || []; setFiltres({...filtres, noms: arr.includes(opt) ? arr.filter(x => x !== opt) : [...arr, opt]}); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${(filtres.noms || []).includes(opt) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
+                                                {allNomsGenesys.map(opt => <button key={opt} onClick={() => setFiltres({...filtres, noms: (filtres.noms || []).includes(opt) ? (filtres.noms || []).filter(x => x !== opt) : [...(filtres.noms || []), opt]})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${((filtres.noms || []).includes(opt)) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
                                             </div>
                                         </div>
                                     )}
@@ -1364,7 +1356,7 @@
                                         <span className="text-[10px] font-black uppercase text-slate-400 w-24 shrink-0">Mois</span>
                                         <div className="flex items-center gap-2 flex-1 overflow-x-auto custom-scrollbar pb-2">
                                             <button onClick={() => setFiltres({...filtres, mois: []})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${(!filtres.mois || filtres.mois.length === 0) ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Toute l'année</button>
-                                            {moisDeLAnnee.map(opt => <button key={opt} onClick={() => { const arr = filtres.mois || []; setFiltres({...filtres, mois: arr.includes(opt) ? arr.filter(x => x !== opt) : [...arr, opt]}); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${(filtres.mois || []).includes(opt) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
+                                            {moisDeLAnnee.map(opt => <button key={opt} onClick={() => setFiltres({...filtres, mois: (filtres.mois || []).includes(opt) ? (filtres.mois || []).filter(x => x !== opt) : [...(filtres.mois || []), opt]})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${((filtres.mois || []).includes(opt)) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
                                         </div>
                                     </div>
 
@@ -1372,7 +1364,7 @@
                                         <span className="text-[10px] font-black uppercase text-slate-400 w-24 shrink-0">Site</span>
                                         <div className="flex flex-wrap gap-2 flex-1">
                                             <button onClick={() => setFiltres({...filtres, sites: []})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${(!filtres.sites || filtres.sites.length === 0) ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Tous</button>
-                                            {SITES.map(opt => <button key={opt} onClick={() => { const arr = filtres.sites || []; setFiltres({...filtres, sites: arr.includes(opt) ? arr.filter(x => x !== opt) : [...arr, opt]}); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${(filtres.sites || []).includes(opt) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
+                                            {SITES.map(opt => <button key={opt} onClick={() => setFiltres({...filtres, sites: (filtres.sites || []).includes(opt) ? (filtres.sites || []).filter(x => x !== opt) : [...(filtres.sites || []), opt]})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${((filtres.sites || []).includes(opt)) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
                                         </div>
                                     </div>
 
@@ -1380,7 +1372,7 @@
                                         <span className="text-[10px] font-black uppercase text-slate-400 w-24 shrink-0">Semaines</span>
                                         <div className="flex items-center gap-2 flex-1 overflow-x-auto custom-scrollbar pb-2">
                                             <button onClick={() => setFiltres({...filtres, semaines: []})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${(!filtres.semaines || filtres.semaines.length === 0) ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Toutes</button>
-                                            {semainesDynamiques.map(opt => <button key={opt} onClick={() => { const arr = filtres.semaines || []; setFiltres({...filtres, semaines: arr.includes(opt) ? arr.filter(x => x !== opt) : [...arr, opt]}); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${(filtres.semaines || []).includes(opt) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
+                                            {semainesDynamiques.map(opt => <button key={opt} onClick={() => setFiltres({...filtres, semaines: (filtres.semaines || []).includes(opt) ? (filtres.semaines || []).filter(x => x !== opt) : [...(filtres.semaines || []), opt]})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${((filtres.semaines || []).includes(opt)) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
                                         </div>
                                     </div>
                                     
@@ -1388,7 +1380,7 @@
                                         <span className="text-[10px] font-black uppercase text-slate-400 w-24 shrink-0">Statut</span>
                                         <div className="flex items-center gap-2 flex-1 overflow-x-auto custom-scrollbar pb-2">
                                             <button onClick={() => setFiltres({...filtres, statuts: []})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${(!filtres.statuts || filtres.statuts.length === 0) ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>Tous</button>
-                                            {allStatuts.map(opt => <button key={opt} onClick={() => { const arr = filtres.statuts || []; setFiltres({...filtres, statuts: arr.includes(opt) ? arr.filter(x => x !== opt) : [...arr, opt]}); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${(filtres.statuts || []).includes(opt) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
+                                            {allStatuts.map(opt => <button key={opt} onClick={() => setFiltres({...filtres, statuts: (filtres.statuts || []).includes(opt) ? (filtres.statuts || []).filter(x => x !== opt) : [...(filtres.statuts || []), opt]})} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap shrink-0 ${((filtres.statuts || []).includes(opt)) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{opt}</button>)}
                                         </div>
                                     </div>
                                 </div>
@@ -1603,7 +1595,7 @@
                                     <div className="flex justify-between items-end bg-white p-8 rounded-[3rem] shadow-xl border border-slate-200">
                                         <div><h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Planning TTT (Train The Trainer)</h2></div>
                                         {peutEditer && (
-                                            <button onClick={() => { setNouvelleFormation({...defaultFormation, isTTT: true, type: 'FIM', cible: ['Tous les formateurs'], trainer: 'Tous les formateurs'}); setEditionEnCours(false); setModalEditionMode('TTT'); }} className="bg-amber-500 hover:bg-amber-400 text-white px-8 py-4 rounded-2xl flex items-center justify-center gap-2 font-black shadow-xl transition-all active:scale-95 text-xs uppercase tracking-widest"><Icone nom="plus" /> Saisir un TTT</button>
+                                            <button onClick={() => { setNouvelleFormation({...defaultFormation, isTTT: true, type: 'FIM', cible: ['Tous les formateurs'], trainer: 'Tous les formateurs'}); setEditionEnCours(false); setModalTTT(true); }} className="bg-amber-500 hover:bg-amber-400 text-white px-8 py-4 rounded-2xl flex items-center justify-center gap-2 font-black shadow-xl transition-all active:scale-95 text-xs uppercase tracking-widest"><Icone nom="plus" /> Saisir un TTT</button>
                                         )}
                                     </div>
                                     <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
@@ -1667,7 +1659,6 @@
                                                                                 <div className="text-slate-400">Site :</div><div className="font-bold text-right truncate">{t.site}</div>
                                                                                 <div className="text-slate-400">Début :</div><div className="font-bold text-right truncate">{t.startDate} ({formaterDuree(t)})</div>
                                                                                 <div className="text-slate-400">Formateur :</div><div className="font-bold text-right truncate">{t.trainer}</div>
-                                                                                <div className="text-slate-400">Effectif :</div><div className="font-bold text-right truncate">{t.agents || 0}P / {t.agentsRealises || 0}F</div>
                                                                                 <div className="text-slate-400">Statut :</div><div className="font-bold text-right truncate">{t.status}</div>
                                                                             </div>
                                                                             {t.comment && <div className="mt-2 text-[10px] text-slate-300 whitespace-pre-wrap italic border-t border-slate-800 pt-2">"{t.comment}"</div>}
@@ -1725,13 +1716,13 @@
                                         </div>
                                     </div>
                                     <div className="flex-1 w-full overflow-auto rounded-2xl border border-slate-200 shadow-inner relative custom-scrollbar bg-slate-50/50">
-                                        <div className="w-full min-w-[800px]" style={{ display: 'grid', gridTemplateColumns: `60px repeat(${activeTrainers.length}, minmax(0, 1fr))` }}>
+                                        <div className="w-full min-w-[800px]" style={{ display: 'grid', gridTemplateColumns: `60px repeat(${TRAINERS.length}, minmax(0, 1fr))` }}>
                                             <div className="sticky top-0 left-0 z-50 bg-slate-900 text-white font-black text-[9px] uppercase p-2 border-b border-r border-slate-800 flex items-center justify-center shrink-0 shadow-sm">Sem.</div>
-                                            {activeTrainers.map(trainer => ( <div className="sticky top-0 z-40 bg-slate-900 text-white font-black text-[9px] uppercase p-2 border-b border-r border-slate-800 flex items-center justify-center tracking-widest shrink-0 truncate shadow-sm" key={trainer}>{trainer}</div> ))}
+                                            {TRAINERS.map(trainer => ( <div className="sticky top-0 z-40 bg-slate-900 text-white font-black text-[9px] uppercase p-2 border-b border-r border-slate-800 flex items-center justify-center tracking-widest shrink-0 truncate shadow-sm" key={trainer}>{trainer}</div> ))}
                                             {semainesDynamiques.map(w => (
                                                 <React.Fragment key={w}>
                                                     <div className="sticky left-0 z-30 bg-white font-black text-blue-700 p-2 border-b border-r border-slate-200 flex flex-col items-center justify-center text-xs shrink-0 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">{w}</div>
-                                                    {activeTrainers.map(trainer => {
+                                                    {TRAINERS.map(trainer => {
                                                         const items = formations.filter(t => {
                                                             if (!t || t.type === 'PSF' || !t.week || !t.week.includes(w) || !passeFiltres(t)) return false;
                                                             if (t.isTTT) {
@@ -1740,11 +1731,9 @@
                                                             }
                                                             return t.trainer === trainer;
                                                         });
-                                                        
                                                         const collision = items.length > 1 && items.some(i => !i?.isValidated);
                                                         const totalDuration = items.reduce((sum, s) => sum + parseFloat(s?.duration || 0), 0);
                                                         let bgClass = collision ? 'bg-rose-50/40' : (totalDuration === 0 ? 'bg-slate-50/30' : (totalDuration <= 3 ? 'bg-emerald-50/20' : (totalDuration <= 5 ? 'bg-white' : 'bg-orange-50/30')));
-
                                                         const daysOfWeek = getDaysForWeek(w);
                                                         return (
                                                             <div key={`${w}-${trainer}`} className={`relative hover:z-50 border-b border-r border-slate-200 min-h-[100px] transition-colors flex flex-col ${bgClass}`}>
@@ -1773,7 +1762,7 @@
                                                                                         {s.type !== 'Congé / Absence' && <><div className="text-slate-400">Site :</div><div className="font-bold text-right truncate">{s.site}</div></>}
                                                                                         <div className="text-slate-400">Début :</div><div className="font-bold text-right truncate">{s.startDate} ({formaterDuree(s)})</div>
                                                                                         <div className="text-slate-400">Formateur :</div><div className="font-bold text-right truncate">{s.trainer}</div>
-                                                                                        {s.type !== 'Congé / Absence' && <><div className="text-slate-400">Effectif :</div><div className="font-bold text-right truncate">{s.agents || 0}P / {s.agentsRealises || 0}F</div></>}
+                                                                                        {s.type !== 'Congé / Absence' && <><div className="text-slate-400">Effectif :</div><div className="font-bold text-right truncate">{s.agents}P / {s.agentsRealises}F</div></>}
                                                                                         <div className="text-slate-400">Statut :</div><div className="font-bold text-right truncate">{s.status}</div>
                                                                                     </div>
                                                                                     {s.comment && <div className="mt-1 text-[9px] text-slate-300 whitespace-pre-wrap italic border-t border-slate-800 pt-1">"{s.comment}"</div>}
@@ -1794,133 +1783,233 @@
                             )}
                         </main>
 
-                        {/* MODALES D'ÉDITION ET D'AJOUT */}
-                        {modalMultipleMode && peutEditer && (() => {
-                            const isPSF = modalMultipleMode === 'PSF';
-                            const isTTT = modalMultipleMode === 'TTT';
-                            const isStd = modalMultipleMode === 'standard';
-                            
-                            const rows = isPSF ? lignesMultiplesPSF : (isTTT ? lignesMultiplesTTT : lignesMultiples);
-                            const updateFn = isPSF ? miseAJourLigneMultiplePSF : (isTTT ? miseAJourLigneMultipleTTT : miseAJourLigneMultiple);
-                            const setRowsFn = isPSF ? setLignesMultiplesPSF : (isTTT ? setLignesMultiplesTTT : setLignesMultiples);
-                            
-                            const themeColor = isPSF ? 'emerald' : (isTTT ? 'amber' : 'blue');
-                            const ThemeIcon = isPSF ? 'medaille' : (isTTT ? 'livre' : 'copier');
-                            const bgColor = isPSF ? 'bg-emerald-700' : (isTTT ? 'bg-amber-500' : 'bg-[#0f172a]');
-                            
-                            return (
-                                <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl flex items-center justify-center z-50 p-4">
-                                    <div className="bg-white rounded-[3rem] w-full max-w-[95vw] h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-slate-700/10">
-                                        <div className={`p-8 text-white flex justify-between items-center shrink-0 ${bgColor}`}>
-                                            <div>
-                                                <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
-                                                    <Icone nom={ThemeIcon} taille={28}/> Saisie Multiple {isStd ? 'Standard' : modalMultipleMode}
-                                                </h2>
-                                                <p className="text-white/70 text-xs font-bold uppercase tracking-widest mt-2">Mode Grille & Import Automatique</p>
-                                            </div>
-                                            <button onClick={() => setModalMultipleMode(null)} className="text-4xl font-black text-white/50 hover:text-white transition-colors leading-none">×</button>
-                                        </div>
-                                        <div className="px-8 pt-6 pb-4 border-b border-slate-200 bg-slate-50 shrink-0">
-                                            <div className="flex justify-between items-center mb-4">
-                                                <button onClick={() => setAfficherImportExcel(!afficherImportExcel)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm ${afficherImportExcel ? `bg-${themeColor}-600 text-white` : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
-                                                    <Icone nom="telecharger" taille={16} classe={afficherImportExcel ? 'rotate-180 transition-transform' : 'transition-transform'} /> {afficherImportExcel ? 'Fermer l\'importateur' : 'Coller depuis Excel'}
-                                                </button>
-                                                {afficherImportExcel && (
-                                                    <button onClick={() => { if(isPSF) telechargerTemplatePSF(); else if(isTTT) telechargerTemplateTTT(); else telechargerTemplate(); }} className={`text-${themeColor}-600 hover:text-${themeColor}-800 text-xs font-bold underline flex items-center gap-1 bg-${themeColor}-50 px-3 py-1.5 rounded-lg`}>
-                                                        <Icone nom="telecharger" taille={14}/> Télécharger le modèle Excel ({modalMultipleMode})
-                                                    </button>
-                                                )}
-                                            </div>
-                                            {afficherImportExcel && (
-                                                <div className={`bg-white p-6 rounded-2xl border-2 border-${themeColor}-100 shadow-sm animate-in slide-in-from-top-2`}>
-                                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Collez ici les lignes copiées depuis votre fichier Excel.</p>
-                                                    <textarea className={`w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-[10px] font-mono focus:ring-2 focus:ring-${themeColor}-500 outline-none mb-4 min-h-[120px] whitespace-pre resize-y shadow-inner text-slate-600`} placeholder="Copier-collez les lignes d'Excel directement ici..." value={texteImport} onChange={(e) => setTexteImport(e.target.value)}></textarea>
-                                                    <div className="flex justify-end">
-                                                        <button onClick={() => analyserImport(modalMultipleMode)} className={`bg-${themeColor}-600 hover:bg-${themeColor}-500 text-white px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-${themeColor}-600/20 flex items-center gap-2 transition-all active:scale-95`}><Icone nom="cercle-ok" taille={16}/> Lancer l'analyse</button>
-                                                    </div>
+                        {/* MODALES D'ÉDITION ET D'AJOUT (Protégées globalement, les boutons d'appel le sont déjà) */}
+                        {modalAjout && peutEditer && <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-6"><div className="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in duration-300 border border-slate-700/10"><div className="p-8 bg-[#0f172a] text-white flex justify-between items-center"><h2 className="text-xl font-black uppercase tracking-tight">{editionEnCours ? 'Modifier la session' : 'Nouvelle session'}</h2><button onClick={() => setModalAjout(false)} className="text-2xl font-black">×</button></div><div className="p-10 grid grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">{conflitActuel && <div className="col-span-2 bg-rose-50 border-2 border-rose-200 p-4 rounded-2xl flex items-start gap-4 shadow-sm animate-pulse"><Icone nom="alerte-triangle" className="text-rose-600 mt-1" taille={24}/><div><p className="font-black text-rose-800 text-sm uppercase">Chevauchement Détecté !</p><p className="text-rose-600 text-xs font-bold leading-tight mt-1">{nouvelleFormation.trainer} est déjà planifié en {nouvelleFormation.week}.</p><label className="flex items-center gap-2 mt-4 cursor-pointer"><input type="checkbox" className="w-5 h-5 accent-rose-600 rounded" checked={nouvelleFormation.isValidated} onChange={e => setNouvelleFormation({...nouvelleFormation, isValidated: e.target.checked})} /><span className="text-xs font-black text-rose-800 uppercase tracking-widest">Autoriser ce chevauchement</span></label></div></div>}<div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-blue-500 font-bold tracking-widest">Désignation Formation</label><input className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 transition-all shadow-inner" value={nouvelleFormation.name || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, name: e.target.value})} placeholder="ex: Rafraîchissement Genesys B2C" /></div><div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Type</label><select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 transition-all" value={nouvelleFormation.type || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, type: e.target.value})}>{TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Site</label><select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 transition-all shadow-sm" value={nouvelleFormation.site || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, site: e.target.value})}>{SITES.map(s => <option key={s}>{s}</option>)}</select></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-blue-500 font-black">Statut</label><select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border border-blue-200 focus:ring-2 focus:ring-blue-500 transition-all shadow-sm" value={nouvelleFormation.status || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, status: e.target.value})}>{STATUTS.map(s => <option key={s}>{s}</option>)}</select></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-blue-600 font-black">Durée {nouvelleFormation.type === 'Projet Genesys' ? '' : '(jours)'}</label>{nouvelleFormation.type === 'Projet Genesys' ? <select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 shadow-inner" value={nouvelleFormation.duration || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, duration: parseFloat(e.target.value)})}><option value="" disabled>Choisir...</option>{GENESYS_DUREES.map(d => <option key={d.label} value={d.val}>{d.label}</option>)}</select> : <input type="number" step="0.1" className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 shadow-inner" value={nouvelleFormation.duration !== undefined ? nouvelleFormation.duration : ''} onChange={e => setNouvelleFormation({...nouvelleFormation, duration: e.target.value})} />}</div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-rose-500">Nb Agents Prévus</label><input type="number" className="w-full bg-rose-50 rounded-2xl p-4 font-bold text-rose-700 outline-none border focus:ring-2 focus:ring-rose-500 shadow-inner" value={nouvelleFormation.agents !== undefined ? nouvelleFormation.agents : ''} onChange={e => setNouvelleFormation({...nouvelleFormation, agents: e.target.value})} /></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-emerald-600">Nb Agents Formés</label><input type="number" className="w-full bg-emerald-50 rounded-2xl p-4 font-bold text-emerald-700 outline-none border focus:ring-2 focus:ring-emerald-500 shadow-inner" value={nouvelleFormation.agentsRealises !== undefined ? nouvelleFormation.agentsRealises : ''} onChange={e => setNouvelleFormation({...nouvelleFormation, agentsRealises: e.target.value})} /></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Semaine ISO</label><input className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 shadow-inner" value={nouvelleFormation.week || ''} onChange={e => { const val = e.target.value; const range = getWeekDateRange(val); let newDate = nouvelleFormation.startDate; if (range) { if (!newDate || newDate < range.min || newDate > range.max) newDate = range.min; } setNouvelleFormation({...nouvelleFormation, week: val, startDate: newDate}); }} /></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Date début</label><input type="date" className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 shadow-inner" value={nouvelleFormation.startDate || ''} min={getWeekDateRange(nouvelleFormation.week)?.min || ''} max={getWeekDateRange(nouvelleFormation.week)?.max || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, startDate: e.target.value})} /></div>
+                        
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Formateur</label><select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 transition-all shadow-sm" value={nouvelleFormation.trainer || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, trainer: e.target.value})}>{TRAINERS.map(t => <option key={t}>{t}</option>)}</select></div><div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Budget</label><select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 transition-all shadow-sm" value={nouvelleFormation.funding || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, funding: e.target.value})}>{PRISES_EN_CHARGE.map(p => <option key={p}>{p}</option>)}</select></div><div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-blue-500 font-bold uppercase tracking-widest">Commentaire / Justification {conflitActuel && <span className="text-rose-500 font-black">(OBLIGATOIRE)</span>}</label><textarea className={`w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-blue-500 transition-all min-h-[80px] shadow-inner ${conflitActuel && !nouvelleFormation.comment ? 'border-rose-500 bg-rose-50' : ''}`} value={nouvelleFormation.comment || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, comment: e.target.value})} placeholder="Justifiez la décision..." /></div></div><div className="p-8 bg-slate-50 flex justify-end gap-4 border-t"><button onClick={() => setModalAjout(false)} className="font-black uppercase text-xs text-slate-400 px-4 hover:text-slate-600 transition-colors tracking-widest">Annuler</button><button onClick={validerFormation} disabled={conflitActuel && !nouvelleFormation.isValidated} className={`bg-blue-600 text-white px-10 py-4 rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all uppercase tracking-widest ${conflitActuel && !nouvelleFormation.isValidated ? 'opacity-50 grayscale' : 'hover:bg-blue-500 shadow-blue-500/20'}`}>{editionEnCours ? 'Mettre à jour' : 'Confirmer'}</button></div></div></div>}
+
+                        {modalConge && peutEditer && (
+                            <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-6">
+                                <div className="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in duration-300 border border-slate-700/10">
+                                    <div className="p-8 bg-slate-700 text-white flex justify-between items-center">
+                                        <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+                                            <Icone nom="utilisateurs" taille={24}/> {editionEnCours ? 'Modifier le congé' : 'Saisir un congé / absence'}
+                                        </h2>
+                                        <button onClick={() => setModalConge(false)} className="text-2xl font-black hover:text-slate-300 transition-colors">×</button>
+                                    </div>
+                                    <div className="p-10 grid grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
+                                        {conflitActuel && (
+                                            <div className="col-span-2 bg-rose-50 border-2 border-rose-200 p-4 rounded-2xl flex items-start gap-4 shadow-sm animate-pulse">
+                                                <Icone nom="alerte-triangle" className="text-rose-600 mt-1" taille={24}/>
+                                                <div>
+                                                    <p className="font-black text-rose-800 text-sm uppercase">Chevauchement Détecté !</p>
+                                                    <p className="text-rose-600 text-xs font-bold leading-tight mt-1">{nouvelleFormation.trainer} a déjà une session planifiée à ces dates.</p>
+                                                    <label className="flex items-center gap-2 mt-4 cursor-pointer">
+                                                        <input type="checkbox" className="w-5 h-5 accent-rose-600 rounded" checked={nouvelleFormation.isValidated} onChange={e => setNouvelleFormation({...nouvelleFormation, isValidated: e.target.checked})} />
+                                                        <span className="text-xs font-black text-rose-800 uppercase tracking-widest">Autoriser ce chevauchement</span>
+                                                    </label>
                                                 </div>
-                                            )}
-                                        </div>
-
-                                        <div className="flex-1 overflow-auto p-6 bg-slate-100/50 custom-scrollbar">
-                                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-w-max">
-                                                <table className="w-full border-collapse">
-                                                    <thead className="bg-slate-50 border-b border-slate-200">
-                                                        <tr className="text-[9px] font-black uppercase text-slate-500 tracking-widest">
-                                                            <th className="px-3 py-3 text-left border-r border-slate-100">Désignation</th>
-                                                            {isStd && <th className="px-3 py-3 text-left w-32 border-r border-slate-100">Type</th>}
-                                                            {isPSF && <th className="px-3 py-3 text-left w-40 border-r border-slate-100">Dates (Sép. par virgule)</th>}
-                                                            <th className="px-3 py-3 text-center w-20 border-r border-slate-100">Durée</th>
-                                                            {!isStd && <th className="px-3 py-3 text-left w-32 border-r border-slate-100">Cible</th>}
-                                                            {!isTTT && <th className="px-3 py-3 text-center w-16 border-r border-slate-100">Prévus</th>}
-                                                            {!isTTT && <th className="px-3 py-3 text-center w-16 border-r border-slate-100">Formés</th>}
-                                                            {!isPSF && <th className="px-3 py-3 text-center w-20 border-r border-slate-100">Semaine</th>}
-                                                            {!isPSF && <th className="px-3 py-3 text-center w-28 border-r border-slate-100">Date Début</th>}
-                                                            {isPSF && <th className="px-3 py-3 text-center w-28 border-r border-slate-100">Deadline</th>}
-                                                            {!isTTT && <th className="px-3 py-3 text-left w-28 border-r border-slate-100">Formateur</th>}
-                                                            <th className="px-3 py-3 text-left w-28 border-r border-slate-100">Site</th>
-                                                            <th className="px-3 py-3 text-left w-40 border-r border-slate-100">Commentaire</th>
-                                                            <th className="px-3 py-3 text-center w-12"></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-slate-100">
-                                                        {rows.map((row) => (
-                                                            <tr key={row.id} className={`hover:bg-${themeColor}-50/30 transition-colors`}>
-                                                                <td className="p-2 border-r border-slate-100"><input className={`w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 font-bold text-xs outline-none focus:ring-2 focus:ring-${themeColor}-500 focus:bg-${themeColor}-50 transition-colors`} value={row.name || ''} onChange={e => updateFn(row.id, 'name', e.target.value)} placeholder="Nom..." /></td>
-                                                                
-                                                                {isStd && <td className="p-2 border-r border-slate-100"><select className={`w-full bg-white border border-slate-200 rounded-lg px-1 py-1.5 font-bold text-[10px] outline-none focus:ring-2 focus:ring-${themeColor}-500 focus:bg-${themeColor}-50 transition-colors`} value={row.type || ''} onChange={e => updateFn(row.id, 'type', e.target.value)}>{TYPES.map(t => <option key={t}>{t}</option>)}</select></td>}
-                                                                
-                                                                {isPSF && <td className="p-2 border-r border-slate-100"><input className={`w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 font-bold text-[10px] outline-none focus:ring-2 focus:ring-${themeColor}-500 focus:bg-${themeColor}-50 transition-colors`} value={(row.dates || []).join(', ')} onChange={e => { const ds = e.target.value.split(',').map(d=>d.trim()).filter(Boolean); const wks = [...new Set(ds.map(d=>'S'+getISOWeek(new Date(d))))].join(', '); updateFn(row.id, 'dates', ds); updateFn(row.id, 'week', wks); updateFn(row.id, 'startDate', ds[0]||''); }} placeholder="JJ/MM/AAAA, ..." /></td>}
-                                                                
-                                                                {isStd && <td className="p-2 border-r border-slate-100">{row.type === 'PSF' ? ( <select className="w-full bg-white border border-blue-200 rounded-lg px-1 py-1.5 font-bold text-xs outline-none text-blue-700" value={Math.round((row.duration || 0) * JOUR_EN_MINUTES)} onChange={e => updateFn(row.id, 'duration', parseInt(e.target.value) / JOUR_EN_MINUTES)}> {MINUTES_PSF.map(m => <option key={m} value={m}>{m}m</option>)} </select> ) : row.type === 'Projet Genesys' ? ( <select className="w-full bg-white border border-blue-200 rounded-lg px-1 py-1.5 font-bold text-[10px] outline-none text-blue-700" value={row.duration || ''} onChange={e => updateFn(row.id, 'duration', parseFloat(e.target.value))}> {GENESYS_DUREES.map(d => <option key={d.label} value={d.val}>{d.label}</option>)} </select> ) : ( <div className="relative"><input type="number" step="0.5" className={`w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 font-bold text-xs outline-none text-center focus:ring-2 focus:ring-${themeColor}-500 focus:bg-${themeColor}-50 transition-colors pr-4`} value={row.duration !== undefined ? row.duration : ''} onChange={e => updateFn(row.id, 'duration', e.target.value)} /><span className="absolute right-2 top-2 text-[8px] font-black text-slate-400 uppercase">j</span></div> )}</td>}
-                                                                
-                                                                {!isStd && <td className="p-2 border-r border-slate-100"><select className={`w-full bg-white border border-slate-200 text-slate-700 rounded-lg px-1 py-1.5 font-bold text-[10px] outline-none focus:ring-2 focus:ring-${themeColor}-500 focus:bg-${themeColor}-50 transition-colors`} value={Math.round((row.duration || 0) * JOUR_EN_MINUTES)} onChange={e => updateFn(row.id, 'duration', parseInt(e.target.value) / JOUR_EN_MINUTES)}>{MINUTES_PSF.map(m => <option key={m} value={m}>{m}m</option>)}</select></td>}
-                                                                
-                                                                {!isStd && <td className="p-2 border-r border-slate-100"><input className={`w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 font-bold text-[10px] outline-none focus:ring-2 focus:ring-${themeColor}-500 focus:bg-${themeColor}-50 transition-colors`} value={(row.cible || []).join(', ')} onChange={e => { const cb = e.target.value.split(',').map(c=>c.trim()).filter(Boolean); updateFn(row.id, 'cible', cb); if(isTTT) updateFn(row.id, 'trainer', cb.join(', ')); }} placeholder="Cible..." /></td>}
-                                                                
-                                                                {!isTTT && <td className="p-2 border-r border-slate-100"><input type="number" className="w-full bg-white border border-rose-200 text-rose-700 rounded-lg px-1 py-1.5 font-bold text-xs outline-none text-center focus:ring-2 focus:ring-rose-500 focus:bg-rose-50 transition-colors" value={row.agents !== undefined ? row.agents : ''} onChange={e => updateFn(row.id, 'agents', e.target.value)} placeholder="0" /></td>}
-                                                                {!isTTT && <td className="p-2 border-r border-slate-100"><input type="number" className="w-full bg-white border border-emerald-200 text-emerald-700 rounded-lg px-1 py-1.5 font-bold text-xs outline-none text-center focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-50 transition-colors" value={row.agentsRealises !== undefined ? row.agentsRealises : ''} onChange={e => updateFn(row.id, 'agentsRealises', e.target.value)} placeholder="0" /></td>}
-                                                                
-                                                                {!isPSF && <td className="p-2 border-r border-slate-100"><input className="w-full bg-slate-100 border border-slate-200 rounded-lg px-1 py-1.5 font-bold text-[10px] outline-none text-center uppercase text-slate-500" value={row.week || ''} onChange={e => { const val = e.target.value; const range = getWeekDateRange(val); let newDate = row.startDate; if (range && (!newDate || newDate < range.min || newDate > range.max)) newDate = range.min; if(isStd){ updateFn(row.id, 'week', val); updateFn(row.id, 'startDate', newDate); } }} readOnly={true} /></td>}
-                                                                {!isPSF && <td className="p-2 border-r border-slate-100"><input type="date" className={`w-full bg-white border border-slate-200 rounded-lg px-1 py-1.5 font-bold text-[9px] outline-none focus:ring-2 focus:ring-${themeColor}-500 focus:bg-${themeColor}-50 transition-colors`} value={row.startDate || ''} onChange={e => { if(isStd) { const w = 'S'+getISOWeek(new Date(e.target.value)); updateFn(row.id, 'startDate', e.target.value); updateFn(row.id, 'week', w); } else { updateFn(row.id, 'startDate', e.target.value); updateFn(row.id, 'week', 'S'+getISOWeek(new Date(e.target.value))); } }} /></td>}
-                                                                
-                                                                {isPSF && <td className="p-2 border-r border-slate-100"><input type="date" className={`w-full bg-white border border-slate-200 rounded-lg px-1 py-1.5 font-bold text-[9px] outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-50 transition-colors`} value={row.deadline || ''} onChange={e => updateFn(row.id, 'deadline', e.target.value)} /></td>}
-                                                                
-                                                                {!isTTT && <td className="p-2 border-r border-slate-100"><input list="trainers-list" className={`w-full bg-white border border-slate-200 rounded-lg px-1 py-1.5 font-bold text-[10px] outline-none focus:ring-2 focus:ring-${themeColor}-500 focus:bg-${themeColor}-50 transition-colors`} value={row.trainer || ''} onChange={e => updateFn(row.id, 'trainer', e.target.value)} placeholder="Saisir/Select..."/></td>}
-                                                                
-                                                                <td className="p-2 border-r border-slate-100"><select className={`w-full bg-white border border-slate-200 rounded-lg px-1 py-1.5 font-bold text-[10px] outline-none focus:ring-2 focus:ring-${themeColor}-500 focus:bg-${themeColor}-50 transition-colors`} value={row.site || ''} onChange={e => updateFn(row.id, 'site', e.target.value)}>{(isStd ? SITES : SITES_TTT).map(s => <option key={s}>{s}</option>)}</select></td>
-                                                                <td className="p-2 border-r border-slate-100"><input className={`w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 font-bold text-[10px] outline-none focus:ring-2 focus:ring-${themeColor}-500 focus:bg-${themeColor}-50 transition-colors`} value={row.comment || ''} onChange={e => updateFn(row.id, 'comment', e.target.value)} placeholder="Notes..." /></td>
-                                                                
-                                                                <td className="p-2 text-center">
-                                                                    <button onClick={() => setRowsFn(rows.filter(r => r.id !== row.id))} className="text-slate-400 hover:text-white transition-colors p-1.5 bg-slate-100 rounded-lg hover:bg-rose-500"><Icone nom="poubelle" taille={14}/></button>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                                {rows.length === 0 && <div className="p-8 text-center text-slate-400 font-bold text-xs italic">Aucune ligne en attente. Ajoutez une ligne manuellement ou via l'import Excel.</div>}
                                             </div>
-                                            <button onClick={() => {
-                                                const newRow = isStd ? { id: Date.now().toString(), name: '', type: 'Formation continue', week: 'S' + getISOWeek(new Date()), site: 'Rabat', trainer: '', funding: 'Concentrix', agents: 12, agentsRealises: 0, duration: 1, startDate: new Date().toISOString().split('T')[0], status: 'Planifié', comment: '', isValidated: false } :
-                                                               isPSF ? { id: Date.now().toString(), name: '', type: 'PSF', dates: [new Date().toISOString().split('T')[0]], week: 'S' + getISOWeek(new Date()), site: 'Rabat', trainer: '', funding: 'Concentrix', agents: 12, agentsRealises: 0, duration: 60/420, startDate: new Date().toISOString().split('T')[0], status: 'Planifié', comment: '', cible: [], deadline: '', isValidated: true } :
-                                                                       { id: Date.now().toString(), name: '', type: 'FIM', startDate: new Date().toISOString().split('T')[0], week: 'S'+getISOWeek(new Date()), cible: ['Tous les formateurs'], comment: '', duration: 60/420, site: 'Rabat & Meknès', status: 'Planifié', isValidated: true, isTTT: true, trainer: 'Tous les formateurs' };
-                                                setRowsFn([...rows, newRow]);
-                                            }} className={`mt-6 flex items-center gap-2 text-${themeColor}-600 font-black uppercase text-xs tracking-widest hover:text-${themeColor}-700 hover:bg-${themeColor}-100 transition-colors px-6 py-3 border-2 border-${themeColor}-200 border-dashed rounded-2xl bg-${themeColor}-50 shadow-sm mx-auto`}>
-                                                <Icone nom="plus" taille={16} /> Ajouter une ligne vierge
-                                            </button>
+                                        )}
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Motif (Désignation)</label>
+                                            <input className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 shadow-inner" value={nouvelleFormation.name || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, name: e.target.value})} placeholder="ex: Congé Annuel, Maladie..." />
                                         </div>
-
-                                        <div className="p-8 bg-white flex justify-end gap-6 border-t border-slate-100 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] rounded-b-[3rem]">
-                                            <button onClick={() => setModalMultipleMode(null)} className="font-black uppercase text-xs text-slate-400 px-6 py-4 hover:text-slate-800 hover:bg-slate-50 rounded-2xl transition-colors tracking-widest">Annuler la saisie</button>
-                                            <button onClick={() => enregistrerMultiples(modalMultipleMode)} className={`text-white px-12 py-4 rounded-[2rem] font-black text-xs shadow-xl active:scale-95 transition-all uppercase tracking-widest flex items-center gap-3 bg-${themeColor}-600 hover:bg-${themeColor}-500 shadow-${themeColor}-600/20`}>
-                                                <Icone nom="bouclier-ok" taille={18}/> TOUT ENREGISTRER ({rows.length})
-                                            </button>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Formateur</label>
+                                            <select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 transition-all shadow-sm" value={nouvelleFormation.trainer || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, trainer: e.target.value})}>
+                                                {TRAINERS.map(t => <option key={t}>{t}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Site d'affectation</label>
+                                            <select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 transition-all shadow-sm" value={nouvelleFormation.site || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, site: e.target.value})}>
+                                                {SITES_TTT.map(s => <option key={s}>{s}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Date de début (inclus)</label>
+                                            <input type="date" className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 shadow-inner" value={nouvelleFormation.startDate || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, startDate: e.target.value, week: 'S' + getISOWeek(new Date(e.target.value))})} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Date de fin (inclus)</label>
+                                            <input type="date" className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 shadow-inner" value={nouvelleFormation.endDate || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, endDate: e.target.value})} min={nouvelleFormation.startDate} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Semaine ISO (Début)</label>
+                                            <input className="w-full bg-slate-100 text-slate-500 rounded-2xl p-4 font-bold outline-none border cursor-not-allowed" value={nouvelleFormation.week || ''} readOnly />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Commentaire</label>
+                                            <textarea className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-slate-500 transition-all min-h-[80px] shadow-inner" value={nouvelleFormation.comment || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, comment: e.target.value})} placeholder="Détails supplémentaires..." />
                                         </div>
                                     </div>
+                                    <div className="p-8 bg-slate-50 flex justify-end gap-4 border-t">
+                                        <button onClick={() => setModalConge(false)} className="font-black uppercase text-xs text-slate-400 px-4 hover:text-slate-600 transition-colors tracking-widest">Annuler</button>
+                                        <button onClick={validerFormation} disabled={conflitActuel && !nouvelleFormation.isValidated} className={`bg-slate-700 text-white px-10 py-4 rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all uppercase tracking-widest ${conflitActuel && !nouvelleFormation.isValidated ? 'opacity-50 grayscale' : 'hover:bg-slate-600 shadow-slate-500/20'}`}>
+                                            {editionEnCours ? 'Mettre à jour' : 'Confirmer le congé'}
+                                        </button>
+                                    </div>
                                 </div>
-                            );
-                        })()}
+                            </div>
+                        )}
+                        
+                        {modalAjoutPSF && peutEditer && <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-6"><div className="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in duration-300 border border-slate-700/10"><div className="p-8 bg-emerald-600 text-white flex justify-between items-center"><h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2"><Icone nom="medaille" taille={24}/> {editionEnCours ? 'Modifier la session PSF' : 'Saisie de formation PSF'}</h2><button onClick={() => setModalAjoutPSF(false)} className="text-2xl font-black hover:text-emerald-200 transition-colors">×</button></div><div className="p-10 grid grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">{conflitActuel && <div className="col-span-2 bg-rose-50 border-2 border-rose-200 p-4 rounded-2xl flex items-start gap-4 shadow-sm animate-pulse"><Icone nom="alerte-triangle" className="text-rose-600 mt-1" taille={24}/><div><p className="font-black text-rose-800 text-sm uppercase">Chevauchement Détecté !</p><p className="text-rose-600 text-xs font-bold leading-tight mt-1">{nouvelleFormationPSF.trainer} est déjà planifié.</p><label className="flex items-center gap-2 mt-4 cursor-pointer"><input type="checkbox" className="w-5 h-5 accent-rose-600 rounded" checked={nouvelleFormationPSF.isValidated} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, isValidated: e.target.checked})} /><span className="text-xs font-black text-rose-800 uppercase tracking-widest">Autoriser ce chevauchement</span></label></div></div>}
+                        <div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-emerald-600 font-bold tracking-widest">Formation (Nom)</label><input className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-emerald-500 transition-all shadow-inner" value={nouvelleFormationPSF.name || ''} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, name: e.target.value})} placeholder="ex: Atelier Qualité" /></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Type</label><input className="w-full bg-slate-100 text-slate-500 rounded-2xl p-4 font-bold outline-none border cursor-not-allowed" value="PSF" readOnly /></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-emerald-600 font-black">Statut</label><select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border border-emerald-200 focus:ring-2 focus:ring-emerald-500 transition-all shadow-sm" value={nouvelleFormationPSF.status || ''} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, status: e.target.value})}>{STATUTS.map(s => <option key={s}>{s}</option>)}</select></div>
+                        <div className="col-span-2 bg-slate-50 p-5 rounded-2xl border border-slate-200"><label className="text-[10px] font-black uppercase text-slate-400 mb-2 block">Date(s) de la formation</label><div className="flex gap-2 mb-3"><input type="date" className="flex-1 bg-white rounded-xl p-3 font-bold outline-none border focus:ring-2 focus:ring-emerald-500 shadow-sm" value={dateTemp} onChange={e => setDateTemp(e.target.value)} /><button onClick={() => { if(dateTemp && !(nouvelleFormationPSF.dates || []).includes(dateTemp)) { updatePSFDates([...(nouvelleFormationPSF.dates || []), dateTemp]); setDateTemp(''); } }} className="bg-slate-800 text-white px-4 rounded-xl font-black text-xs uppercase hover:bg-slate-700 transition-colors shrink-0">Ajouter</button></div><div className="flex flex-wrap gap-2">{(nouvelleFormationPSF.dates || []).map(d => (<span key={d} className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 flex items-center gap-2 shadow-sm">{d} <button onClick={() => updatePSFDates((nouvelleFormationPSF.dates || []).filter(x => x !== d))} className="text-rose-500 hover:text-rose-700 font-black">×</button></span>))}{(nouvelleFormationPSF.dates || []).length === 0 && <span className="text-xs text-slate-400 italic">Aucune date ajoutée.</span>}</div></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Semaine(s) calculée(s)</label><input className="w-full bg-slate-100 text-slate-500 rounded-2xl p-4 font-bold outline-none border cursor-not-allowed" value={nouvelleFormationPSF.week || '...'} readOnly placeholder="Calcul auto..." /></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Durée (minutes)</label><select className="w-full bg-emerald-50 border-emerald-200 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-emerald-500 shadow-sm text-emerald-800" value={Math.round((nouvelleFormationPSF.duration || 0) * JOUR_EN_MINUTES)} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, duration: parseInt(e.target.value) / JOUR_EN_MINUTES})}> <option value="0">Choisir...</option> {MINUTES_PSF.map(m => <option key={m} value={m}>{m} minutes ({Math.floor(m/60)}h{m%60>0?m%60:''})</option>)} </select></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Site</label><select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-emerald-500 transition-all shadow-sm" value={nouvelleFormationPSF.site || ''} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, site: e.target.value})}>{SITES_TTT.map(s => <option key={s}>{s}</option>)}</select></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Formateur</label><select className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-emerald-500 transition-all shadow-sm" value={nouvelleFormationPSF.trainer || ''} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, trainer: e.target.value})}>{TRAINERS.map(t => <option key={t}>{t}</option>)}</select></div>
+                        <div className="col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-200"><label className="text-[10px] font-black uppercase text-slate-400 mb-3 block">Cible (Multi-sélection)</label><div className="flex flex-wrap gap-2">{CIBLES_PSF.map(c => (<label key={c} className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl cursor-pointer border transition-colors ${(nouvelleFormationPSF.cible || []).includes(c) ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-600'}`}><input type="checkbox" className="hidden" checked={(nouvelleFormationPSF.cible || []).includes(c)} onChange={(e) => { const newCible = e.target.checked ? [...(nouvelleFormationPSF.cible || []), c] : (nouvelleFormationPSF.cible || []).filter(x => x !== c); setNouvelleFormationPSF({...nouvelleFormationPSF, cible: newCible}); }} /> {c}</label>))}</div></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-rose-500">Nb Agents Prévus</label><input type="number" className="w-full bg-rose-50 rounded-2xl p-4 font-bold text-rose-700 outline-none border border-rose-200 focus:ring-2 focus:ring-rose-500 shadow-inner" value={nouvelleFormationPSF.agents || ''} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, agents: e.target.value})} /></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-emerald-600">Nb Agents Formés</label><input type="number" className="w-full bg-emerald-50 rounded-2xl p-4 font-bold text-emerald-700 outline-none border border-emerald-200 focus:ring-2 focus:ring-emerald-500 shadow-inner" value={nouvelleFormationPSF.agentsRealises || ''} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, agentsRealises: e.target.value})} /></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Deadline</label><input type="date" className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-emerald-500 shadow-inner" value={nouvelleFormationPSF.deadline || ''} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, deadline: e.target.value})} /></div>
+                        <div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-emerald-600 font-bold uppercase tracking-widest">Commentaires</label><textarea className={`w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-emerald-500 transition-all min-h-[80px] shadow-inner`} value={nouvelleFormationPSF.comment || ''} onChange={e => setNouvelleFormationPSF({...nouvelleFormationPSF, comment: e.target.value})} placeholder="Ajouter un commentaire..." /></div></div><div className="p-8 bg-slate-50 flex justify-end gap-4 border-t"><button onClick={() => setModalAjoutPSF(false)} className="font-black uppercase text-xs text-slate-400 px-4 hover:text-slate-600 transition-colors tracking-widest">Annuler</button><button onClick={validerFormation} disabled={conflitActuel && !nouvelleFormationPSF.isValidated} className={`bg-emerald-600 text-white px-10 py-4 rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all uppercase tracking-widest ${conflitActuel && !nouvelleFormationPSF.isValidated ? 'opacity-50 grayscale' : 'hover:bg-emerald-500 shadow-emerald-500/20'}`}>{editionEnCours ? 'Mettre à jour' : 'Confirmer'}</button></div></div></div>}
+                        
+                        {modalTTT && peutEditer && <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-6"><div className="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in duration-300 border border-slate-700/10"><div className="p-8 bg-amber-500 text-white flex justify-between items-center"><h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2"><Icone nom="livre" taille={24}/> {editionEnCours ? 'Modifier le TTT' : 'Saisir un TTT'}</h2><button onClick={() => setModalTTT(false)} className="text-2xl font-black hover:text-amber-200 transition-colors">×</button></div><div className="p-10 grid grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
+                        <div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-amber-500 font-bold tracking-widest">Formation (Thème du TTT)</label><input className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-amber-500 transition-all shadow-inner" value={nouvelleFormation.name || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, name: e.target.value})} placeholder="ex: Nouveau process Nespresso" /></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Date Train The Trainer</label><input type="date" className="w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-amber-500 shadow-inner" value={nouvelleFormation.startDate || ''} onChange={e => { const val = e.target.value; setNouvelleFormation({...nouvelleFormation, startDate: val, week: 'S' + getISOWeek(new Date(val))}); }} /></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Semaine ISO (Calcul auto)</label><input className="w-full bg-slate-100 text-slate-500 rounded-2xl p-4 font-bold outline-none border cursor-not-allowed" value={nouvelleFormation.week || ''} readOnly /></div>
+                        <div className="col-span-2 bg-amber-50 p-5 rounded-2xl border border-amber-200"><label className="text-[10px] font-black uppercase text-amber-600 mb-3 block tracking-widest">Cible (Formateurs concernés)</label><div className="flex flex-wrap gap-2">{['Tous les formateurs', ...TRAINERS].map(c => (<label key={c} className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl cursor-pointer border transition-colors ${(nouvelleFormation.cible || []).includes(c) ? 'bg-amber-200 border-amber-400 text-amber-900 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-600'}`}><input type="checkbox" className="hidden" checked={(nouvelleFormation.cible || []).includes(c)} onChange={(e) => { const newCible = e.target.checked ? [...(nouvelleFormation.cible || []), c] : (nouvelleFormation.cible || []).filter(x => x !== c); setNouvelleFormation({...nouvelleFormation, cible: newCible, trainer: newCible.join(', ')}); }} /> {c}</label>))}</div></div>
+                        <div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block text-amber-500 font-bold uppercase tracking-widest">Commentaire</label><textarea className={`w-full bg-slate-50 rounded-2xl p-4 font-bold outline-none border focus:ring-2 focus:ring-amber-500 transition-all min-h-[80px] shadow-inner`} value={nouvelleFormation.comment || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, comment: e.target.value})} placeholder="Notes sur le TTT..." /></div>
+                        <div className="col-span-2 border-t border-slate-100 pt-4 mt-2"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Paramètres techniques (Optionnels / Pré-remplis)</p><div className="grid grid-cols-3 gap-4">
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Durée (minutes)</label><select className="w-full bg-slate-50 rounded-xl p-3 font-bold outline-none border focus:ring-2 focus:ring-amber-500 shadow-sm text-xs" value={Math.round((nouvelleFormation.duration || 0) * JOUR_EN_MINUTES)} onChange={e => setNouvelleFormation({...nouvelleFormation, duration: parseInt(e.target.value) / JOUR_EN_MINUTES})}>{DUREES_TTT.map(m => <option key={m} value={m}>{m} min ({Math.floor(m/60)}h{m%60>0?m%60:''})</option>)}</select></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Site</label><select className="w-full bg-slate-50 rounded-xl p-3 font-bold outline-none border focus:ring-2 focus:ring-amber-500 shadow-sm text-xs" value={nouvelleFormation.site || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, site: e.target.value})}>{SITES_TTT.map(s => <option key={s}>{s}</option>)}</select></div>
+                        <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Statut</label><select className="w-full bg-slate-50 rounded-xl p-3 font-bold outline-none border focus:ring-2 focus:ring-amber-500 shadow-sm text-xs" value={nouvelleFormation.status || ''} onChange={e => setNouvelleFormation({...nouvelleFormation, status: e.target.value})}>{STATUTS.map(s => <option key={s}>{s}</option>)}</select></div>
+                        </div></div>
+                        </div><div className="p-8 bg-slate-50 flex justify-end gap-4 border-t"><button onClick={() => setModalTTT(false)} className="font-black uppercase text-xs text-slate-400 px-4 hover:text-slate-600 transition-colors tracking-widest">Annuler</button><button onClick={validerFormation} disabled={conflitActuel && !nouvelleFormation.isValidated} className={`bg-amber-500 text-white px-10 py-4 rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all uppercase tracking-widest hover:bg-amber-400 shadow-amber-500/20 ${conflitActuel && !nouvelleFormation.isValidated ? 'opacity-50 grayscale' : ''}`}>{editionEnCours ? 'Mettre à jour le TTT' : 'Confirmer le TTT'}</button></div></div></div>}
+                        
+                        {modalMultiple && peutEditer && (
+                            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl flex items-center justify-center z-50 p-4">
+                                <div className="bg-white rounded-[3rem] w-full max-w-[95vw] h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-slate-700/10">
+                                    <div className="p-8 bg-[#0f172a] text-white flex justify-between items-center shrink-0">
+                                        <div><h2 className="text-2xl font-black uppercase tracking-tight">Saisie de plusieurs sessions</h2><p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Mode rapide & Import Excel</p></div>
+                                        <button onClick={() => setModalMultiple(false)} className="text-3xl font-black text-slate-400 hover:text-white transition-colors">×</button>
+                                    </div>
+                                    <div className="px-8 pt-6 pb-2 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                                        <div className="flex justify-between items-center mb-4"><button onClick={() => setAfficherImportExcel(!afficherImportExcel)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase transition-all ${afficherImportExcel ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'}`}><Icone nom="telecharger" taille={16} classe={afficherImportExcel ? 'rotate-180 transition-transform' : 'transition-transform'} /> {afficherImportExcel ? 'Fermer l\'importateur' : 'Importer depuis Excel'}</button>{afficherImportExcel && (<button onClick={telechargerTemplate} className="text-blue-600 hover:text-blue-800 text-xs font-bold underline flex items-center gap-1"><Icone nom="telecharger" taille={14}/> Télécharger le modèle Excel</button>)}</div>
+                                        {afficherImportExcel && (<div className="bg-white p-6 rounded-2xl border border-emerald-200 shadow-sm mb-4 animate-in slide-in-from-top-2"><p className="text-xs font-bold text-slate-500 mb-3">Collez ici les lignes copiées depuis votre fichier Excel (respectez l'ordre des colonnes du modèle).</p><textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-[10px] font-mono focus:ring-2 focus:ring-emerald-500 outline-none mb-3 min-h-[120px] whitespace-pre resize-y" placeholder="Nom de la formation | Type de formation | Semaine | date de la formation | durée | site | nombre d'agent a former | Nombre d'agents Formés (Réalisé) | formateur | commentaires | statut" value={texteImport} onChange={(e) => setTexteImport(e.target.value)}></textarea><div className="flex justify-end"><button onClick={() => analyserImport('standard')} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 flex items-center gap-2 transition-all active:scale-95"><Icone nom="cercle-ok" taille={16}/> Analyser et ajouter au tableau</button></div></div>)}
+                                    </div>
+                                    <div className="flex-1 overflow-auto p-4 bg-slate-50/30 custom-scrollbar">
+                                        <table className="w-full border-separate border-spacing-y-2">
+                                            <thead><tr className="text-[9px] font-black uppercase text-slate-400 tracking-widest"><th className="px-2 pb-2 text-left">Désignation</th><th className="px-2 pb-2 text-left w-28">Type</th><th className="px-2 pb-2 text-left w-16">Durée</th><th className="px-2 pb-2 text-center w-16">Prévus</th><th className="px-2 pb-2 text-center w-20">Formés</th><th className="px-2 pb-2 text-left w-20">Semaine</th><th className="px-2 pb-2 text-left w-28">Date</th><th className="px-2 pb-2 text-left w-24">Formateur</th><th className="px-2 pb-2 text-left w-24">Site</th><th className="px-2 pb-2 text-left w-32">Commentaire</th><th className="px-2 pb-2 text-right w-10"></th></tr></thead>
+                                            <tbody>
+                                                {lignesMultiples.map((row) => (
+                                                    <tr key={row.id} className="bg-white rounded-xl group transition-all hover:shadow-md border border-slate-100">
+                                                        <td className="p-1"><input className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500 shadow-inner" value={row.name || ''} onChange={e => miseAJourLigneMultiple(row.id, 'name', e.target.value)} placeholder="Nom..." /></td>
+                                                        <td className="p-1"><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-2 font-bold text-[10px] outline-none shadow-sm" value={row.type || ''} onChange={e => miseAJourLigneMultiple(row.id, 'type', e.target.value)}>{TYPES.map(t => <option key={t}>{t}</option>)}</select></td>
+                                                        <td className="p-1">{row.type === 'PSF' ? ( <select className="w-full bg-blue-50 border border-blue-200 rounded-lg px-1 py-2 font-bold text-xs outline-none shadow-sm text-blue-600" value={Math.round((row.duration || 0) * JOUR_EN_MINUTES)} onChange={e => miseAJourLigneMultiple(row.id, 'duration', parseInt(e.target.value) / JOUR_EN_MINUTES)}> {MINUTES_PSF.map(m => <option key={m} value={m}>{m} min</option>)} </select> ) : row.type === 'Projet Genesys' ? ( <select className="w-full bg-blue-50 border border-blue-200 rounded-lg px-1 py-2 font-bold text-[10px] outline-none shadow-sm text-blue-600" value={row.duration || ''} onChange={e => miseAJourLigneMultiple(row.id, 'duration', parseFloat(e.target.value))}> {GENESYS_DUREES.map(d => <option key={d.label} value={d.val}>{d.label}</option>)} </select> ) : ( <div className="relative"><input type="number" step="0.5" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-xs outline-none shadow-inner" value={row.duration !== undefined ? row.duration : ''} onChange={e => miseAJourLigneMultiple(row.id, 'duration', e.target.value)} /><span className="absolute right-2 top-2.5 text-[8px] font-black text-slate-400 uppercase">j</span></div> )}</td>
+                                                        <td className="p-1"><input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-2 font-bold text-xs outline-none shadow-inner text-center" value={row.agents !== undefined ? row.agents : ''} onChange={e => miseAJourLigneMultiple(row.id, 'agents', e.target.value)} placeholder="0" /></td>
+                                                        <td className="p-1"><input type="number" className="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-1 py-2 font-bold text-xs outline-none shadow-inner text-center focus:ring-2 focus:ring-emerald-500" value={row.agentsRealises !== undefined ? row.agentsRealises : ''} onChange={e => miseAJourLigneMultiple(row.id, 'agentsRealises', e.target.value)} placeholder="0" /></td>
+                                                        <td className="p-1"><input className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-xs outline-none shadow-inner uppercase" value={row.week || ''} onChange={e => { const val = e.target.value; const range = getWeekDateRange(val); let newDate = row.startDate; if (range && (!newDate || newDate < range.min || newDate > range.max)) newDate = range.min; setLignesMultiples(lignesMultiples.map(r => r.id === row.id ? { ...r, week: val, startDate: newDate } : r)); }} /></td>
+                                                        <td className="p-1"><input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-2 font-bold text-[10px] outline-none shadow-inner" value={row.startDate || ''} min={getWeekDateRange(row.week)?.min || ''} max={getWeekDateRange(row.week)?.max || ''} onChange={e => miseAJourLigneMultiple(row.id, 'startDate', e.target.value)} /></td>
+                                                        <td className="p-1"><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-2 font-bold text-xs outline-none shadow-sm" value={row.trainer || ''} onChange={e => miseAJourLigneMultiple(row.id, 'trainer', e.target.value)}>{TRAINERS.map(t => <option key={t}>{t}</option>)}</select></td>
+                                                        <td className="p-1"><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-2 font-bold text-[10px] outline-none shadow-sm" value={row.site || ''} onChange={e => miseAJourLigneMultiple(row.id, 'site', e.target.value)}>{SITES.map(s => <option key={s}>{s}</option>)}</select></td>
+                                                        <td className="p-1"><input className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-xs outline-none focus:ring-2 focus:ring-blue-500 shadow-inner" value={row.comment || ''} onChange={e => miseAJourLigneMultiple(row.id, 'comment', e.target.value)} placeholder="Notes..." /></td>
+                                                        <td className="p-1 text-center"><button onClick={() => setLignesMultiples(lignesMultiples.filter(r => r.id !== row.id))} className="text-slate-300 hover:text-rose-500 transition-colors p-1.5 bg-white rounded-lg shadow-sm border border-slate-100 hover:bg-rose-50"><Icone nom="poubelle" taille={14}/></button></td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <button onClick={() => setLignesMultiples([...lignesMultiples, { id: Date.now().toString() + lignesMultiples.length, name: '', type: 'Formation continue', week: 'S12', site: 'Rabat', trainer: 'Rachid', funding: 'Concentrix', agents: 12, agentsRealises: 0, duration: 1, startDate: new Date().toISOString().split('T')[0], status: 'Planifié', comment: '', isValidated: false }])} className="mt-4 flex items-center gap-2 text-blue-600 font-black uppercase text-xs tracking-widest hover:text-blue-500 transition-colors px-4 py-2 border-2 border-blue-100 rounded-2xl hover:bg-blue-50 bg-white shadow-sm"><Icone nom="plus" taille={16} /> Ajouter une ligne manuellement</button>
+                                    </div>
+                                    <div className="p-6 bg-white border-t border-slate-200 flex justify-between items-center shrink-0">
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">{lignesMultiples.length} session(s) prêtes à être enregistrées</p>
+                                        <div className="flex gap-4"><button onClick={() => setModalMultiple(false)} className="px-8 py-4 font-black uppercase text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-2xl transition-colors tracking-widest">Annuler tout</button><button onClick={() => enregistrerMultiples('standard')} className="bg-blue-600 text-white px-12 py-4 rounded-[2rem] font-black text-xs shadow-xl shadow-blue-500/20 active:scale-95 transition-all uppercase tracking-widest hover:bg-blue-500 flex items-center gap-2"><Icone nom="bouclier-ok" taille={16}/> Enregistrer tout d'un coup</button></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
+                        {modalMultiplePSF && peutEditer && (
+                            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl flex items-center justify-center z-50 p-4">
+                                <div className="bg-white rounded-[3rem] w-full max-w-[95vw] h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-slate-700/10">
+                                    <div className="p-8 bg-emerald-700 text-white flex justify-between items-center shrink-0">
+                                        <div><h2 className="text-2xl font-black uppercase tracking-tight">Saisie multiple PSF</h2><p className="text-emerald-200 text-xs font-bold uppercase tracking-widest mt-1">Import Excel & Saisie rapide</p></div>
+                                        <button onClick={() => setModalMultiplePSF(false)} className="text-3xl font-black text-emerald-200 hover:text-white transition-colors">×</button>
+                                    </div>
+                                    <div className="px-8 pt-6 pb-2 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                                        <div className="flex justify-between items-center mb-4"><button onClick={() => setAfficherImportExcel(!afficherImportExcel)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase transition-all ${afficherImportExcel ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'}`}><Icone nom="telecharger" taille={16} classe={afficherImportExcel ? 'rotate-180 transition-transform' : 'transition-transform'} /> {afficherImportExcel ? 'Fermer l\'importateur' : 'Importer depuis Excel'}</button>{afficherImportExcel && (<button onClick={telechargerTemplatePSF} className="text-emerald-600 hover:text-emerald-800 text-xs font-bold underline flex items-center gap-1"><Icone nom="telecharger" taille={14}/> Télécharger le modèle Excel PSF</button>)}</div>
+                                        {afficherImportExcel && (<div className="bg-white p-6 rounded-2xl border border-emerald-200 shadow-sm mb-4 animate-in slide-in-from-top-2"><p className="text-xs font-bold text-slate-500 mb-3">Collez ici les lignes copiées depuis votre fichier Excel PSF.</p><textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-[10px] font-mono focus:ring-2 focus:ring-emerald-500 outline-none mb-3 min-h-[120px] whitespace-pre resize-y" placeholder="Formation | Dates (séparées par virgule) | Durée (min) | Site | Cible (séparées par virgule) | Agents prévus | Agents réalisés | Deadline | Commentaires | Statut" value={texteImport} onChange={(e) => setTexteImport(e.target.value)}></textarea><div className="flex justify-end"><button onClick={() => analyserImport('PSF')} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 flex items-center gap-2 transition-all active:scale-95"><Icone nom="cercle-ok" taille={16}/> Analyser et ajouter</button></div></div>)}
+                                    </div>
+                                    <div className="flex-1 overflow-auto p-4 bg-slate-50/30 custom-scrollbar">
+                                        <table className="w-full border-separate border-spacing-y-2">
+                                            <thead><tr className="text-[9px] font-black uppercase text-slate-400 tracking-widest"><th className="px-2 pb-2 text-left">Désignation</th><th className="px-2 pb-2 text-left w-32">Dates (séparées par ,)</th><th className="px-2 pb-2 text-left w-20">Durée (min)</th><th className="px-2 pb-2 text-left w-24">Cible</th><th className="px-2 pb-2 text-center w-16">Prévus</th><th className="px-2 pb-2 text-center w-16">Formés</th><th className="px-2 pb-2 text-left w-24">Deadline</th><th className="px-2 pb-2 text-left w-24">Site</th><th className="px-2 pb-2 text-left w-32">Commentaire</th><th className="px-2 pb-2 text-right w-10"></th></tr></thead>
+                                            <tbody>
+                                                {lignesMultiplesPSF.map((row) => (
+                                                    <tr key={row.id} className="bg-white rounded-xl group transition-all hover:shadow-md border border-emerald-100">
+                                                        <td className="p-1"><input className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-xs outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner" value={row.name || ''} onChange={e => miseAJourLigneMultiplePSF(row.id, 'name', e.target.value)} placeholder="Nom..." /></td>
+                                                        <td className="p-1"><input className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-[10px] outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner" value={(row.dates || []).join(', ')} onChange={e => { const ds = e.target.value.split(',').map(d=>d.trim()).filter(Boolean); const wks = [...new Set(ds.map(d=>'S'+getISOWeek(new Date(d))))].join(', '); miseAJourLigneMultiplePSF(row.id, 'dates', ds); miseAJourLigneMultiplePSF(row.id, 'week', wks); miseAJourLigneMultiplePSF(row.id, 'startDate', ds[0]||''); }} placeholder="YYYY-MM-DD, ..." /></td>
+                                                        <td className="p-1"><select className="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-1 py-2 font-bold text-xs outline-none shadow-sm" value={Math.round((row.duration || 0) * JOUR_EN_MINUTES)} onChange={e => miseAJourLigneMultiplePSF(row.id, 'duration', parseInt(e.target.value) / JOUR_EN_MINUTES)}>{MINUTES_PSF.map(m => <option key={m} value={m}>{m} min</option>)}</select></td>
+                                                        <td className="p-1"><input className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-[10px] outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner" value={(row.cible || []).join(', ')} onChange={e => miseAJourLigneMultiplePSF(row.id, 'cible', e.target.value.split(',').map(c=>c.trim()).filter(Boolean))} placeholder="SAV, Digital..." /></td>
+                                                        <td className="p-1"><input type="number" className="w-full bg-rose-50 border border-rose-200 text-rose-700 rounded-lg px-1 py-2 font-bold text-xs outline-none shadow-inner text-center" value={row.agents !== undefined ? row.agents : ''} onChange={e => miseAJourLigneMultiplePSF(row.id, 'agents', e.target.value)} placeholder="0" /></td>
+                                                        <td className="p-1"><input type="number" className="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-1 py-2 font-bold text-xs outline-none shadow-inner text-center focus:ring-2 focus:ring-emerald-500" value={row.agentsRealises !== undefined ? row.agentsRealises : ''} onChange={e => miseAJourLigneMultiplePSF(row.id, 'agentsRealises', e.target.value)} placeholder="0" /></td>
+                                                        <td className="p-1"><input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-2 font-bold text-[10px] outline-none shadow-inner" value={row.deadline || ''} onChange={e => miseAJourLigneMultiplePSF(row.id, 'deadline', e.target.value)} /></td>
+                                                        <td className="p-1"><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-2 font-bold text-[10px] outline-none shadow-sm" value={row.site || ''} onChange={e => miseAJourLigneMultiplePSF(row.id, 'site', e.target.value)}>{SITES_TTT.map(s => <option key={s}>{s}</option>)}</select></td>
+                                                        <td className="p-1"><input className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-xs outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner" value={row.comment || ''} onChange={e => miseAJourLigneMultiplePSF(row.id, 'comment', e.target.value)} placeholder="Notes..." /></td>
+                                                        <td className="p-1 text-center"><button onClick={() => setLignesMultiplesPSF(lignesMultiplesPSF.filter(r => r.id !== row.id))} className="text-slate-300 hover:text-rose-500 transition-colors p-1.5 bg-white rounded-lg shadow-sm border border-slate-100 hover:bg-rose-50"><Icone nom="poubelle" taille={14}/></button></td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <button onClick={() => setLignesMultiplesPSF([...lignesMultiplesPSF, { id: Date.now().toString() + lignesMultiplesPSF.length, name: '', type: 'PSF', dates: [], week: '', site: 'Rabat', trainer: 'Rachid', funding: 'Concentrix', agents: 12, agentsRealises: 0, duration: 60/420, startDate: new Date().toISOString().split('T')[0], status: 'Planifié', comment: '', cible: [], deadline: '', isValidated: true }])} className="mt-4 flex items-center gap-2 text-emerald-600 font-black uppercase text-xs tracking-widest hover:text-emerald-500 transition-colors px-4 py-2 border-2 border-emerald-100 rounded-2xl hover:bg-emerald-50 bg-white shadow-sm"><Icone nom="plus" taille={16} /> Ajouter une ligne manuellement</button>
+                                    </div>
+                                    <div className="p-6 bg-white border-t border-slate-200 flex justify-between items-center shrink-0">
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">{lignesMultiplesPSF.length} session(s) PSF prêtes</p>
+                                        <div className="flex gap-4"><button onClick={() => setModalMultiplePSF(false)} className="px-8 py-4 font-black uppercase text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-2xl transition-colors tracking-widest">Annuler</button><button onClick={() => enregistrerMultiples('PSF')} className="bg-emerald-600 text-white px-12 py-4 rounded-[2rem] font-black text-xs shadow-xl shadow-emerald-500/20 active:scale-95 transition-all uppercase tracking-widest hover:bg-emerald-500 flex items-center gap-2"><Icone nom="bouclier-ok" taille={16}/> Enregistrer les PSF</button></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {modalMultipleTTT && peutEditer && (
+                            <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl flex items-center justify-center z-50 p-4">
+                                <div className="bg-white rounded-[3rem] w-full max-w-[95vw] h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-slate-700/10">
+                                    <div className="p-8 bg-amber-500 text-white flex justify-between items-center shrink-0">
+                                        <div><h2 className="text-2xl font-black uppercase tracking-tight">Saisie multiple TTT</h2><p className="text-amber-100 text-xs font-bold uppercase tracking-widest mt-1">Import Excel & Saisie rapide</p></div>
+                                        <button onClick={() => setModalMultipleTTT(false)} className="text-3xl font-black text-amber-200 hover:text-white transition-colors">×</button>
+                                    </div>
+                                    <div className="px-8 pt-6 pb-2 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                                        <div className="flex justify-between items-center mb-4"><button onClick={() => setAfficherImportExcel(!afficherImportExcel)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase transition-all ${afficherImportExcel ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'}`}><Icone nom="telecharger" taille={16} classe={afficherImportExcel ? 'rotate-180 transition-transform' : 'transition-transform'} /> {afficherImportExcel ? 'Fermer l\'importateur' : 'Importer depuis Excel'}</button>{afficherImportExcel && (<button onClick={telechargerTemplateTTT} className="text-amber-600 hover:text-amber-800 text-xs font-bold underline flex items-center gap-1"><Icone nom="telecharger" taille={14}/> Télécharger le modèle Excel TTT</button>)}</div>
+                                        {afficherImportExcel && (<div className="bg-white p-6 rounded-2xl border border-amber-200 shadow-sm mb-4 animate-in slide-in-from-top-2"><p className="text-xs font-bold text-slate-500 mb-3">Collez ici les lignes copiées depuis votre fichier Excel TTT.</p><textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-[10px] font-mono focus:ring-2 focus:ring-amber-500 outline-none mb-3 min-h-[120px] whitespace-pre resize-y" placeholder="Formation | Date (JJ/MM/AAAA) | Cible (séparées par virgule) | Commentaires | Durée (min) | Site | Statut" value={texteImport} onChange={(e) => setTexteImport(e.target.value)}></textarea><div className="flex justify-end"><button onClick={() => analyserImport('TTT')} className="bg-amber-500 hover:bg-amber-400 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all active:scale-95"><Icone nom="cercle-ok" taille={16}/> Analyser et ajouter</button></div></div>)}
+                                    </div>
+                                    <div className="flex-1 overflow-auto p-4 bg-slate-50/30 custom-scrollbar">
+                                        <table className="w-full border-separate border-spacing-y-2">
+                                            <thead><tr className="text-[9px] font-black uppercase text-slate-400 tracking-widest"><th className="px-2 pb-2 text-left">Thème / Formation</th><th className="px-2 pb-2 text-left w-32">Date</th><th className="px-2 pb-2 text-left w-20">Semaine</th><th className="px-2 pb-2 text-left w-48">Cible Formateurs</th><th className="px-2 pb-2 text-left w-24">Durée (min)</th><th className="px-2 pb-2 text-left w-32">Site</th><th className="px-2 pb-2 text-left w-48">Commentaire</th><th className="px-2 pb-2 text-right w-10"></th></tr></thead>
+                                            <tbody>
+                                                {lignesMultiplesTTT.map((row) => (
+                                                    <tr key={row.id} className="bg-white rounded-xl group transition-all hover:shadow-md border border-amber-100">
+                                                        <td className="p-1"><input className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-xs outline-none focus:ring-2 focus:ring-amber-500 shadow-inner" value={row.name || ''} onChange={e => miseAJourLigneMultipleTTT(row.id, 'name', e.target.value)} placeholder="Thème TTT..." /></td>
+                                                        <td className="p-1"><input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-[10px] outline-none focus:ring-2 focus:ring-amber-500 shadow-inner" value={row.startDate || ''} onChange={e => { miseAJourLigneMultipleTTT(row.id, 'startDate', e.target.value); miseAJourLigneMultipleTTT(row.id, 'week', 'S'+getISOWeek(new Date(e.target.value))); }} /></td>
+                                                        <td className="p-1"><input className="w-full bg-slate-100 text-slate-500 border border-slate-200 rounded-lg px-2 py-2 font-bold text-[10px] outline-none" value={row.week || ''} readOnly /></td>
+                                                        <td className="p-1"><input className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-[10px] outline-none focus:ring-2 focus:ring-amber-500 shadow-inner" value={(row.cible || []).join(', ')} onChange={e => { const cb = e.target.value.split(',').map(c=>c.trim()).filter(Boolean); miseAJourLigneMultipleTTT(row.id, 'cible', cb); miseAJourLigneMultipleTTT(row.id, 'trainer', cb.join(', ')); }} placeholder="Rachid, Ahmed..." /></td>
+                                                        <td className="p-1"><select className="w-full bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-1 py-2 font-bold text-xs outline-none shadow-sm" value={Math.round((row.duration || 0) * JOUR_EN_MINUTES)} onChange={e => miseAJourLigneMultipleTTT(row.id, 'duration', parseInt(e.target.value) / JOUR_EN_MINUTES)}>{MINUTES_PSF.map(m => <option key={m} value={m}>{m} min</option>)}</select></td>
+                                                        <td className="p-1"><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-2 font-bold text-[10px] outline-none shadow-sm" value={row.site || ''} onChange={e => miseAJourLigneMultipleTTT(row.id, 'site', e.target.value)}>{SITES_TTT.map(s => <option key={s}>{s}</option>)}</select></td>
+                                                        <td className="p-1"><input className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 font-bold text-xs outline-none focus:ring-2 focus:ring-amber-500 shadow-inner" value={row.comment || ''} onChange={e => miseAJourLigneMultipleTTT(row.id, 'comment', e.target.value)} placeholder="Notes..." /></td>
+                                                        <td className="p-1 text-center"><button onClick={() => setLignesMultiplesTTT(lignesMultiplesTTT.filter(r => r.id !== row.id))} className="text-slate-300 hover:text-rose-500 transition-colors p-1.5 bg-white rounded-lg shadow-sm border border-slate-100 hover:bg-rose-50"><Icone nom="poubelle" taille={14}/></button></td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <button onClick={() => setLignesMultiplesTTT([...lignesMultiplesTTT, { id: Date.now().toString() + lignesMultiplesTTT.length, name: '', type: 'FIM', startDate: new Date().toISOString().split('T')[0], week: 'S'+getISOWeek(new Date()), cible: ['Tous les formateurs'], comment: '', duration: 60/420, site: 'Rabat & Meknès', status: 'Planifié', isValidated: true, isTTT: true, trainer: 'Tous les formateurs' }])} className="mt-4 flex items-center gap-2 text-amber-600 font-black uppercase text-xs tracking-widest hover:text-amber-500 transition-colors px-4 py-2 border-2 border-amber-100 rounded-2xl hover:bg-amber-50 bg-white shadow-sm"><Icone nom="plus" taille={16} /> Ajouter une ligne manuellement</button>
+                                    </div>
+                                    <div className="p-6 bg-white border-t border-slate-200 flex justify-between items-center shrink-0">
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">{lignesMultiplesTTT.length} session(s) TTT prêtes</p>
+                                        <div className="flex gap-4"><button onClick={() => setModalMultipleTTT(false)} className="px-8 py-4 font-black uppercase text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-2xl transition-colors tracking-widest">Annuler</button><button onClick={() => enregistrerMultiples('TTT')} className="bg-amber-500 text-white px-12 py-4 rounded-[2rem] font-black text-xs shadow-xl shadow-amber-500/20 active:scale-95 transition-all uppercase tracking-widest hover:bg-amber-400 flex items-center gap-2"><Icone nom="bouclier-ok" taille={16}/> Enregistrer les TTT</button></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
