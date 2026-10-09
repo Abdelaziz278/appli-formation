@@ -263,6 +263,52 @@ table.tab td .lien-nom { white-space: nowrap; }
 .rapport { padding: 26px 30px; }
 .rapport-tete { border-bottom: 3px solid var(--violet); padding-bottom: 12px; margin-bottom: 14px; }
 @media print { .no-print, .entete { display: none !important; } .rapport { border: 0; padding: 0; } .app { display: block; } body { background: #fff; } .sec { break-after: avoid; } .tab tr { break-inside: avoid; } }
+
+/* ---------- V7 : interface modernisée (charte Tersea inchangée) ---------- */
+.side { width: 264px; padding: 18px 12px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.3) transparent; }
+.side nav { display: flex; flex-direction: column; gap: 1px; }
+.nav-titre { padding: 16px 12px 6px; }
+.nav-btn { padding: 8px 12px; border-radius: 10px; gap: 11px; transition: background .12s; }
+.nav-btn > span:first-of-type { flex: 1; min-width: 0; }
+.nav-btn .pastille { margin-left: 0; }
+.nav-btn:focus-visible, .btn:focus-visible, .input:focus-visible, .onglet:focus-visible, .lien-nom:focus-visible { outline: 3px solid rgba(10, 92, 255, .35); outline-offset: 1px; }
+.nav-btn:focus-visible { outline-color: var(--vert); }
+.main { padding: 26px 32px 64px; max-width: 1640px; }
+.entete h1 { font-size: 24px; }
+.kpi { position: relative; border-radius: 16px; box-shadow: 0 1px 2px rgba(42, 15, 61, .04); transition: box-shadow .15s, transform .15s; overflow: hidden; }
+.kpi::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--violet); opacity: .85; }
+.kpi:hover { box-shadow: 0 6px 18px rgba(42, 15, 61, .08); }
+.kpi.absent { background: #fbfafd; border-style: dashed; }
+.kpi.absent::before { background: #cbd5e1; }
+.kpi .val-etat { font-size: 17px; font-weight: 700; color: var(--encre-3); margin-top: 12px; margin-bottom: 4px; }
+.carte { box-shadow: 0 1px 2px rgba(42, 15, 61, .04); }
+.barre-haut { position: sticky; top: 0; z-index: 20; box-shadow: 0 4px 14px rgba(42, 15, 61, .06); }
+.btn { transition: background .12s, border-color .12s, box-shadow .12s; }
+.btn.primaire { box-shadow: 0 2px 6px rgba(10, 92, 255, .25); }
+.input:focus { border-color: var(--accent); }
+table.tab thead th { position: sticky; top: 0; background: #fff; }
+.vide { padding: 30px 14px; background: #fbfafd; border: 1px dashed var(--bord); border-radius: 12px; }
+.modal { box-shadow: 0 24px 60px rgba(42, 15, 61, .28); }
+.modal-fond { background: rgba(42, 15, 61, .5); backdrop-filter: blur(2px); }
+code { background: #f1f5f9; padding: 1px 6px; border-radius: 6px; font-size: 12px; }
+/* messages */
+.messages { position: fixed; right: 20px; bottom: 20px; z-index: 90; display: flex; flex-direction: column; gap: 8px; max-width: min(440px, calc(100vw - 40px)); }
+.message { display: flex; gap: 10px; align-items: flex-start; background: #fff; border: 1px solid var(--bord); border-left: 4px solid var(--ok); border-radius: 12px; padding: 12px 14px; box-shadow: 0 10px 30px rgba(42, 15, 61, .18); font-size: 13px; }
+.message.erreur { border-left-color: var(--critique); }
+.message > div { flex: 1; white-space: pre-line; }
+.message button { border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--encre-3); padding: 0 2px; }
+/* menu sur petit écran */
+.burger { display: none; }
+@media (max-width: 900px) {
+    .burger { display: inline-flex; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 40; width: 100%; border: 0; background: var(--prune); color: #fff; font-weight: 700; padding: 12px 16px; cursor: pointer; }
+    .side { display: none; width: 100%; }
+    .side.ouvert { display: flex; }
+    .barre-haut { position: static; }
+    .kpis { grid-template-columns: 1fr 1fr; }
+    .messages { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+}
+@media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
+@media print { .messages, .burger { display: none !important; } }
 </style>
 </head>
 <body>
@@ -419,6 +465,11 @@ const Icone = ({ nom, taille = 18 }) => {
     etoile: "M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2-6.2 3.2L7 14.2l-5-4.9 6.9-1z",
     bulle: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
     grille: "M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18",
+    coche: "M20 6L9 17l-5-5",
+    menu: "M3 6h18M3 12h18M3 18h18",
+    loupe: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35",
+    bouclier: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+    deux: "M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3",
     base: "M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"
   };
   return /* @__PURE__ */ React.createElement("svg", { width: taille, height: taille, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true", style: { flexShrink: 0 } }, /* @__PURE__ */ React.createElement("path", { d: chemins[nom] || "" }));
@@ -1279,7 +1330,7 @@ function useCollection(nom, surErreur) {
     try {
       localStorage.setItem(cle, JSON.stringify(suiv));
     } catch (e) {
-      alert("Le navigateur n'a plus de place pour enregistrer ces données en local.");
+      avertir("Le navigateur n'a plus de place pour enregistrer ces données en local.");
     }
   };
   return {
@@ -1368,7 +1419,7 @@ function App() {
       await setDoc(refDoc("parametres", "acces"), { adminUid: user.uid, email: user.email, date: Date.now() });
       setEtat("proprietaire");
     } catch (e) {
-      alert("Impossible d'enregistrer : " + e.message);
+      avertir("Impossible d'enregistrer : " + e.message);
     }
   };
   if (etat === "chargement") return /* @__PURE__ */ React.createElement("div", { className: "auth" }, /* @__PURE__ */ React.createElement("p", { style: { color: "#fff", fontWeight: 600 } }, "Chargement…"));
@@ -1424,6 +1475,13 @@ function Outil({ user, modeLocalInitial }) {
   const [fiche, setFiche] = useState(null);
   const [nouveauSuivi, setNouveauSuivi] = useState(null);
   const [nouvelleEcoute, setNouvelleEcoute] = useState(null);
+  const [nouvelleAction, setNouvelleAction] = useState(null);
+  const [menuOuvert, setMenuOuvert] = useState(false);
+  const aller = (v) => {
+    setVue(v);
+    setMenuOuvert(false);
+    window.scrollTo(0, 0);
+  };
   const conseillers = conseillersCol.items, sessions = sessionsCol.items, lots = lotsCol.items;
   const parId = useMemo(() => Object.fromEntries(conseillers.map((c) => [c.id, c])), [conseillers]);
   const parCle = useMemo(() => {
@@ -1541,8 +1599,14 @@ function Outil({ user, modeLocalInitial }) {
     }
     if (ar && ar.aClasser.length) t.push({ date: "", texte: `${pl(ar.aClasser.length, "verbatim")} ${ar.aClasser.length > 1 ? "négatifs" : "négatif"} à classer`, vue: "retours" });
     if (conflits.size) t.push({ date: "", texte: `${conflits.size} sessions se chevauchent pour un même formateur`, vue: "planning" });
+    let ds = "";
+    try {
+      ds = localStorage.getItem("tersea_derniere_sauvegarde") || "";
+    } catch (e) {
+    }
+    if (conseillers.length && (!ds || Date.now() - new Date(ds).getTime() > 7 * 864e5)) t.push({ date: "", texte: ds ? `Dernière sauvegarde le ${fmtDate(ds)} : pense à en refaire une` : "Aucune sauvegarde téléchargée depuis ce navigateur", vue: "sauvegardes" });
     return t.sort((a, b) => String(a.date || "9").localeCompare(String(b.date || "9")));
-  }, [actions, suivis, fSessions, ae, ar, conflits, parId]);
+  }, [actions, suivis, fSessions, ae, ar, conflits, parId, vue]);
   const ecrireLot = async (type, projet, activite, meta, rows, infos) => {
     const base = `${type}__${slug(projet)}__${slug(activite)}`;
     const morceaux = [];
@@ -1652,31 +1716,28 @@ function Outil({ user, modeLocalInitial }) {
     if ("lev" in champs) r[8] = champs.lev;
     await lotsCol.modifier(part.id, { json: JSON.stringify(rows) });
   };
-  const sauvegarde = () => telecharger(`Sauvegarde_Pilotage_GRC_${aujourdhui()}.json`, JSON.stringify({ version: 3, date: (/* @__PURE__ */ new Date()).toISOString(), ref, grilles: grillesCol.items, conseillers, sessions, lots, ecoutes: ecoutesCol.items, actions: actionsCol.items, suivis: suivisCol.items }), "application/json");
-  const restaurer = (e) => {
-    const f = e.target.files[0];
-    e.target.value = "";
-    if (!f) return;
-    const lecteur = new FileReader();
-    lecteur.onload = async () => {
-      try {
-        const d = JSON.parse(lecteur.result);
-        if (d.version !== 3 || !Array.isArray(d.conseillers) || !Array.isArray(d.lots)) throw new Error("format");
-        if (!confirm(`Restaurer cette sauvegarde du ${fmtDate(d.date)} ? Toutes les données actuelles de l'outil seront remplacées.`)) return;
-        if (d.ref) await enregistrerRef({ ...REF_DEFAUT, ...d.ref });
-        await conseillersCol.remplacerTout(d.conseillers);
-        await sessionsCol.remplacerTout(d.sessions || []);
-        await lotsCol.remplacerTout(d.lots);
-        await grillesCol.remplacerTout(d.grilles || []);
-        await ecoutesCol.remplacerTout(d.ecoutes || []);
-        await actionsCol.remplacerTout(d.actions || []);
-        await suivisCol.remplacerTout(d.suivis || []);
-        alert("Sauvegarde restaurée.");
-      } catch (err) {
-        alert("Ce fichier n'est pas une sauvegarde valide de l'outil.");
-      }
-    };
-    lecteur.readAsText(f);
+  const donneesSauvegarde = () => ({ version: 3, date: (/* @__PURE__ */ new Date()).toISOString(), ref, grilles: grillesCol.items, conseillers, sessions, lots, ecoutes: ecoutesCol.items, actions: actionsCol.items, suivis: suivisCol.items });
+  const telechargerSauvegarde = (prefixe) => {
+    const h = /* @__PURE__ */ new Date();
+    const nom = `${prefixe}_${aujourdhui()}_${pad(h.getHours())}h${pad(h.getMinutes())}.json`;
+    telecharger(nom, JSON.stringify(donneesSauvegarde()), "application/json");
+    try {
+      localStorage.setItem("tersea_derniere_sauvegarde", h.toISOString());
+    } catch (e) {
+    }
+    return nom;
+  };
+  const appliquerRestauration = async (d, progres = () => {
+  }) => {
+    if (d.ref) {
+      progres("Projets et référentiels…");
+      await enregistrerRef({ ...REF_DEFAUT, ...d.ref });
+    }
+    const etapes = [[conseillersCol, d.conseillers, "Agents"], [sessionsCol, d.sessions || [], "Formations"], [lotsCol, d.lots, "Données importées"], [grillesCol, d.grilles || [], "Grilles"], [ecoutesCol, d.ecoutes || [], "Écoutes"], [actionsCol, d.actions || [], "Plan d'action"], [suivisCol, d.suivis || [], "Accompagnements"]];
+    for (const [col, liste, lib] of etapes) {
+      progres(`Restauration en cours : ${lib}… ne ferme pas cette page.`);
+      await col.remplacerTout(liste);
+    }
   };
   const perimetre = filtres.projet ? libPA(filtres) : "Tous les projets";
   const ctx = {
@@ -1687,7 +1748,7 @@ function Outil({ user, modeLocalInitial }) {
     modeLocal,
     filtres,
     setFiltres,
-    setVue,
+    setVue: aller,
     projets,
     activitesDe,
     moisDispo,
@@ -1730,7 +1791,7 @@ function Outil({ user, modeLocalInitial }) {
     creerSuivi: (pre) => {
       setFiche(null);
       setNouveauSuivi(pre);
-      setVue("suivi");
+      setVue((v) => ["coaching", "doubles"].includes(v) ? v : "suivi");
     },
     nouveauSuivi,
     setNouveauSuivi,
@@ -1740,31 +1801,47 @@ function Outil({ user, modeLocalInitial }) {
       setVue("ecoutes");
     },
     nouvelleEcoute,
-    setNouvelleEcoute
+    setNouvelleEcoute,
+    creerAction: (pre) => {
+      setNouvelleAction(pre || {});
+      setVue("plan");
+    },
+    nouvelleAction,
+    setNouvelleAction,
+    donneesSauvegarde,
+    telechargerSauvegarde,
+    appliquerRestauration
   };
   const TITRES = {
-    accueil: ["Mon poste de pilotage", "Ce que je dois faire, ce que j'ai fait, et ce que ça donne"],
-    plan: ["Plan d'action", "Les actions GRC, leur avancement et leurs résultats"],
-    suivi: ["Accompagnements", "Coachings de proximité, doubles écoutes, débriefs : ce que je fais avec chaque agent"],
-    efficacite: ["Évolution et efficacité", "Avant / après : le plan d'action porte-t-il ses fruits, ou faut-il le réajuster ?"],
-    rapport: ["Rapport", "La synthèse à partager avec les parties prenantes"],
-    carto: ["Cartographie des agents", "Groupes de niveau et agents prioritaires, toutes sources croisées"],
+    accueil: ["Tableau de bord", "Ce que je dois faire, ce que j'ai fait, et ce que ça donne"],
+    diagnostic: ["Diagnostic et priorités", "Compétences maîtrisées, écarts récurrents, agents prioritaires : sur quoi agir"],
+    plan: ["Plans d'action", "Les actions GRC, leur avancement et ce que le terrain en dit"],
+    suivi: ["Accompagnements", "Tous les accompagnements : coachings, doubles écoutes, débriefs, ateliers"],
+    rapport: ["Reporting", "La synthèse à partager avec les parties prenantes"],
+    conseillers: ["Agents", "La liste des agents de chaque projet et leur fiche"],
+    grilles: ["Grilles GRC", "Les grilles d'évaluation de chaque activité"],
+    ecoutes: ["Évaluations", "J'évalue ici mes écoutes, à froid ou en double écoute, avec la grille GRC"],
     qualite: ["Écoutes qualité", "Analyse des évaluations du service qualité"],
-    retours: ["Satisfaction client", "Analyse de l'enquête de satisfaction (SATCLI) et des verbatims"],
-    ecoutes: ["Écoutes GRC", "J'évalue ici mes écoutes, à froid ou en double écoute, avec la grille GRC"],
-    formations: ["Formations & ateliers", "Sessions planifiées et réalisées, participation, validation des acquis"],
+    retours: ["SATCLI", "Analyse de l'enquête de satisfaction client et des verbatims"],
+    carto: ["Cartographies", "Groupes de niveau et agents prioritaires, toutes sources croisées"],
+    coaching: ["Coaching", "Mes coachings de proximité, agent par agent"],
+    doubles: ["Doubles écoutes", "Les doubles écoutes débriefées avec les agents"],
+    formations: ["Formations et ateliers", "Sessions réalisées, participation, validation des acquis"],
+    efficacite: ["Suivi post-intervention", "Avant / après : l'action a-t-elle porté, ou faut-il réajuster ?"],
     planning: ["Planning", "Sessions et accompagnements de la semaine"],
     projets: ["Projets et activités", "Les projets que je suis, et leurs activités"],
-    conseillers: ["Agents", "La liste des agents de chaque projet"],
-    donnees: ["Données", "Importer les fichiers Excel et gérer les données chargées"]
+    referentiels: ["Référentiels", "Formateurs, types de formation, sites"],
+    parametres: ["Paramètres", "Sécurité de la base, compte propriétaire, règles de calcul"],
+    donnees: ["Import / export", "Importer les fichiers Excel et gérer les données chargées"],
+    sauvegardes: ["Sauvegardes", "Sauvegarder, restaurer, revenir en arrière"]
   };
   const retardsPlan = actions.filter(actionEnRetard).length, retardsSuivi = suivis.filter(suiviEnRetard).length;
-  const Nav = ({ id, icone, libelle, pastille }) => /* @__PURE__ */ React.createElement("button", { className: `nav-btn ${vue === id ? "actif" : ""}`, onClick: () => setVue(id) }, /* @__PURE__ */ React.createElement(Icone, { nom: icone }), " ", libelle, pastille ? /* @__PURE__ */ React.createElement("span", { className: "pastille" }, pastille) : null);
-  const sansFiltre = ["donnees", "projets", "conseillers"].includes(vue);
-  return /* @__PURE__ */ React.createElement("div", { className: "app" }, /* @__PURE__ */ React.createElement("aside", { className: "side" }, /* @__PURE__ */ React.createElement("div", { className: "marque" }, /* @__PURE__ */ React.createElement("div", { className: "marque-logo" }, /* @__PURE__ */ React.createElement("img", { src: "logo.png", alt: "", onError: (e) => {
+  const Nav = ({ id, icone, libelle, pastille }) => /* @__PURE__ */ React.createElement("button", { className: `nav-btn ${vue === id ? "actif" : ""}`, "aria-current": vue === id ? "page" : void 0, onClick: () => aller(id) }, /* @__PURE__ */ React.createElement(Icone, { nom: icone }), " ", /* @__PURE__ */ React.createElement("span", null, libelle), pastille ? /* @__PURE__ */ React.createElement("span", { className: "pastille" }, pastille) : null);
+  const sansFiltre = ["donnees", "projets", "referentiels", "conseillers", "parametres", "sauvegardes", "grilles"].includes(vue);
+  return /* @__PURE__ */ React.createElement("div", { className: "app" }, /* @__PURE__ */ React.createElement(Messages, null), /* @__PURE__ */ React.createElement("button", { className: "burger no-print", onClick: () => setMenuOuvert(!menuOuvert), "aria-expanded": menuOuvert, "aria-label": "Ouvrir ou fermer le menu" }, /* @__PURE__ */ React.createElement(Icone, { nom: "menu" }), " Menu"), /* @__PURE__ */ React.createElement("aside", { className: `side ${menuOuvert ? "ouvert" : ""}` }, /* @__PURE__ */ React.createElement("div", { className: "marque" }, /* @__PURE__ */ React.createElement("div", { className: "marque-logo" }, /* @__PURE__ */ React.createElement("img", { src: "logo.png", alt: "", onError: (e) => {
     e.target.style.display = "none";
     e.target.parentNode.textContent = "T";
-  } })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "marque-titre" }, "Pilotage GRC"), /* @__PURE__ */ React.createElement("div", { className: "marque-sous" }, "Tersea · Formation"))), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Pilotage"), /* @__PURE__ */ React.createElement(Nav, { id: "accueil", icone: "accueil", libelle: "Tableau de bord", pastille: aTraiter.length || null }), /* @__PURE__ */ React.createElement(Nav, { id: "plan", icone: "liste", libelle: "Plan d'action", pastille: retardsPlan || null }), /* @__PURE__ */ React.createElement(Nav, { id: "suivi", icone: "utilisateurs", libelle: "Accompagnements", pastille: retardsSuivi || null }), /* @__PURE__ */ React.createElement(Nav, { id: "efficacite", icone: "tendance", libelle: "Évolution et efficacité" }), /* @__PURE__ */ React.createElement(Nav, { id: "rapport", icone: "telecharger", libelle: "Rapport" }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Analyses"), /* @__PURE__ */ React.createElement(Nav, { id: "carto", icone: "cible", libelle: "Cartographie" }), /* @__PURE__ */ React.createElement(Nav, { id: "retours", icone: "bulle", libelle: "Satisfaction client", pastille: ar && ar.aClasser.length ? ar.aClasser.length : null }), /* @__PURE__ */ React.createElement(Nav, { id: "qualite", icone: "etoile", libelle: "Écoutes qualité" }), /* @__PURE__ */ React.createElement(Nav, { id: "ecoutes", icone: "casque", libelle: "Écoutes GRC" }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Organisation"), /* @__PURE__ */ React.createElement(Nav, { id: "formations", icone: "livre", libelle: "Formations" }), /* @__PURE__ */ React.createElement(Nav, { id: "planning", icone: "calendrier", libelle: "Planning", pastille: conflits.size || null }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Paramétrage"), /* @__PURE__ */ React.createElement(Nav, { id: "projets", icone: "reglages", libelle: "Projets et activités" }), /* @__PURE__ */ React.createElement(Nav, { id: "conseillers", icone: "grille", libelle: "Agents" }), /* @__PURE__ */ React.createElement(Nav, { id: "donnees", icone: "base", libelle: "Données" }), /* @__PURE__ */ React.createElement("div", { className: "side-bas" }, /* @__PURE__ */ React.createElement("div", { className: "qui" }, /* @__PURE__ */ React.createElement("b", null, modeLocal ? "Mode local" : "Mon outil"), user.email), /* @__PURE__ */ React.createElement("button", { className: "btn sombre", onClick: sauvegarde }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Sauvegarde complète"), /* @__PURE__ */ React.createElement("label", { className: "btn sombre", style: { cursor: "pointer" } }, "Restaurer une sauvegarde", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", hidden: true, onChange: restaurer })), /* @__PURE__ */ React.createElement("button", { className: "btn sombre", onClick: () => signOut(auth) }, /* @__PURE__ */ React.createElement(Icone, { nom: "sortie", taille: 15 }), " Déconnexion"))), /* @__PURE__ */ React.createElement("main", { className: "main" }, modeLocal && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Mode local."), " La base en ligne refuse l'accès : les données sont enregistrées uniquement dans ce navigateur. Vérifie que les règles de sécurité Firebase ont bien été publiées (fichier « regles-firestore.txt »).")), /* @__PURE__ */ React.createElement("div", { className: "entete" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h1", null, TITRES[vue][0]), /* @__PURE__ */ React.createElement("p", null, TITRES[vue][1]))), !sansFiltre && /* @__PURE__ */ React.createElement("div", { className: "barre-haut" }, /* @__PURE__ */ React.createElement(Champ, { libelle: "Projet" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.projet, onChange: (v) => setFiltres({ ...filtres, projet: v, activite: "" }), options: projets, vide: "Tous les projets" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Activité" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.activite, onChange: (v) => setFiltres({ ...filtres, activite: v }), options: activitesDe(filtres.projet), vide: filtres.projet ? "Toutes les activités" : "Choisir un projet", disabled: !filtres.projet })), vue !== "planning" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Champ, { libelle: "Du mois" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.du, onChange: (v) => setFiltres({ ...filtres, du: v, au: filtres.au && v && filtres.au < v ? v : filtres.au }), options: moisDispo.map((m) => ({ v: m, lib: libMois(m) })), vide: "Début" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Au mois" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.au, onChange: (v) => setFiltres({ ...filtres, au: v, du: filtres.du && v && filtres.du > v ? v : filtres.du }), options: moisDispo.map((m) => ({ v: m, lib: libMois(m) })), vide: "Fin" }))), (filtres.projet || filtres.du || filtres.au) && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFiltres({ projet: "", activite: "", du: "", au: "" }) }, "Réinitialiser")), vue === "accueil" && /* @__PURE__ */ React.createElement(VueTableauBord, { ctx }), vue === "plan" && /* @__PURE__ */ React.createElement(VuePlan, { ctx }), vue === "suivi" && /* @__PURE__ */ React.createElement(VueSuivi, { ctx }), vue === "efficacite" && /* @__PURE__ */ React.createElement(VueEfficacite, { ctx }), vue === "rapport" && /* @__PURE__ */ React.createElement(VueRapport, { ctx }), vue === "carto" && /* @__PURE__ */ React.createElement(VueCarto, { ctx }), vue === "qualite" && /* @__PURE__ */ React.createElement(VueQualite, { ctx }), vue === "retours" && /* @__PURE__ */ React.createElement(VueRetours, { ctx }), vue === "ecoutes" && /* @__PURE__ */ React.createElement(VueEcoutes, { ctx }), vue === "formations" && /* @__PURE__ */ React.createElement(VueFormations, { ctx }), vue === "planning" && /* @__PURE__ */ React.createElement(VuePlanning, { ctx }), vue === "projets" && /* @__PURE__ */ React.createElement(VueProjets, { ctx }), vue === "conseillers" && /* @__PURE__ */ React.createElement(VueConseillers, { ctx }), vue === "donnees" && /* @__PURE__ */ React.createElement(VueDonnees, { ctx }), fiche && /* @__PURE__ */ React.createElement(FicheConseiller, { id: fiche, ctx, onFermer: () => setFiche(null) })));
+  } })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "marque-titre" }, "GRC Pilot"), /* @__PURE__ */ React.createElement("div", { className: "marque-sous" }, "Tersea · V7"))), /* @__PURE__ */ React.createElement("nav", { "aria-label": "Navigation principale" }, /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Pilotage"), /* @__PURE__ */ React.createElement(Nav, { id: "accueil", icone: "accueil", libelle: "Tableau de bord", pastille: aTraiter.length || null }), /* @__PURE__ */ React.createElement(Nav, { id: "diagnostic", icone: "loupe", libelle: "Diagnostic et priorités" }), /* @__PURE__ */ React.createElement(Nav, { id: "plan", icone: "liste", libelle: "Plans d'action", pastille: retardsPlan || null }), /* @__PURE__ */ React.createElement(Nav, { id: "suivi", icone: "utilisateurs", libelle: "Accompagnements", pastille: retardsSuivi || null }), /* @__PURE__ */ React.createElement(Nav, { id: "rapport", icone: "telecharger", libelle: "Reporting" }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Évaluation et analyse"), /* @__PURE__ */ React.createElement(Nav, { id: "conseillers", icone: "grille", libelle: "Agents" }), /* @__PURE__ */ React.createElement(Nav, { id: "grilles", icone: "reglages", libelle: "Grilles GRC" }), /* @__PURE__ */ React.createElement(Nav, { id: "ecoutes", icone: "casque", libelle: "Évaluations" }), /* @__PURE__ */ React.createElement(Nav, { id: "qualite", icone: "etoile", libelle: "Écoutes qualité" }), /* @__PURE__ */ React.createElement(Nav, { id: "retours", icone: "bulle", libelle: "SATCLI", pastille: ar && ar.aClasser.length ? ar.aClasser.length : null }), /* @__PURE__ */ React.createElement(Nav, { id: "carto", icone: "cible", libelle: "Cartographies" }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Développement des compétences"), /* @__PURE__ */ React.createElement(Nav, { id: "coaching", icone: "utilisateurs", libelle: "Coaching" }), /* @__PURE__ */ React.createElement(Nav, { id: "doubles", icone: "deux", libelle: "Doubles écoutes" }), /* @__PURE__ */ React.createElement(Nav, { id: "formations", icone: "livre", libelle: "Formations et ateliers" }), /* @__PURE__ */ React.createElement(Nav, { id: "efficacite", icone: "tendance", libelle: "Suivi post-intervention" }), /* @__PURE__ */ React.createElement(Nav, { id: "planning", icone: "calendrier", libelle: "Planning", pastille: conflits.size || null }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Administration"), /* @__PURE__ */ React.createElement(Nav, { id: "projets", icone: "accueil", libelle: "Projets et activités" }), /* @__PURE__ */ React.createElement(Nav, { id: "referentiels", icone: "liste", libelle: "Référentiels" }), /* @__PURE__ */ React.createElement(Nav, { id: "parametres", icone: "bouclier", libelle: "Paramètres" }), /* @__PURE__ */ React.createElement(Nav, { id: "donnees", icone: "importer", libelle: "Import / export" }), /* @__PURE__ */ React.createElement(Nav, { id: "sauvegardes", icone: "base", libelle: "Sauvegardes" })), /* @__PURE__ */ React.createElement("div", { className: "side-bas" }, /* @__PURE__ */ React.createElement("div", { className: "qui" }, /* @__PURE__ */ React.createElement("b", null, modeLocal ? "Mode local" : "Mon outil"), user.email), /* @__PURE__ */ React.createElement("button", { className: "btn sombre", onClick: () => signOut(auth) }, /* @__PURE__ */ React.createElement(Icone, { nom: "sortie", taille: 15 }), " Déconnexion"))), /* @__PURE__ */ React.createElement("main", { className: "main" }, modeLocal && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Mode local."), " La base en ligne refuse l'accès : les données sont enregistrées uniquement dans ce navigateur. Vérifie que les règles de sécurité Firebase ont bien été publiées (fichier « regles-firestore.txt »).")), /* @__PURE__ */ React.createElement("div", { className: "entete" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h1", null, TITRES[vue][0]), /* @__PURE__ */ React.createElement("p", null, TITRES[vue][1]))), !sansFiltre && /* @__PURE__ */ React.createElement("div", { className: "barre-haut" }, /* @__PURE__ */ React.createElement(Champ, { libelle: "Projet" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.projet, onChange: (v) => setFiltres({ ...filtres, projet: v, activite: "" }), options: projets, vide: "Tous les projets" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Activité" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.activite, onChange: (v) => setFiltres({ ...filtres, activite: v }), options: activitesDe(filtres.projet), vide: filtres.projet ? "Toutes les activités" : "Choisir un projet", disabled: !filtres.projet })), vue !== "planning" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Champ, { libelle: "Du mois" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.du, onChange: (v) => setFiltres({ ...filtres, du: v, au: filtres.au && v && filtres.au < v ? v : filtres.au }), options: moisDispo.map((m) => ({ v: m, lib: libMois(m) })), vide: "Début" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Au mois" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.au, onChange: (v) => setFiltres({ ...filtres, au: v, du: filtres.du && v && filtres.du > v ? v : filtres.du }), options: moisDispo.map((m) => ({ v: m, lib: libMois(m) })), vide: "Fin" }))), (filtres.projet || filtres.du || filtres.au) && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFiltres({ projet: "", activite: "", du: "", au: "" }) }, "Réinitialiser")), vue === "accueil" && /* @__PURE__ */ React.createElement(VueTableauBord, { ctx }), vue === "diagnostic" && /* @__PURE__ */ React.createElement(VueDiagnostic, { ctx }), vue === "grilles" && /* @__PURE__ */ React.createElement(VueGrilles, { ctx }), vue === "coaching" && /* @__PURE__ */ React.createElement(VueSuivi, { key: "coaching", ctx, typeFixe: "Coaching de proximité" }), vue === "doubles" && /* @__PURE__ */ React.createElement(VueSuivi, { key: "doubles", ctx, typeFixe: "Double écoute" }), vue === "referentiels" && /* @__PURE__ */ React.createElement(VueProjets, { key: "referentiels", ctx, partie: "referentiels" }), vue === "parametres" && /* @__PURE__ */ React.createElement(VueParametres, { ctx }), vue === "sauvegardes" && /* @__PURE__ */ React.createElement(VueSauvegardes, { ctx }), vue === "plan" && /* @__PURE__ */ React.createElement(VuePlan, { ctx }), vue === "suivi" && /* @__PURE__ */ React.createElement(VueSuivi, { key: "tous", ctx }), vue === "efficacite" && /* @__PURE__ */ React.createElement(VueEfficacite, { ctx }), vue === "rapport" && /* @__PURE__ */ React.createElement(VueRapport, { ctx }), vue === "carto" && /* @__PURE__ */ React.createElement(VueCarto, { ctx }), vue === "qualite" && /* @__PURE__ */ React.createElement(VueQualite, { ctx }), vue === "retours" && /* @__PURE__ */ React.createElement(VueRetours, { ctx }), vue === "ecoutes" && /* @__PURE__ */ React.createElement(VueEcoutes, { ctx }), vue === "formations" && /* @__PURE__ */ React.createElement(VueFormations, { ctx }), vue === "planning" && /* @__PURE__ */ React.createElement(VuePlanning, { ctx }), vue === "projets" && /* @__PURE__ */ React.createElement(VueProjets, { key: "projets", ctx, partie: "projets" }), vue === "conseillers" && /* @__PURE__ */ React.createElement(VueConseillers, { ctx }), vue === "donnees" && /* @__PURE__ */ React.createElement(VueDonnees, { ctx }), fiche && /* @__PURE__ */ React.createElement(FicheConseiller, { id: fiche, ctx, onFermer: () => setFiche(null) })));
 }
 function VueTableauBord({ ctx }) {
   const { aq, ar, ae, actions, suivis, fSessions, aTraiter, setVue, qTout, ouvrirFiche, filtres, ref, conseillers, jeux, perimetre, creerSuivi, creerEcoute, ecoutesCol, ok, peutEditer, grilles } = ctx;
@@ -1789,6 +1866,9 @@ function VueTableauBord({ ctx }) {
   const mois = [.../* @__PURE__ */ new Set([...aq ? aq.mois : [], ...ar ? ar.mois : []])].sort();
   const series = [aq && { nom: "Note qualité", valeurs: mois.map((m) => (aq.parMois.find((x) => x.mois === m) || {}).note ?? null) }, ar && { nom: "Satisfaction conseiller", valeurs: mois.map((m) => (ar.parMois.find((x) => x.mois === m) || {}).sat ?? null) }].filter(Boolean);
   const topEcarts = aq ? aq.items.filter((i) => i.grc && i.ecarts >= 10).sort((a, b) => a.priorite.localeCompare(b.priorite) || b.ecarts - a.ecarts).slice(0, 6) : [];
+  const agentsActifs = ctx.fConseillers.filter((c) => c.statut !== "Sorti");
+  const touches = /* @__PURE__ */ new Set([...ae ? ae.parAgent.map((a) => a.id) : [], ...suivis.map((s) => s.conseillerId)]);
+  const agentsEvalues = agentsActifs.filter((c) => touches.has(c.id)).length;
   const ceMois = aujourdhui().slice(0, 7);
   const ecMois = ecoutesCol.items.filter((x) => ok(x) && moisDe(x.date) === ceMois);
   const accMois = suivis.filter((s) => moisDe(s.dateRealisee) === ceMois);
@@ -1818,18 +1898,23 @@ function VueTableauBord({ ctx }) {
     ["Action du plan", "Statut", "Échéance", "Avancement", "Résultat"],
     ...actions.map((a) => [a.action, a.statut, fmtDate(a.echeance), avancementDe(a) + " %", a.resultat])
   ]);
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 14 } }, peutEditer && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => creerEcoute(pre), disabled: !grilles.length }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Écoute GRC"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => creerEcoute({ ...pre, mode: MODES_ECOUTE[1] }), disabled: !grilles.length }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Double écoute"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => creerSuivi({ ...pre, type: "Coaching de proximité" }) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Coaching de proximité")), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: exporter }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Exporter les chiffres (Excel)"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setVue("rapport") }, "Préparer le rapport à partager")), /* @__PURE__ */ React.createElement("div", { className: "kpis" }, aq && /* @__PURE__ */ React.createElement(Kpi, { lib: "Note qualité moyenne", val: fr(aq.noteMoy * 100, 1), unite: "%", det: `${aq.n} évaluations · ${aq.nbConseillers} conseillers`, jauge: aq.noteMoy * 100 }), aq && /* @__PURE__ */ React.createElement(Kpi, { lib: "Appels avec au moins un écart GRC", val: fr(aq.pctEcart * 100, 1), unite: "%", det: `${p100(aq.parts[0].part, 0)} des écarts relèvent de la GRC`, jauge: aq.pctEcart * 100 }), ar && /* @__PURE__ */ React.createElement(Kpi, { lib: "Satisfaction conseiller", val: fr(ar.sat * 100, 1), unite: "%", det: `${ar.n} réponses · NPS ${ar.nps} · ${ar.insat} insatisfaits`, jauge: ar.sat * 100 }), (aq || ar) && /* @__PURE__ */ React.createElement(Kpi, { lib: "Conseillers prioritaires", val: nbPrio, det: `${prioQ.length} en qualité · ${prioR.length} en satisfaction · ${deux.length} sur les deux` }), /* @__PURE__ */ React.createElement(Kpi, { lib: "Avancement du plan d'action", val: avanc === null ? "—" : Math.round(avanc), unite: "%", det: actifs.length ? `${pl(realisees, "réalisée")} sur ${actifs.length} · ${retards} en retard` : "Aucune action enregistrée", jauge: avanc }), /* @__PURE__ */ React.createElement(Kpi, { lib: `Mon activité terrain · ${libMois(ceMois)}`, val: ecMois.length + accMois.length, det: `${pl(ecMois.length, "écoute")} GRC (dont ${ecMois.filter(estDouble).length} en double écoute) · ${pl(accMois.filter((s) => typeDe(s) === "Coaching de proximité").length, "coaching")} de proximité · ${accMois.filter((s) => typeDe(s) !== "Coaching de proximité").length} autre(s) accompagnement(s)` }), /* @__PURE__ */ React.createElement(Kpi, { lib: "Accompagnements en cours", val: enCours, det: impacts.length ? `${enProgres} conseillers en progression sur ${impacts.length} mesurés` : `${suivis.length - enCours} clôturés` }), ae && /* @__PURE__ */ React.createElement(Kpi, { lib: "Score moyen des écoutes GRC", val: fr((ae.scoreMoyen || 0) * 100, 1), unite: "%", det: `${pl(ae.nbCompletes, "écoute")} · ${pl(ae.nbAgents, "agent")}`, jauge: (ae.scoreMoyen || 0) * 100 }), fSessions.length > 0 && /* @__PURE__ */ React.createElement(Kpi, { lib: "Réalisation des formations planifiées", val: aff(pct(is.real, is.echues)), unite: "%", det: `${pl(is.real, "réalisée")} sur ${is.echues} à date · participation ${aff(pct(is.presents, is.prevus), " %")}`, jauge: pct(is.real, is.echues) })), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "À traiter"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Ce qui est en retard ou demande une action de ta part."), aTraiter.length === 0 ? /* @__PURE__ */ React.createElement(Vide, null, "Rien en retard.") : /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("tbody", null, aTraiter.slice(0, 12).map((x, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, /* @__PURE__ */ React.createElement("td", { style: { width: 100 } }, fmtDate(x.date) || "—"), /* @__PURE__ */ React.createElement("td", null, x.texte), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => setVue(x.vue) }, "Ouvrir")))))), aTraiter.length > 12 && /* @__PURE__ */ React.createElement("p", { className: "sous", style: { marginTop: 8 } }, "… et ", aTraiter.length - 12, " autres.")), series.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Évolution mensuelle"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Note qualité moyenne des évaluations et part des clients satisfaits du conseiller."), /* @__PURE__ */ React.createElement(Courbe, { categories: mois.map(libMoisCourt), series })), /* @__PURE__ */ React.createElement("div", { className: "deux" }, aq && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Écarts GRC à travailler en priorité"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Évaluations qualité : items fréquents, pénalisants, ou les deux."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Remarque de l'évaluateur"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Écarts"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Points perdus"), /* @__PURE__ */ React.createElement("th", null, "Priorité"))), /* @__PURE__ */ React.createElement("tbody", null, topEcarts.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.nom }, /* @__PURE__ */ React.createElement("td", null, i.remarque, /* @__PURE__ */ React.createElement("div", { className: "petit" }, i.famille)), /* @__PURE__ */ React.createElement("td", { className: "num" }, i.ecarts), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.perdus, 1)), /* @__PURE__ */ React.createElement("td", null, i.priorite)))))), /* @__PURE__ */ React.createElement("button", { className: "btn mini", style: { marginTop: 10 }, onClick: () => setVue("qualite") }, "Voir l'analyse complète")), ar && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Ce que les clients reprochent au conseiller"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Verbatims négatifs classés, cause principale et secondaire."), ar.comportements.length ? /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Comportement reproché"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Retours"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Conseillers"))), /* @__PURE__ */ React.createElement("tbody", null, [...ar.comportements].sort((a, b) => b.n - a.n).slice(0, 6).map((c) => /* @__PURE__ */ React.createElement("tr", { key: c.code }, /* @__PURE__ */ React.createElement("td", null, c.remarque, /* @__PURE__ */ React.createElement("div", { className: "petit" }, c.axe)), /* @__PURE__ */ React.createElement("td", { className: "num" }, c.n), /* @__PURE__ */ React.createElement("td", { className: "num" }, c.conseillers)))))) : /* @__PURE__ */ React.createElement(Vide, null, "Aucun verbatim classé « conseiller »."), /* @__PURE__ */ React.createElement("button", { className: "btn mini", style: { marginTop: 10 }, onClick: () => setVue("retours") }, "Voir l'analyse complète"))), nbPrio > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Conseillers prioritaires"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Résultat significativement en dessous de l'équipe. Clique sur un nom pour ouvrir sa fiche."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Conseiller"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Note qualité"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Satisfaction"), /* @__PURE__ */ React.createElement("th", null, "Principal écart GRC"), /* @__PURE__ */ React.createElement("th", null, "Suivi en cours"))), /* @__PURE__ */ React.createElement("tbody", null, [...new Set([...deux, ...prioQ, ...prioR].map((c) => c.k))].map((k) => {
-    const q = aq && aq.parConseiller.find((c) => c.k === k), r = ar && ar.parConseiller.find((c) => c.k === k);
-    const s = suivis.find((x) => x.conseillerId === k && x.statut !== "Clôturé");
-    return /* @__PURE__ */ React.createElement("tr", { key: k }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("button", { className: "lien-nom", onClick: () => ouvrirFiche(k) }, (q || r).nom)), /* @__PURE__ */ React.createElement("td", { className: "num" }, q ? p100(q.note) : "—", " ", q && /* @__PURE__ */ React.createElement(Badge, { s: q.statut })), /* @__PURE__ */ React.createElement("td", { className: "num" }, r ? p100(r.sat) : "—", " ", r && /* @__PURE__ */ React.createElement(Badge, { s: r.statut })), /* @__PURE__ */ React.createElement("td", null, q ? q.principal : "—"), /* @__PURE__ */ React.createElement("td", null, s ? /* @__PURE__ */ React.createElement(Badge, { s: s.statut }) : /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Aucun")));
-  }))))));
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 14 } }, peutEditer && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => creerEcoute(pre), disabled: !grilles.length }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Écoute GRC"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => creerEcoute({ ...pre, mode: MODES_ECOUTE[1] }), disabled: !grilles.length }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Double écoute"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => creerSuivi({ ...pre, type: "Coaching de proximité" }) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Coaching de proximité")), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: exporter }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Exporter les chiffres (Excel)"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setVue("rapport") }, "Préparer le rapport à partager")), /* @__PURE__ */ React.createElement("div", { className: "kpis" }, /* @__PURE__ */ React.createElement(Kpi, { lib: "Agents suivis", val: agentsActifs.length, det: `${agentsEvalues} avec au moins une évaluation ou un accompagnement` }), ae ? /* @__PURE__ */ React.createElement(Kpi, { lib: "Score GRC global", val: fr((ae.scoreMoyen || 0) * 100, 1), unite: "%", det: `${pl(ae.nbCompletes, "évaluation")} complète${ae.nbCompletes > 1 ? "s" : ""} · ${pl(ae.nbAgents, "agent")}${ae.nbACompleter ? ` · ${ae.nbACompleter} à compléter` : ""}`, jauge: (ae.scoreMoyen || 0) * 100 }) : /* @__PURE__ */ React.createElement(KpiEtat, { lib: "Score GRC global", etat: grilles.filter(ok).length ? "Aucune évaluation" : "Indisponible", det: grilles.filter(ok).length ? "Aucune écoute GRC sur ce périmètre et cette période" : "Aucune grille GRC pour ce périmètre" }), !ar && /* @__PURE__ */ React.createElement(KpiEtat, { lib: "Satisfaction client", etat: "Indisponible", det: "Aucun fichier SATCLI importé pour ce périmètre" }), aq && /* @__PURE__ */ React.createElement(Kpi, { lib: "Note qualité moyenne", val: fr(aq.noteMoy * 100, 1), unite: "%", det: `${aq.n} évaluations · ${aq.nbConseillers} conseillers`, jauge: aq.noteMoy * 100 }), aq && /* @__PURE__ */ React.createElement(Kpi, { lib: "Appels avec au moins un écart GRC", val: fr(aq.pctEcart * 100, 1), unite: "%", det: `${p100(aq.parts[0].part, 0)} des écarts relèvent de la GRC`, jauge: aq.pctEcart * 100 }), ar && /* @__PURE__ */ React.createElement(Kpi, { lib: "Satisfaction conseiller", val: fr(ar.sat * 100, 1), unite: "%", det: `${ar.n} réponses · NPS ${ar.nps} · ${ar.insat} insatisfaits`, jauge: ar.sat * 100 }), (aq || ar) && /* @__PURE__ */ React.createElement(Kpi, { lib: "Agents prioritaires", val: nbPrio, det: `${prioQ.length} en qualité · ${prioR.length} en satisfaction · ${deux.length} sur les deux` }), /* @__PURE__ */ React.createElement(Kpi, { lib: "Avancement du plan d'action", val: avanc === null ? "—" : Math.round(avanc), unite: "%", det: actifs.length ? `${pl(realisees, "réalisée")} sur ${actifs.length} · ${retards} en retard` : "Aucune action enregistrée", jauge: avanc }), /* @__PURE__ */ React.createElement(Kpi, { lib: `Mon activité terrain · ${libMois(ceMois)}`, val: ecMois.length + accMois.length, det: `${pl(ecMois.length, "écoute")} GRC (dont ${ecMois.filter(estDouble).length} en double écoute) · ${pl(accMois.filter((s) => typeDe(s) === "Coaching de proximité").length, "coaching")} de proximité · ${accMois.filter((s) => typeDe(s) !== "Coaching de proximité").length} autre(s) accompagnement(s)` }), /* @__PURE__ */ React.createElement(Kpi, { lib: "Accompagnements réalisés", val: suivis.filter(suiviFait).length, det: `${enCours} en cours · ${suivis.filter(suiviEnRetard).length} à relancer` }), /* @__PURE__ */ React.createElement(Kpi, { lib: "Actions ouvertes", val: actifs.filter((a) => a.statut !== "Réalisé").length, det: `${retards} en retard · ${pl(realisees, "réalisée")} sur ${actifs.length}` }), fSessions.length > 0 && /* @__PURE__ */ React.createElement(Kpi, { lib: "Réalisation des formations planifiées", val: aff(pct(is.real, is.echues)), unite: "%", det: `${pl(is.real, "réalisée")} sur ${is.echues} à date · participation ${aff(pct(is.presents, is.prevus), " %")}`, jauge: pct(is.real, is.echues) })), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "À traiter"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Ce qui est en retard ou demande une action de ta part."), aTraiter.length === 0 ? /* @__PURE__ */ React.createElement(Vide, null, "Rien en retard.") : /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("tbody", null, aTraiter.slice(0, 12).map((x, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, /* @__PURE__ */ React.createElement("td", { style: { width: 100 } }, fmtDate(x.date) || "—"), /* @__PURE__ */ React.createElement("td", null, x.texte), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => setVue(x.vue) }, "Ouvrir")))))), aTraiter.length > 12 && /* @__PURE__ */ React.createElement("p", { className: "sous", style: { marginTop: 8 } }, "… et ", aTraiter.length - 12, " autres.")), series.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Évolution mensuelle"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Note qualité moyenne des évaluations et part des clients satisfaits du conseiller."), /* @__PURE__ */ React.createElement(Courbe, { categories: mois.map(libMoisCourt), series })), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Diagnostic et priorités"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Ce qui ressort des évaluations et de la satisfaction client sur ce périmètre."), /* @__PURE__ */ React.createElement("ul", { style: { margin: "0 0 12px", paddingLeft: 18 } }, /* @__PURE__ */ React.createElement("li", null, nbPrio ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("b", null, pl(nbPrio, "agent")), " ", nbPrio > 1 ? "prioritaires" : "prioritaire", " : ", prioQ.length, " en qualité, ", prioR.length, " en satisfaction", deux.length ? `, ${deux.length} sur les deux` : "", ".") : aq || ar ? "Aucun agent prioritaire." : /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Agents prioritaires : indisponible sans écoutes qualité ni réponses clients.")), topEcarts[0] && /* @__PURE__ */ React.createElement("li", null, "Premier écart GRC relevé par la qualité : « ", topEcarts[0].remarque, " » (", topEcarts[0].ecarts, " écarts)."), ae && (() => {
+    const f = ae.parGrille.flatMap((x) => x.equipe.filter((i) => i.taux !== null).map((i) => ({ ...i, g: x.grille }))).sort((a, b) => a.taux - b.taux)[0];
+    return f ? /* @__PURE__ */ React.createElement("li", null, "Critère le moins maîtrisé dans mes écoutes GRC : « ", f.court, " » (", p100(f.taux, 0), ", ", libPA(f.g), ").") : null;
+  })()), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setVue("diagnostic") }, /* @__PURE__ */ React.createElement(Icone, { nom: "loupe", taille: 15 }), " Ouvrir le diagnostic complet")));
 }
 function VuePlan({ ctx }) {
-  const { actions, actionsCol, suivis, peutEditer, filtres, ref, aq, ar, ae, nomDe, creerSuivi, ouvrirFiche } = ctx;
+  const { actions, actionsCol, suivis, peutEditer, filtres, ref, aq, ar, ae, nomDe, creerSuivi, ouvrirFiche, nouvelleAction, setNouvelleAction } = ctx;
   const [detail, setDetail] = useState(null);
   const [edition, setEdition] = useState(null);
   const axes = [.../* @__PURE__ */ new Set([...aq ? aq.axes.map((a) => a.axe) : [], ...ar ? ar.axes.map((a) => a.axe) : []])].filter((a) => /^\d\./.test(a)).sort();
   const vide = { projet: filtres.projet || "", activite: filtres.activite || "", axe: "", action: "", objectif: "", population: "", responsable: ref.formateurs[0] || "", debut: "", echeance: "", realisation: "", statut: "À planifier", avancement: 0, resultat: "", suite: "", cible: "", ordre: actions.length + 1 };
+  useEffect(() => {
+    if (nouvelleAction) {
+      setEdition({ ...vide, ...nouvelleAction });
+      setNouvelleAction(null);
+    }
+  }, [nouvelleAction]);
   const actifs = actions.filter((a) => a.statut !== "Annulé");
   const avanc = actifs.length ? moyenne(actifs.map(avancementDe)) : null;
   const compte = (s) => actions.filter((a) => a.statut === s).length;
@@ -1845,22 +1930,22 @@ function VuePlan({ ctx }) {
     try {
       await actionsCol.modifier(a.id, d);
     } catch (e) {
-      alert("Enregistrement impossible : " + e.message);
+      avertir("Enregistrement impossible : " + e.message);
     }
   };
   const enregistrer = async () => {
     const { terrain, _auto, ...propre } = edition;
     const d = { ...propre, action: (edition.action || "").trim(), avancement: edition.statut === "Réalisé" ? 100 : +edition.avancement || 0, cible: +edition.cible > 0 ? Math.round(+edition.cible) : "" };
-    if (!d.action) return alert("Le titre de l'action est obligatoire.");
-    if (!d.projet || !d.activite) return alert("Choisis le projet et l'activité de cette action.");
-    if (actionsCol.items.some((a) => a.id !== d.id && a.projet === d.projet && a.activite === d.activite && norm(a.action) === norm(d.action))) return alert("Cette action existe déjà dans le plan de cette activité.");
+    if (!d.action) return avertir("Le titre de l'action est obligatoire.");
+    if (!d.projet || !d.activite) return avertir("Choisis le projet et l'activité de cette action.");
+    if (actionsCol.items.some((a) => a.id !== d.id && a.projet === d.projet && a.activite === d.activite && norm(a.action) === norm(d.action))) return avertir("Cette action existe déjà dans le plan de cette activité.");
     const { id, ...data } = d;
     try {
       if (id) await actionsCol.modifier(id, data);
       else await actionsCol.ajouter(data);
       setEdition(null);
     } catch (e) {
-      alert("Enregistrement impossible : " + e.message);
+      avertir("Enregistrement impossible : " + e.message);
     }
   };
   const exporter = () => exporterCSV(
@@ -1879,13 +1964,14 @@ function VuePlan({ ctx }) {
     }
   } }, "Supprimer")), /* @__PURE__ */ React.createElement("div", { className: "actions" }, /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setEdition(null) }, "Fermer"), peutEditer && /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: enregistrer }, "Enregistrer")))));
 }
-function VueSuivi({ ctx }) {
-  const { suivis, suivisCol, actions, actionsCol, ecoutesCol, peutEditer, conseillers, parId, nomDe, filtres, qTout, ouvrirFiche, nouveauSuivi, setNouveauSuivi, ref, grilleDe } = ctx;
-  const [type, setType] = useState("");
+function VueSuivi({ ctx, typeFixe }) {
+  const { suivis: tousSuivis, suivisCol, actions, actionsCol, ecoutesCol, peutEditer, conseillers, parId, nomDe, filtres, qTout, ouvrirFiche, nouveauSuivi, setNouveauSuivi, ref, grilleDe } = ctx;
+  const [type, setType] = useState(typeFixe || "");
+  const suivis = useMemo(() => typeFixe ? tousSuivis.filter((s) => typeDe(s) === typeFixe) : tousSuivis, [tousSuivis, typeFixe]);
   const [edition, setEdition] = useState(null);
   const [statut, setStatut] = useState("");
   const [recherche, setRecherche] = useState("");
-  const vide = { type: "Coaching de proximité", actionId: "", ecouteId: "", conseillerId: "", projet: filtres.projet || "", activite: filtres.activite || "", dateConstat: aujourdhui(), point: "", niveau: "", dateNiveau: "", pointsAppui: "", ecarts: "", objectif1: "", objectif2: "", action: "", responsable: ref.formateurs[0] || "", datePrevue: "", dateRealisee: "", ecouteApres: "", progres: "", statut: "À planifier", prochaine: "", echeance: "" };
+  const vide = { type: typeFixe || "Coaching de proximité", actionId: "", ecouteId: "", conseillerId: "", projet: filtres.projet || "", activite: filtres.activite || "", dateConstat: aujourdhui(), point: "", niveau: "", dateNiveau: "", pointsAppui: "", ecarts: "", objectif1: "", objectif2: "", action: "", responsable: ref.formateurs[0] || "", datePrevue: "", dateRealisee: "", ecouteApres: "", progres: "", statut: "À planifier", prochaine: "", echeance: "" };
   useEffect(() => {
     if (nouveauSuivi) {
       setEdition({ ...vide, ...nouveauSuivi });
@@ -1896,11 +1982,11 @@ function VueSuivi({ ctx }) {
   const mesures = suivis.map((s) => impactSuivi(s, qTout)).filter((i) => i && i.suffisant);
   const enregistrer = async () => {
     const d = { ...edition };
-    if (!d.conseillerId) return alert("Choisis un agent.");
-    if (!d.dateConstat) return alert("La date du constat est obligatoire.");
+    if (!d.conseillerId) return avertir("Choisis un agent.");
+    if (!d.dateConstat) return avertir("La date du constat est obligatoire.");
     if (!d.projet) d.projet = (parId[d.conseillerId] || {}).projet || "";
     if (!d.activite) d.activite = (parId[d.conseillerId] || {}).activite || "";
-    if (suivisCol.items.some((s) => s.id !== d.id && s.conseillerId === d.conseillerId && s.dateConstat === d.dateConstat && (s.type || "") === (d.type || "") && norm(s.action) === norm(d.action))) return alert(`Un accompagnement de ce type existe déjà pour ${nomDe(d.conseillerId)} à cette date${d.action ? " sur cette action" : ""}. Modifie la ligne existante au lieu d'en créer une seconde.`);
+    if (suivisCol.items.some((s) => s.id !== d.id && s.conseillerId === d.conseillerId && s.dateConstat === d.dateConstat && (s.type || "") === (d.type || "") && norm(s.action) === norm(d.action))) return avertir(`Un accompagnement de ce type existe déjà pour ${nomDe(d.conseillerId)} à cette date${d.action ? " sur cette action" : ""}. Modifie la ligne existante au lieu d'en créer une seconde.`);
     if (d.actionId && !actionsCol.items.some((a) => a.id === d.actionId && a.projet === d.projet && a.activite === d.activite)) d.actionId = "";
     if (d.dateRealisee && ["À planifier", "Planifié"].includes(d.statut)) d.statut = "En cours";
     const { id, nom, impact, retard, ...data } = d;
@@ -1909,7 +1995,7 @@ function VueSuivi({ ctx }) {
       else await suivisCol.ajouter(data);
       setEdition(null);
     } catch (e) {
-      alert("Enregistrement impossible : " + e.message);
+      avertir("Enregistrement impossible : " + e.message);
     }
   };
   const exporter = () => exporterCSV(
@@ -1934,7 +2020,7 @@ function VueSuivi({ ctx }) {
   const choisis = trier(conseillers.filter((c) => (c.statut !== "Sorti" || c.id === (edition || {}).conseillerId) && (!(edition || {}).projet || c.projet === edition.projet || c.id === edition.conseillerId)), "nom");
   const historique = edition && edition.conseillerId ? suivis.filter((s) => s.conseillerId === edition.conseillerId && s.id !== edition.id).sort((a, b) => String(b.dateConstat).localeCompare(String(a.dateConstat))).slice(0, 5) : [];
   const Effet = ({ i }) => !i ? /* @__PURE__ */ React.createElement("span", { className: "petit" }, "—") : !i.suffisant ? /* @__PURE__ */ React.createElement("span", { className: "petit", "data-bulle": `${i.nAvant} évaluation(s) avant, ${i.nApres} après : il en faut 3 de chaque côté` }, "Données insuffisantes") : /* @__PURE__ */ React.createElement("span", null, p100(i.avant), " → ", /* @__PURE__ */ React.createElement("b", null, p100(i.apres)), /* @__PURE__ */ React.createElement("div", { className: "petit" }, pts(i.delta)));
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpis" }, /* @__PURE__ */ React.createElement(Kpi, { lib: "Accompagnements en cours", val: suivis.filter((s) => s.statut !== "Clôturé").length, det: `${suivis.filter((s) => s.statut === "Clôturé").length} clôturés · ${suivis.filter(suiviFait).length} réalisés` }), /* @__PURE__ */ React.createElement(Kpi, { lib: "À relancer", val: suivis.filter(suiviEnRetard).length, det: "Date prévue ou échéance dépassée" }), /* @__PURE__ */ React.createElement(Kpi, { lib: "Agents accompagnés", val: new Set(suivis.map((s) => s.conseillerId)).size, det: TYPES_ACC.filter((t) => suivis.some((s) => typeDe(s) === t)).map((t) => `${suivis.filter((s) => typeDe(s) === t).length} ${t.toLowerCase()}`).join(" · ") || pl(suivis.length, "accompagnement") }), /* @__PURE__ */ React.createElement(Kpi, { lib: "En progression après accompagnement", val: mesures.length ? mesures.filter((i) => i.delta > 0).length : "—", det: mesures.length ? `sur ${mesures.length} mesurés (note qualité avant / après)` : "Mesuré dès 3 évaluations qualité avant et après" })), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement(Choix, { style: { width: 210 }, valeur: type, onChange: setType, options: [.../* @__PURE__ */ new Set([...TYPES_ACC, ...suivis.map(typeDe)])], vide: "Tous les types" }), /* @__PURE__ */ React.createElement(Choix, { style: { width: 190 }, valeur: statut, onChange: setStatut, options: [{ v: "retard", lib: "À relancer" }, ...STATUTS_SUIVI.map((s) => ({ v: s, lib: s }))], vide: "Tous les statuts" }), /* @__PURE__ */ React.createElement("input", { className: "input", style: { width: 200 }, placeholder: "Rechercher un nom…", value: recherche, onChange: (e) => setRecherche(e.target.value) }), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: exporter }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Exporter"), peutEditer && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setEdition({ ...vide, type: "Double écoute" }) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Double écoute"), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => setEdition(vide) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Coaching de proximité"))), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Agent"), /* @__PURE__ */ React.createElement("th", null, "Type"), /* @__PURE__ */ React.createElement("th", null, "Constat"), /* @__PURE__ */ React.createElement("th", null, "Objectifs"), /* @__PURE__ */ React.createElement("th", null, "Action du plan"), /* @__PURE__ */ React.createElement("th", null, "Prévue"), /* @__PURE__ */ React.createElement("th", null, "Réalisée"), /* @__PURE__ */ React.createElement("th", null, "Statut"), /* @__PURE__ */ React.createElement("th", null, "Effet sur la note qualité"), /* @__PURE__ */ React.createElement("th", null, "Prochaine action"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, lignes.map((s) => /* @__PURE__ */ React.createElement("tr", { key: s.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("button", { className: "lien-nom", onClick: () => ouvrirFiche(s.conseillerId) }, s.nom), /* @__PURE__ */ React.createElement("div", { className: "petit" }, libPA(s))), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: "badge" }, typeDe(s))), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, fmtDate(s.dateConstat)), /* @__PURE__ */ React.createElement("td", { style: { maxWidth: 260 } }, s.objectif1 || /* @__PURE__ */ React.createElement("span", { className: "petit" }, "—"), s.objectif2 && /* @__PURE__ */ React.createElement("div", null, s.objectif2)), /* @__PURE__ */ React.createElement("td", { style: { maxWidth: 200 } }, s.action || /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Hors plan"), s.point && /* @__PURE__ */ React.createElement("div", { className: "petit" }, s.point, s.niveau ? ` : ${s.niveau.toLowerCase()}` : "")), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, fmtDate(s.datePrevue) || "—"), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, fmtDate(s.dateRealisee) || "—"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Badge, { s: s.statut }), s.retard && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 4 } }, /* @__PURE__ */ React.createElement(Badge, { s: "En retard" }))), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Effet, { i: s.impact })), /* @__PURE__ */ React.createElement("td", { style: { maxWidth: 200 } }, s.prochaine || "—", s.echeance && /* @__PURE__ */ React.createElement("div", { className: "petit" }, fmtDate(s.echeance))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => setEdition({ ...vide, ...s }) }, peutEditer ? "Modifier" : "Voir")))), lignes.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: "11" }, /* @__PURE__ */ React.createElement(Vide, null, "Aucun accompagnement", suivis.length ? " sur ces critères" : "", ". ", peutEditer && !suivis.length && "Ouvre la fiche d'un agent pour créer un coaching prérempli avec ses écarts, ou débriefe une écoute depuis Écoutes GRC."))))))), edition && /* @__PURE__ */ React.createElement(Modal, { titre: edition.id ? `${typeDe(edition)} · ${nomDe(edition.conseillerId)}` : `Nouvel accompagnement : ${typeDe(edition).toLowerCase()}`, onFermer: () => setEdition(null) }, /* @__PURE__ */ React.createElement("fieldset", { disabled: !peutEditer, style: { border: 0, padding: 0, margin: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "grille" }, /* @__PURE__ */ React.createElement(Champ, { libelle: "Type d'accompagnement", classe: "pleine" }, /* @__PURE__ */ React.createElement("div", { className: "seg", role: "group", "aria-label": "Type d'accompagnement" }, [.../* @__PURE__ */ new Set([...TYPES_ACC, ...edition.type ? [edition.type] : []])].map((t) => /* @__PURE__ */ React.createElement("button", { type: "button", key: t, className: edition.type === t ? "on" : "", "aria-pressed": edition.type === t, onClick: () => maj({ type: t }) }, t)))), /* @__PURE__ */ React.createElement(ChoixPA, { ctx, projet: edition.projet, activite: edition.activite, onChange: (c) => maj({ ...c, actionId: "", conseillerId: c.projet === edition.projet ? edition.conseillerId : "" }) }), /* @__PURE__ */ React.createElement(Champ, { libelle: "Agent", classe: "pleine" }, /* @__PURE__ */ React.createElement(Choix, { valeur: edition.conseillerId, onChange: (v) => maj({ conseillerId: v, projet: edition.projet || (parId[v] || {}).projet || "", activite: edition.activite || (parId[v] || {}).activite || "" }), options: choisis.map((c) => ({ v: c.id, lib: `${c.nom} · ${libPA(c)}` })), vide: "Choisir…" })), ecouteLiee && /* @__PURE__ */ React.createElement("div", { className: "bandeau info pleine", style: { margin: 0 } }, /* @__PURE__ */ React.createElement("div", null, "Suite à l'écoute du ", /* @__PURE__ */ React.createElement("b", null, fmtDate(ecouteLiee.date) || "—"), ecouteLiee.reference ? ` (appel ${ecouteLiee.reference})` : "", estDouble(ecouteLiee) ? ", en double écoute" : "", ".")), /* @__PURE__ */ React.createElement(Champ, { libelle: "Date du constat" }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: edition.dateConstat || "", onChange: (e) => maj({ dateConstat: e.target.value }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Responsable" }, /* @__PURE__ */ React.createElement(Texte, { valeur: edition.responsable, onChange: (v) => maj({ responsable: v }) })), ptsGrille.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Champ, { libelle: "Point travaillé" }, /* @__PURE__ */ React.createElement(Choix, { valeur: edition.point, onChange: (v) => maj({ point: v }), options: [.../* @__PURE__ */ new Set([...ptsGrille, ...edition.point ? [edition.point] : []])], vide: "Non précisé" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Niveau observé" }, /* @__PURE__ */ React.createElement(Choix, { valeur: edition.niveau, onChange: (v) => maj({ niveau: v, dateNiveau: v ? aujourdhui() : "" }), options: NIVEAUX_POINT, vide: "Non évalué" }))), /* @__PURE__ */ React.createElement(Champ, { libelle: "Points d'appui / bien traité", classe: "pleine" }, /* @__PURE__ */ React.createElement(Zone, { valeur: edition.pointsAppui, onChange: (v) => maj({ pointsAppui: v }) }), /* @__PURE__ */ React.createElement(Phrases, { k: "bien", champ: "pointsAppui", lib: "Ajouter une phrase prête « bien traité »…" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Écarts constatés / à retravailler", classe: "pleine" }, /* @__PURE__ */ React.createElement(Zone, { valeur: edition.ecarts, onChange: (v) => maj({ ecarts: v }), style: { minHeight: 90 } }), /* @__PURE__ */ React.createElement(Phrases, { k: "retravailler", champ: "ecarts", lib: "Ajouter une phrase prête « à retravailler »…" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Objectif 1", classe: "pleine" }, /* @__PURE__ */ React.createElement(Texte, { valeur: edition.objectif1, onChange: (v) => maj({ objectif1: v }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Objectif 2", classe: "pleine" }, /* @__PURE__ */ React.createElement(Texte, { valeur: edition.objectif2, onChange: (v) => maj({ objectif2: v }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Action du plan alimentée", classe: "pleine" }, /* @__PURE__ */ React.createElement(Choix, { valeur: actionLiee ? actionLiee.id : "", onChange: (v) => {
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "kpis" }, /* @__PURE__ */ React.createElement(Kpi, { lib: "Accompagnements en cours", val: suivis.filter((s) => s.statut !== "Clôturé").length, det: `${suivis.filter((s) => s.statut === "Clôturé").length} clôturés · ${suivis.filter(suiviFait).length} réalisés` }), /* @__PURE__ */ React.createElement(Kpi, { lib: "À relancer", val: suivis.filter(suiviEnRetard).length, det: "Date prévue ou échéance dépassée" }), /* @__PURE__ */ React.createElement(Kpi, { lib: "Agents accompagnés", val: new Set(suivis.map((s) => s.conseillerId)).size, det: TYPES_ACC.filter((t) => suivis.some((s) => typeDe(s) === t)).map((t) => `${suivis.filter((s) => typeDe(s) === t).length} ${t.toLowerCase()}`).join(" · ") || pl(suivis.length, "accompagnement") }), /* @__PURE__ */ React.createElement(Kpi, { lib: "En progression après accompagnement", val: mesures.length ? mesures.filter((i) => i.delta > 0).length : "—", det: mesures.length ? `sur ${mesures.length} mesurés (note qualité avant / après)` : "Mesuré dès 3 évaluations qualité avant et après" })), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 14 } }, !typeFixe && /* @__PURE__ */ React.createElement(Choix, { style: { width: 210 }, valeur: type, onChange: setType, options: [.../* @__PURE__ */ new Set([...TYPES_ACC, ...suivis.map(typeDe)])], vide: "Tous les types" }), /* @__PURE__ */ React.createElement(Choix, { style: { width: 190 }, valeur: statut, onChange: setStatut, options: [{ v: "retard", lib: "À relancer" }, ...STATUTS_SUIVI.map((s) => ({ v: s, lib: s }))], vide: "Tous les statuts" }), /* @__PURE__ */ React.createElement("input", { className: "input", style: { width: 200 }, placeholder: "Rechercher un nom…", value: recherche, onChange: (e) => setRecherche(e.target.value) }), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: exporter }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Exporter"), peutEditer && typeFixe === "Double écoute" && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => ctx.creerEcoute({ projet: filtres.projet, activite: filtres.activite, mode: MODES_ECOUTE[1] }), "data-bulle": "Évalue l'appel sur la grille, puis débriefe" }, /* @__PURE__ */ React.createElement(Icone, { nom: "casque", taille: 15 }), " Évaluer une double écoute"), peutEditer && (typeFixe ? /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => setEdition(vide) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " ", typeFixe) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setEdition({ ...vide, type: "Double écoute" }) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Double écoute"), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => setEdition(vide) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Coaching de proximité")))), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Agent"), /* @__PURE__ */ React.createElement("th", null, "Type"), /* @__PURE__ */ React.createElement("th", null, "Constat"), /* @__PURE__ */ React.createElement("th", null, "Objectifs"), /* @__PURE__ */ React.createElement("th", null, "Action du plan"), /* @__PURE__ */ React.createElement("th", null, "Prévue"), /* @__PURE__ */ React.createElement("th", null, "Réalisée"), /* @__PURE__ */ React.createElement("th", null, "Statut"), /* @__PURE__ */ React.createElement("th", null, "Effet sur la note qualité"), /* @__PURE__ */ React.createElement("th", null, "Prochaine action"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, lignes.map((s) => /* @__PURE__ */ React.createElement("tr", { key: s.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("button", { className: "lien-nom", onClick: () => ouvrirFiche(s.conseillerId) }, s.nom), /* @__PURE__ */ React.createElement("div", { className: "petit" }, libPA(s))), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: "badge" }, typeDe(s))), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, fmtDate(s.dateConstat)), /* @__PURE__ */ React.createElement("td", { style: { maxWidth: 260 } }, s.objectif1 || /* @__PURE__ */ React.createElement("span", { className: "petit" }, "—"), s.objectif2 && /* @__PURE__ */ React.createElement("div", null, s.objectif2)), /* @__PURE__ */ React.createElement("td", { style: { maxWidth: 200 } }, s.action || /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Hors plan"), s.point && /* @__PURE__ */ React.createElement("div", { className: "petit" }, s.point, s.niveau ? ` : ${s.niveau.toLowerCase()}` : "")), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, fmtDate(s.datePrevue) || "—"), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, fmtDate(s.dateRealisee) || "—"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Badge, { s: s.statut }), s.retard && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 4 } }, /* @__PURE__ */ React.createElement(Badge, { s: "En retard" }))), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Effet, { i: s.impact })), /* @__PURE__ */ React.createElement("td", { style: { maxWidth: 200 } }, s.prochaine || "—", s.echeance && /* @__PURE__ */ React.createElement("div", { className: "petit" }, fmtDate(s.echeance))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => setEdition({ ...vide, ...s }) }, peutEditer ? "Modifier" : "Voir")))), lignes.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: "11" }, /* @__PURE__ */ React.createElement(Vide, null, "Aucun accompagnement", suivis.length ? " sur ces critères" : "", ". ", peutEditer && !suivis.length && "Ouvre la fiche d'un agent pour créer un coaching prérempli avec ses écarts, ou débriefe une écoute depuis Écoutes GRC."))))))), edition && /* @__PURE__ */ React.createElement(Modal, { titre: edition.id ? `${typeDe(edition)} · ${nomDe(edition.conseillerId)}` : `Nouvel accompagnement : ${typeDe(edition).toLowerCase()}`, onFermer: () => setEdition(null) }, /* @__PURE__ */ React.createElement("fieldset", { disabled: !peutEditer, style: { border: 0, padding: 0, margin: 0 } }, /* @__PURE__ */ React.createElement("div", { className: "grille" }, /* @__PURE__ */ React.createElement(Champ, { libelle: "Type d'accompagnement", classe: "pleine" }, /* @__PURE__ */ React.createElement("div", { className: "seg", role: "group", "aria-label": "Type d'accompagnement" }, [.../* @__PURE__ */ new Set([...TYPES_ACC, ...edition.type ? [edition.type] : []])].map((t) => /* @__PURE__ */ React.createElement("button", { type: "button", key: t, className: edition.type === t ? "on" : "", "aria-pressed": edition.type === t, onClick: () => maj({ type: t }) }, t)))), /* @__PURE__ */ React.createElement(ChoixPA, { ctx, projet: edition.projet, activite: edition.activite, onChange: (c) => maj({ ...c, actionId: "", conseillerId: c.projet === edition.projet ? edition.conseillerId : "" }) }), /* @__PURE__ */ React.createElement(Champ, { libelle: "Agent", classe: "pleine" }, /* @__PURE__ */ React.createElement(Choix, { valeur: edition.conseillerId, onChange: (v) => maj({ conseillerId: v, projet: edition.projet || (parId[v] || {}).projet || "", activite: edition.activite || (parId[v] || {}).activite || "" }), options: choisis.map((c) => ({ v: c.id, lib: `${c.nom} · ${libPA(c)}` })), vide: "Choisir…" })), ecouteLiee && /* @__PURE__ */ React.createElement("div", { className: "bandeau info pleine", style: { margin: 0 } }, /* @__PURE__ */ React.createElement("div", null, "Suite à l'écoute du ", /* @__PURE__ */ React.createElement("b", null, fmtDate(ecouteLiee.date) || "—"), ecouteLiee.reference ? ` (appel ${ecouteLiee.reference})` : "", estDouble(ecouteLiee) ? ", en double écoute" : "", ".")), /* @__PURE__ */ React.createElement(Champ, { libelle: "Date du constat" }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: edition.dateConstat || "", onChange: (e) => maj({ dateConstat: e.target.value }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Responsable" }, /* @__PURE__ */ React.createElement(Texte, { valeur: edition.responsable, onChange: (v) => maj({ responsable: v }) })), ptsGrille.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Champ, { libelle: "Point travaillé" }, /* @__PURE__ */ React.createElement(Choix, { valeur: edition.point, onChange: (v) => maj({ point: v }), options: [.../* @__PURE__ */ new Set([...ptsGrille, ...edition.point ? [edition.point] : []])], vide: "Non précisé" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Niveau observé" }, /* @__PURE__ */ React.createElement(Choix, { valeur: edition.niveau, onChange: (v) => maj({ niveau: v, dateNiveau: v ? aujourdhui() : "" }), options: NIVEAUX_POINT, vide: "Non évalué" }))), /* @__PURE__ */ React.createElement(Champ, { libelle: "Points d'appui / bien traité", classe: "pleine" }, /* @__PURE__ */ React.createElement(Zone, { valeur: edition.pointsAppui, onChange: (v) => maj({ pointsAppui: v }) }), /* @__PURE__ */ React.createElement(Phrases, { k: "bien", champ: "pointsAppui", lib: "Ajouter une phrase prête « bien traité »…" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Écarts constatés / à retravailler", classe: "pleine" }, /* @__PURE__ */ React.createElement(Zone, { valeur: edition.ecarts, onChange: (v) => maj({ ecarts: v }), style: { minHeight: 90 } }), /* @__PURE__ */ React.createElement(Phrases, { k: "retravailler", champ: "ecarts", lib: "Ajouter une phrase prête « à retravailler »…" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Objectif 1", classe: "pleine" }, /* @__PURE__ */ React.createElement(Texte, { valeur: edition.objectif1, onChange: (v) => maj({ objectif1: v }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Objectif 2", classe: "pleine" }, /* @__PURE__ */ React.createElement(Texte, { valeur: edition.objectif2, onChange: (v) => maj({ objectif2: v }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Action du plan alimentée", classe: "pleine" }, /* @__PURE__ */ React.createElement(Choix, { valeur: actionLiee ? actionLiee.id : "", onChange: (v) => {
     const a = actionsPlan.find((x) => x.id === v);
     maj({ actionId: v, action: a ? a.action : "" });
   }, options: actionsPlan.map((a) => ({ v: a.id, lib: `${a.action} · ${a.statut}` })), vide: actionsPlan.length ? "Aucune (hors plan d'action)" : "Aucune action dans le plan de cette activité" }), /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Cet accompagnement comptera dans l'avancement et dans la mesure d'effet de cette action.")), !actionLiee && /* @__PURE__ */ React.createElement(Champ, { libelle: "Intitulé libre (si hors plan)", classe: "pleine" }, /* @__PURE__ */ React.createElement(Texte, { valeur: edition.action, onChange: (v) => maj({ action: v, actionId: "" }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Date prévue" }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: edition.datePrevue || "", onChange: (e) => maj({ datePrevue: e.target.value }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Date réalisée" }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: edition.dateRealisee || "", onChange: (e) => maj({ dateRealisee: e.target.value }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Statut" }, /* @__PURE__ */ React.createElement(Choix, { valeur: edition.statut, onChange: (v) => maj({ statut: v }), options: STATUTS_SUIVI })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Écoute après atelier", classe: "pleine" }, /* @__PURE__ */ React.createElement(Texte, { valeur: edition.ecouteApres, onChange: (v) => maj({ ecouteApres: v }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Progrès / écarts persistants", classe: "pleine" }, /* @__PURE__ */ React.createElement(Zone, { valeur: edition.progres, onChange: (v) => maj({ progres: v }) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Prochaine action", classe: "pleine" }, /* @__PURE__ */ React.createElement(Texte, { valeur: edition.prochaine, onChange: (v) => maj({ prochaine: v }) }), /* @__PURE__ */ React.createElement(Phrases, { k: "etape", champ: "prochaine", lib: "Ajouter une phrase prête « prochaine étape »…" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Échéance de la prochaine action" }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: edition.echeance || "", onChange: (e) => maj({ echeance: e.target.value }) })))), historique.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Accompagnements précédents de cet agent"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("tbody", null, historique.map((h) => /* @__PURE__ */ React.createElement("tr", { key: h.id }, /* @__PURE__ */ React.createElement("td", { style: { width: 90 } }, fmtDate(h.dateConstat)), /* @__PURE__ */ React.createElement("td", { style: { width: 170 } }, typeDe(h)), /* @__PURE__ */ React.createElement("td", null, h.objectif1 || h.action || "—"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Badge, { s: h.statut }))))))), /* @__PURE__ */ React.createElement("div", { className: "modal-pied" }, /* @__PURE__ */ React.createElement("div", null, peutEditer && edition.id && /* @__PURE__ */ React.createElement("button", { className: "btn danger", onClick: async () => {
@@ -1943,6 +2029,223 @@ function VueSuivi({ ctx }) {
       setEdition(null);
     }
   } }, "Supprimer")), /* @__PURE__ */ React.createElement("div", { className: "actions" }, /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setEdition(null) }, "Fermer"), peutEditer && /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: enregistrer }, "Enregistrer")))));
+}
+const _messages = { liste: [], abonnes: /* @__PURE__ */ new Set(), n: 0 };
+const avertir = (texte, type) => {
+  const t = type || (/impossible|n'est pas|erreur|existe déjà|obligatoire|^Choisis|doit avoir|portent le même|contient|plus de place|^Deux /i.test(texte) ? "erreur" : "ok");
+  const m = { id: ++_messages.n, texte: String(texte), type: t };
+  _messages.liste = [..._messages.liste, m].slice(-4);
+  _messages.abonnes.forEach((f) => f(_messages.liste));
+  setTimeout(() => {
+    _messages.liste = _messages.liste.filter((x) => x.id !== m.id);
+    _messages.abonnes.forEach((f) => f(_messages.liste));
+  }, t === "erreur" ? 9e3 : 5e3);
+};
+function Messages() {
+  const [liste, setListe] = useState(_messages.liste);
+  useEffect(() => {
+    _messages.abonnes.add(setListe);
+    return () => {
+      _messages.abonnes.delete(setListe);
+    };
+  }, []);
+  const fermer = (id) => {
+    _messages.liste = _messages.liste.filter((x) => x.id !== id);
+    setListe(_messages.liste);
+  };
+  return /* @__PURE__ */ React.createElement("div", { className: "messages", role: "status", "aria-live": "polite" }, liste.map((m) => /* @__PURE__ */ React.createElement("div", { key: m.id, className: `message ${m.type}` }, /* @__PURE__ */ React.createElement(Icone, { nom: m.type === "erreur" ? "alerte" : "coche", taille: 16 }), /* @__PURE__ */ React.createElement("div", null, m.texte), /* @__PURE__ */ React.createElement("button", { onClick: () => fermer(m.id), "aria-label": "Fermer le message" }, "×"))));
+}
+const KpiEtat = ({ lib, etat, det }) => /* @__PURE__ */ React.createElement("div", { className: "kpi absent" }, /* @__PURE__ */ React.createElement("div", { className: "lib" }, lib), /* @__PURE__ */ React.createElement("div", { className: "val-etat" }, etat), /* @__PURE__ */ React.createElement("div", { className: "det" }, det));
+function VueDiagnostic({ ctx }) {
+  const { aq, ar, ae, suivis, actions, setVue, ouvrirFiche, peutEditer, creerAction, filtres, perimetre } = ctx;
+  if (!aq && !ar && !ae) return /* @__PURE__ */ React.createElement(SansDonnees, { quoi: "Le diagnostic se construit à partir des écoutes GRC, des écoutes qualité et de la satisfaction client.", ctx });
+  const prioQ = aq ? aq.parConseiller.filter((c) => c.statut === "Prioritaire") : [], prioR = ar ? ar.parConseiller.filter((c) => c.statut === "Prioritaire") : [];
+  const deux = prioQ.filter((c) => prioR.some((x) => x.k === c.k));
+  const cles = [...new Set([...deux, ...prioQ, ...prioR].map((c) => c.k))];
+  const topEcarts = aq ? aq.items.filter((i) => i.grc && i.ecarts >= 10).sort((a, b) => a.priorite.localeCompare(b.priorite) || b.ecarts - a.ecarts).slice(0, 8) : [];
+  const grillesAvec = ae ? ae.parGrille.filter((x) => x.ecoutes.length) : [];
+  const itemsGRC = grillesAvec.flatMap((x) => x.equipe.filter((i) => i.taux !== null && i.applicables >= 3).map((i) => ({ ...i, grille: x.grille, agents: x.parAgent.filter((a) => {
+    const it = a.items.find((y) => y.code === i.code);
+    return it && it.taux !== null && it.taux < 1;
+  }).length, nbAgents: x.parAgent.length })));
+  const ecartsGRC = itemsGRC.filter((i) => i.taux < 0.75).sort((a, b) => a.taux - b.taux).slice(0, 8);
+  const maitrises = itemsGRC.filter((i) => i.taux >= 0.9).sort((a, b) => b.taux - a.taux).slice(0, 6);
+  const dejaPlan = (titre) => actions.some((a) => norm(a.action) === norm(titre));
+  const proposer = (pre) => {
+    if (confirm(`Créer cette action dans le plan ?
+
+« ${pre.action} »
+
+Tu pourras la compléter avant de l'enregistrer.`)) creerAction(pre);
+  };
+  const sansSuivi = cles.filter((k) => !suivis.some((s) => s.conseillerId === k && s.statut !== "Clôturé"));
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Retenir, { points: [
+    ecartsGRC.length > 0 && `Écoutes GRC : ${pl(ecartsGRC.length, "critère")} sous 75 % de maîtrise, le plus faible étant « ${ecartsGRC[0].court} » (${p100(ecartsGRC[0].taux, 0)}).`,
+    topEcarts.length > 0 && `Écoutes qualité : ${pl(topEcarts.length, "écart")} GRC récurrents, le premier étant « ${topEcarts[0].remarque} » (${topEcarts[0].ecarts} écarts).`,
+    cles.length > 0 && `${pl(cles.length, "agent")} ${cles.length > 1 ? "prioritaires" : "prioritaire"}${deux.length ? `, dont ${deux.length} sur la qualité et la satisfaction à la fois` : ""}.`,
+    sansSuivi.length > 0 && `${pl(sansSuivi.length, "agent")} ${sansSuivi.length > 1 ? "prioritaires n'ont" : "prioritaire n'a"} aucun accompagnement en cours.`,
+    maitrises.length > 0 && `Points d'appui collectifs : ${maitrises.slice(0, 3).map((i) => `« ${i.court} »`).join(", ")}.`
+  ] }), /* @__PURE__ */ React.createElement("div", { className: "deux" }, /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Écarts collectifs relevés dans mes écoutes GRC"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Règle : critère évalué au moins 3 fois et maîtrisé à moins de 75 % par l'équipe."), ecartsGRC.length ? /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Critère"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Maîtrise"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Agents concernés"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, ecartsGRC.map((i) => {
+    const titre = `Atelier : ${i.court.toLowerCase()}`;
+    return /* @__PURE__ */ React.createElement("tr", { key: i.grille.id + i.code }, /* @__PURE__ */ React.createElement("td", null, i.court, /* @__PURE__ */ React.createElement("div", { className: "petit" }, libPA(i.grille), i.point ? ` · ${i.point}` : "")), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("span", { className: `cell-h niv ${classeTaux(i.taux)}` }, Math.round(i.taux * 100))), /* @__PURE__ */ React.createElement("td", { className: "num" }, i.agents, " / ", i.nbAgents), /* @__PURE__ */ React.createElement("td", { className: "num" }, dejaPlan(titre) ? /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Déjà au plan") : peutEditer && /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => proposer({ projet: i.grille.projet, activite: i.grille.activite, action: titre, objectif: `Faire progresser l'équipe sur « ${i.item || i.court} » : ${p100(i.taux, 0)} de maîtrise sur ${i.applicables} évaluations.`, population: `${pl(i.agents, "agent")} en écart sur ce critère`, cible: i.agents }) }, "Proposer une action")));
+  })))) : /* @__PURE__ */ React.createElement(Vide, null, ae ? "Aucun critère sous 75 % de maîtrise avec au moins 3 évaluations." : "Aucune écoute GRC sur ce périmètre."), /* @__PURE__ */ React.createElement("button", { className: "btn mini", style: { marginTop: 10 }, onClick: () => setVue("ecoutes") }, "Voir les évaluations")), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Compétences maîtrisées"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Règle : critère évalué au moins 3 fois et maîtrisé à 90 % ou plus."), maitrises.length ? /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("tbody", null, maitrises.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.grille.id + i.code }, /* @__PURE__ */ React.createElement("td", null, i.court, /* @__PURE__ */ React.createElement("div", { className: "petit" }, libPA(i.grille))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("span", { className: `cell-h niv ${classeTaux(i.taux)}` }, Math.round(i.taux * 100))))))) : /* @__PURE__ */ React.createElement(Vide, null, "Rien à afficher pour le moment."))), /* @__PURE__ */ React.createElement("div", { className: "deux" }, aq && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Écarts GRC relevés par le service qualité"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Règle : au moins 10 écarts ; classés par priorité (fréquents, pénalisants, ou les deux)."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Remarque de l'évaluateur"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Écarts"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Points perdus"), /* @__PURE__ */ React.createElement("th", null, "Priorité"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, topEcarts.map((i) => {
+    const titre = `Atelier : ${String(i.remarque).toLowerCase()}`;
+    return /* @__PURE__ */ React.createElement("tr", { key: i.nom }, /* @__PURE__ */ React.createElement("td", null, i.remarque, /* @__PURE__ */ React.createElement("div", { className: "petit" }, i.famille)), /* @__PURE__ */ React.createElement("td", { className: "num" }, i.ecarts), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.perdus, 1)), /* @__PURE__ */ React.createElement("td", null, i.priorite), /* @__PURE__ */ React.createElement("td", { className: "num" }, dejaPlan(titre) ? /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Déjà au plan") : peutEditer && filtres.projet && filtres.activite ? /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => proposer({ projet: filtres.projet, activite: filtres.activite, axe: i.famille, action: titre, objectif: `Réduire l'écart « ${i.remarque} » : ${i.ecarts} écarts relevés, ${fr(i.perdus, 1)} points perdus.` }) }, "Proposer une action") : null));
+  }), topEcarts.length === 0 && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: "5" }, /* @__PURE__ */ React.createElement(Vide, null, "Aucun écart GRC récurrent.")))))), !(filtres.projet && filtres.activite) && topEcarts.length > 0 && /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 8 } }, "Choisis un projet et une activité pour proposer une action à partir d'un écart."), /* @__PURE__ */ React.createElement("button", { className: "btn mini", style: { marginTop: 10 }, onClick: () => setVue("qualite") }, "Voir l'analyse complète")), ar && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Ce que les clients reprochent à l'agent"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Verbatims négatifs classés « agent ». À investiguer avant de conclure : un verbatim reste une perception."), ar.comportements.length ? /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Comportement reproché"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Retours"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Agents"))), /* @__PURE__ */ React.createElement("tbody", null, [...ar.comportements].sort((a, b) => b.n - a.n).slice(0, 8).map((c) => /* @__PURE__ */ React.createElement("tr", { key: c.code }, /* @__PURE__ */ React.createElement("td", null, c.remarque, /* @__PURE__ */ React.createElement("div", { className: "petit" }, c.axe)), /* @__PURE__ */ React.createElement("td", { className: "num" }, c.n), /* @__PURE__ */ React.createElement("td", { className: "num" }, c.conseillers)))))) : /* @__PURE__ */ React.createElement(Vide, null, "Aucun verbatim classé « agent »."), /* @__PURE__ */ React.createElement("button", { className: "btn mini", style: { marginTop: 10 }, onClick: () => setVue("retours") }, "Voir l'analyse complète"))), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Agents prioritaires"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Règle : résultat significativement en dessous de l'équipe (seuil de 95 %), à partir de ", SEUILS.qStatut, " écoutes qualité ou ", SEUILS.rStatut, " réponses clients. Périmètre : ", perimetre, "."), cles.length ? /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Agent"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Note qualité"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Satisfaction"), /* @__PURE__ */ React.createElement("th", null, "Principal écart GRC"), /* @__PURE__ */ React.createElement("th", null, "Accompagnement en cours"))), /* @__PURE__ */ React.createElement("tbody", null, cles.map((k) => {
+    const q = aq && aq.parConseiller.find((c) => c.k === k), r = ar && ar.parConseiller.find((c) => c.k === k);
+    const s = suivis.find((x) => x.conseillerId === k && x.statut !== "Clôturé");
+    return /* @__PURE__ */ React.createElement("tr", { key: k }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("button", { className: "lien-nom", onClick: () => ouvrirFiche(k) }, (q || r).nom)), /* @__PURE__ */ React.createElement("td", { className: "num" }, q ? p100(q.note) : "—", " ", q && /* @__PURE__ */ React.createElement(Badge, { s: q.statut })), /* @__PURE__ */ React.createElement("td", { className: "num" }, r ? p100(r.sat) : "—", " ", r && /* @__PURE__ */ React.createElement(Badge, { s: r.statut })), /* @__PURE__ */ React.createElement("td", null, q ? q.principal : "—"), /* @__PURE__ */ React.createElement("td", null, s ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Badge, { s: s.statut }), " ", /* @__PURE__ */ React.createElement("span", { className: "petit" }, typeDe(s))) : /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Aucun")));
+  })))) : /* @__PURE__ */ React.createElement(Vide, null, "Aucun agent prioritaire sur ce périmètre", !aq && !ar ? " : ce classement demande des écoutes qualité ou des réponses clients" : "", "."), /* @__PURE__ */ React.createElement("button", { className: "btn mini", style: { marginTop: 10 }, onClick: () => setVue("carto") }, "Ouvrir la cartographie")));
+}
+function VueGrilles({ ctx }) {
+  const { grilles, ecoutesCol, setVue } = ctx;
+  const [ouverte, setOuverte] = useState(null);
+  if (!grilles.length) return /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Aucune grille d'évaluation"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Une grille GRC appartient à une activité. Importe ton fichier de grille dans « Import / export » : les critères, leurs points et leurs repères seront repris."), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => setVue("donnees") }, /* @__PURE__ */ React.createElement(Icone, { nom: "importer", taille: 15 }), " Importer une grille"));
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bandeau info" }, /* @__PURE__ */ React.createElement("div", null, "Les grilles sont aujourd'hui créées par import Excel. Leur modification dans l'outil, leurs versions et la notation 2 / 1 / 0 sont prévues en phase 2 : rien n'est changé à tes grilles ni à tes scores pour le moment.")), trier(grilles.map((g) => ({ ...g, ou: libPA(g) })), "ou").map((g) => {
+    const n = ecoutesCol.items.filter((e) => e.projet === g.projet && e.activite === g.activite).length;
+    const max = somme(g.items.map((i) => +i.pts || 0));
+    return /* @__PURE__ */ React.createElement("div", { className: "carte", key: g.id }, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("h2", null, g.ou), /* @__PURE__ */ React.createElement("p", { className: "sous", style: { marginBottom: 0 } }, pl(g.items.length, "critère"), " · ", fr(max), " points au maximum · ", pl(g.points.length, "point travaillé"), " · ", pl(n, "écoute"), " enregistrée", n > 1 ? "s" : "", g.fichier ? ` · importée depuis « ${g.fichier} »` : "")), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setOuverte(ouverte === g.id ? null : g.id), "aria-expanded": ouverte === g.id }, ouverte === g.id ? "Masquer les critères" : "Voir les critères")), ouverte === g.id && /* @__PURE__ */ React.createElement("div", { className: "tab-wrap", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Code"), /* @__PURE__ */ React.createElement("th", null, "Critère"), /* @__PURE__ */ React.createElement("th", null, "Point travaillé"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Acquis"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Partiel"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "N/A possible"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "SI"))), /* @__PURE__ */ React.createElement("tbody", null, g.items.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.code }, /* @__PURE__ */ React.createElement("td", null, i.code), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, i.court), i.item && i.item !== i.court && /* @__PURE__ */ React.createElement("div", { className: "petit" }, i.item)), /* @__PURE__ */ React.createElement("td", null, i.point || "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.pts)), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.ptsPartiel)), /* @__PURE__ */ React.createElement("td", { className: "centre" }, i.na ? "Oui" : "—"), /* @__PURE__ */ React.createElement("td", { className: "centre" }, i.siOk ? "Oui" : "—")))))));
+  }));
+}
+const COLLECTIONS_SAUV = [["conseillers", "Agents"], ["lots", "Données importées (qualité, SATCLI)"], ["grilles", "Grilles GRC"], ["ecoutes", "Écoutes GRC"], ["actions", "Actions du plan"], ["suivis", "Accompagnements"], ["sessions", "Formations et ateliers"]];
+const empreinte = (x) => {
+  const { id, ...r } = x;
+  return JSON.stringify(Object.keys(r).sort().map((k) => [k, r[k]]));
+};
+function controlerSauvegarde(d, actuel) {
+  const bloquants = [], alertes = [];
+  if (!d || typeof d !== "object" || Array.isArray(d)) return { bloquants: ["Ce fichier n'est pas une sauvegarde de l'outil."], alertes, lignes: [] };
+  if (d.version !== 3) bloquants.push(`Version de sauvegarde non reconnue (${d.version === void 0 ? "absente" : d.version}). L'outil lit les sauvegardes de version 3.`);
+  COLLECTIONS_SAUV.forEach(([c, lib]) => {
+    if (d[c] !== void 0 && !Array.isArray(d[c])) bloquants.push(`« ${lib} » n'a pas le format attendu.`);
+  });
+  ["conseillers", "lots"].forEach((c) => {
+    if (!Array.isArray(d[c])) bloquants.push(`La collection « ${c} » est absente du fichier.`);
+  });
+  if (bloquants.length) return { bloquants, alertes, lignes: [] };
+  const L = (c) => Array.isArray(d[c]) ? d[c] : [];
+  const json = (t) => {
+    try {
+      JSON.parse(t || "null");
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+  if (L("lots").some((l) => !json(l.json))) bloquants.push("Un jeu de données importé est illisible dans ce fichier.");
+  if (L("grilles").some((g) => !json(g.json))) bloquants.push("Une grille GRC est illisible dans ce fichier.");
+  COLLECTIONS_SAUV.forEach(([c, lib]) => {
+    const ids = L(c).map((x) => x.id).filter(Boolean);
+    if (new Set(ids).size !== ids.length) bloquants.push(`« ${lib} » contient des identifiants en double.`);
+  });
+  const agents = new Set(L("conseillers").map((c) => c.id)), acts = new Set(L("actions").map((a) => a.id)), ecs = new Set(L("ecoutes").map((e) => e.id));
+  const orph = (c, lib) => {
+    const n = L(c).filter((x) => x.conseillerId && !agents.has(x.conseillerId)).length;
+    if (n) alertes.push(`${n} ${lib} ${n > 1 ? "renvoient" : "renvoie"} à un agent absent du fichier (affiché « Agent supprimé »).`);
+  };
+  orph("ecoutes", "écoute(s)");
+  orph("suivis", "accompagnement(s)");
+  const nA = L("suivis").filter((s) => s.actionId && !acts.has(s.actionId)).length;
+  if (nA) alertes.push(`${nA} accompagnement(s) rattaché(s) à une action absente du plan.`);
+  const nE = L("suivis").filter((s) => s.ecouteId && !ecs.has(s.ecouteId)).length;
+  if (nE) alertes.push(`${nE} accompagnement(s) rattaché(s) à une écoute absente du fichier.`);
+  const nP = L("sessions").filter((s) => (s.participants || []).some((id) => !agents.has(id))).length;
+  if (nP) alertes.push(`${nP} session(s) de formation avec un participant absent du fichier.`);
+  const sansProjet = somme(["conseillers", "ecoutes", "actions", "suivis"].map((c) => L(c).filter((x) => !x.projet).length));
+  if (sansProjet) alertes.push(`${sansProjet} enregistrement(s) sans projet.`);
+  const lignes = COLLECTIONS_SAUV.map(([c, lib]) => {
+    const av = actuel[c] || [], ap = L(c);
+    const mAv = new Map(av.map((x) => [x.id, empreinte(x)])), idsAp = new Set(ap.map((x) => x.id));
+    return { c, lib, avant: av.length, apres: ap.length, ajoutes: ap.filter((x) => !mAv.has(x.id)).length, modifies: ap.filter((x) => mAv.has(x.id) && mAv.get(x.id) !== empreinte(x)).length, supprimes: av.filter((x) => !idsAp.has(x.id)).length };
+  });
+  return { bloquants, alertes, lignes };
+}
+function VueSauvegardes({ ctx }) {
+  const { donneesSauvegarde, telechargerSauvegarde, appliquerRestauration, modeLocal } = ctx;
+  const [fichier, setFichier] = useState(null);
+  const [compris, setCompris] = useState(false);
+  const [etat, setEtat] = useState(null);
+  const [derniere, setDerniere] = useState(() => {
+    try {
+      return localStorage.getItem("tersea_derniere_sauvegarde") || "";
+    } catch (e) {
+      return "";
+    }
+  });
+  const actuel = donneesSauvegarde();
+  const total = somme(COLLECTIONS_SAUV.map(([c]) => (actuel[c] || []).length));
+  const sauver = () => {
+    const nom = telechargerSauvegarde("Sauvegarde_Pilotage_GRC");
+    setDerniere((/* @__PURE__ */ new Date()).toISOString());
+    avertir(`Sauvegarde téléchargée : ${nom}. Garde ce fichier sur ton ordinateur, pas sur GitHub.`);
+  };
+  const choisir = (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    setCompris(false);
+    setEtat(null);
+    const lecteur = new FileReader();
+    lecteur.onerror = () => setFichier({ nom: f.name, d: null, controle: { bloquants: ["Lecture du fichier impossible."], alertes: [], lignes: [] } });
+    lecteur.onload = () => {
+      let d = null;
+      try {
+        d = JSON.parse(lecteur.result);
+      } catch (err) {
+      }
+      setFichier({ nom: f.name, d, controle: d ? controlerSauvegarde(d, actuel) : { bloquants: ["Ce fichier n'est pas un fichier de sauvegarde lisible (JSON attendu)."], alertes: [], lignes: [] } });
+    };
+    lecteur.readAsText(f);
+  };
+  const restaurer = async () => {
+    if (!fichier || !fichier.d || fichier.controle.bloquants.length || !compris) return;
+    const filet = total ? telechargerSauvegarde("Avant_restauration_Pilotage_GRC") : "";
+    setEtat({ phase: "cours", texte: "Restauration en cours… ne ferme pas cette page.", filet });
+    try {
+      await appliquerRestauration(fichier.d, (texte) => setEtat({ phase: "cours", texte, filet }));
+      setEtat({ phase: "ok", texte: "Sauvegarde restaurée.", filet });
+      setFichier(null);
+      avertir("Sauvegarde restaurée.");
+    } catch (err) {
+      setEtat({ phase: "erreur", texte: `La restauration s'est interrompue : ${err.message}. Une partie seulement des données a pu être remplacée.`, filet });
+    }
+  };
+  const k = fichier && fichier.controle;
+  const rien = k && k.lignes.length > 0 && k.lignes.every((l) => !l.ajoutes && !l.modifies && !l.supprimes);
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "deux" }, /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Sauvegarder"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Un fichier contenant toutes les données de l'outil : agents, imports, grilles, écoutes, plan d'action, accompagnements, formations."), /* @__PURE__ */ React.createElement("p", { style: { marginBottom: 12 } }, total ? /* @__PURE__ */ React.createElement(React.Fragment, null, pl(total, "enregistrement"), " dans l'outil.") : "L'outil est vide pour le moment.", " Dernière sauvegarde depuis ce navigateur : ", /* @__PURE__ */ React.createElement("b", null, derniere ? new Date(derniere).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" }) : "aucune"), "."), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: sauver, disabled: !total }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Télécharger une sauvegarde complète"), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 10 } }, "Ce fichier contient des noms d'agents et des verbatims de clients : garde-le sur ton ordinateur, ne le dépose pas sur GitHub.")), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Restaurer"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Remplace le contenu de l'outil par celui d'un fichier de sauvegarde. Rien n'est modifié tant que tu n'as pas confirmé."), /* @__PURE__ */ React.createElement("label", { className: "btn", style: { cursor: "pointer" } }, /* @__PURE__ */ React.createElement(Icone, { nom: "importer", taille: 15 }), " Choisir un fichier de sauvegarde", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json,application/json", hidden: true, onChange: choisir })), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 10 } }, "L'outil contrôle le fichier, montre ce qui va changer, télécharge d'abord l'état actuel, puis seulement remplace. Le compte propriétaire et les règles de sécurité ne sont jamais touchés."))), etat && /* @__PURE__ */ React.createElement("div", { className: `bandeau ${etat.phase === "erreur" ? "erreur" : etat.phase === "ok" ? "info" : "alerte"}` }, /* @__PURE__ */ React.createElement(Icone, { nom: etat.phase === "ok" ? "coche" : "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, etat.texte), etat.filet && etat.phase !== "cours" && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 4 } }, "Retour arrière : l'état d'avant a été téléchargé sous le nom « ", etat.filet, " ». Pour revenir en arrière, restaure ce fichier ici."))), fichier && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Contrôle de « ", fichier.nom, " »"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, fichier.d && fichier.d.date ? `Sauvegarde du ${new Date(fichier.d.date).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" })}.` : "Date de sauvegarde inconnue."), k.bloquants.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bandeau erreur" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Restauration impossible avec ce fichier."), /* @__PURE__ */ React.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, k.bloquants.map((b, i) => /* @__PURE__ */ React.createElement("li", { key: i }, b))))), k.alertes.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Incohérences détectées dans le fichier"), " (elles n'empêchent pas la restauration) :", /* @__PURE__ */ React.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, k.alertes.map((b, i) => /* @__PURE__ */ React.createElement("li", { key: i }, b))))), k.lignes.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Données"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Dans l'outil"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Dans le fichier"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Ajoutés"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Modifiés"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Supprimés de l'outil"))), /* @__PURE__ */ React.createElement("tbody", null, k.lignes.map((l) => /* @__PURE__ */ React.createElement("tr", { key: l.c }, /* @__PURE__ */ React.createElement("td", null, l.lib), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.avant), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.apres), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.ajoutes || "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.modifies || "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.supprimes ? /* @__PURE__ */ React.createElement("b", { style: { color: "var(--critique)" } }, l.supprimes) : "—")))))), rien ? /* @__PURE__ */ React.createElement("p", { style: { marginTop: 12 } }, "Ce fichier est identique au contenu actuel de l'outil : il n'y a rien à restaurer.") : !k.bloquants.length && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "coche", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: compris, onChange: (e) => setCompris(e.target.checked) }), " J'ai lu ce tableau : le contenu actuel de l'outil sera remplacé par celui de ce fichier", k.lignes.some((l) => l.supprimes) ? `, et ${somme(k.lignes.map((l) => l.supprimes))} enregistrement(s) présents aujourd'hui seront supprimés` : "", "."), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("button", { className: "btn danger", disabled: !compris || etat && etat.phase === "cours", onClick: restaurer }, "Sauvegarder l'état actuel puis restaurer"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFichier(null) }, "Annuler")))), k.bloquants.length > 0 && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFichier(null) }, "Fermer")), modeLocal && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, "Mode local : les sauvegardes et restaurations portent sur les données de ce navigateur, pas sur la base en ligne.")));
+}
+async function testerProtection() {
+  const base = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/artifacts/${APP_ID}/public/data/`;
+  const cibles = [["Agents", "conseillers?pageSize=1&mask.fieldPaths=projet"], ["Écoutes GRC", "ecoutes?pageSize=1&mask.fieldPaths=projet"], ["Données importées", "lots?pageSize=1&mask.fieldPaths=type"], ["Accompagnements", "suivis?pageSize=1&mask.fieldPaths=projet"], ["Compte propriétaire", "parametres/acces?mask.fieldPaths=cree"]];
+  const res = [];
+  for (const [lib, chemin] of cibles) {
+    try {
+      const r = await fetch(base + chemin, { credentials: "omit", cache: "no-store" });
+      res.push({ lib, etat: r.status === 403 || r.status === 401 ? "protege" : r.status === 200 ? "expose" : "inconnu", code: r.status });
+    } catch (e) {
+      res.push({ lib, etat: "inconnu", code: 0 });
+    }
+  }
+  return res;
+}
+function VueParametres({ ctx }) {
+  const { securite, enregistrerSecurite, modeLocal, user } = ctx;
+  const [test, setTest] = useState(null);
+  const [occupe, setOccupe] = useState(false);
+  const lancer = async () => {
+    setOccupe(true);
+    const r = await testerProtection();
+    setTest(r);
+    setOccupe(false);
+    if (r.every((x) => x.etat === "protege") && !modeLocal) {
+      try {
+        await enregistrerSecurite({ reglesOk: true, date: Date.now(), verifie: true });
+      } catch (e) {
+      }
+    }
+  };
+  const expose = test && test.some((x) => x.etat === "expose"), inconnu = test && !expose && test.some((x) => x.etat === "inconnu");
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Protection de la base"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "L'outil est public sur GitHub, mais ses données ne doivent être lisibles que par toi. Ce test interroge la base comme le ferait un inconnu, sans connexion : elle doit refuser."), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: lancer, disabled: occupe }, /* @__PURE__ */ React.createElement(Icone, { nom: "cadenas", taille: 15 }), " ", occupe ? "Test en cours…" : "Tester la protection maintenant")), test && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: `bandeau ${expose ? "erreur" : inconnu ? "alerte" : "info"}` }, /* @__PURE__ */ React.createElement(Icone, { nom: expose || inconnu ? "alerte" : "coche" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, expose ? "Des données sont lisibles sans connexion." : inconnu ? "Le test n'a pas pu aboutir entièrement." : "La base refuse les lectures sans connexion."), " ", expose ? "Publie sans attendre les règles du fichier « regles-firestore.txt » dans la console Firebase (Firestore Database → Règles), puis relance ce test." : inconnu ? "Vérifie ta connexion Internet et relance. Tant que le résultat est incertain, considère la base comme non vérifiée." : "Ce test prouve qu'un inconnu ne lit rien. Il ne prouve pas qu'un autre compte connecté serait refusé : c'est le rôle des règles « propriétaire unique » du fichier regles-firestore.txt.")), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("tbody", null, test.map((x) => /* @__PURE__ */ React.createElement("tr", { key: x.lib }, /* @__PURE__ */ React.createElement("td", null, x.lib), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: `badge ${x.etat === "protege" ? "ok" : x.etat === "expose" ? "ko" : "alerte"}` }, x.etat === "protege" ? "Refusé sans connexion" : x.etat === "expose" ? "Lisible sans connexion" : "Non vérifié")), /* @__PURE__ */ React.createElement("td", { className: "petit" }, x.code ? `réponse ${x.code}` : "pas de réponse")))))), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 10 } }, securite.reglesOk ? `Règles déclarées publiées${securite.date ? ` le ${new Date(securite.date).toLocaleDateString("fr-FR")}` : ""}${securite.verifie ? ", lecture anonyme vérifiée refusée" : ""}.` : "Règles de sécurité non encore déclarées publiées.")), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Compte propriétaire"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Un seul compte utilise l'outil : le tien."), /* @__PURE__ */ React.createElement("ul", { style: { margin: 0, paddingLeft: 18, color: "var(--encre-2)" } }, /* @__PURE__ */ React.createElement("li", null, "Connecté : ", /* @__PURE__ */ React.createElement("b", null, user.email), modeLocal ? " (mode local : la base en ligne refuse cet accès)" : "", "."), /* @__PURE__ */ React.createElement("li", null, "Le propriétaire est enregistré une seule fois dans le document ", /* @__PURE__ */ React.createElement("code", null, "parametres/acces"), ". L'outil ne le modifie jamais, ni à la restauration ni à la mise à jour."), /* @__PURE__ */ React.createElement("li", null, "Ne supprime jamais ce document dans la console Firebase : tant qu'il existe, personne d'autre ne peut se désigner propriétaire. S'il était supprimé, le premier compte à ouvrir l'outil le deviendrait."), /* @__PURE__ */ React.createElement("li", null, "L'ancien outil Nespresso utilise un autre espace de la même base : cette version n'y lit et n'y écrit rien."))), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Règles de calcul en vigueur"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Reprises de tes classeurs d'analyse. Leur réglage par projet et par activité (seuils minimaux, quartiles ou seuils fixes) est prévu en phase 3."), /* @__PURE__ */ React.createElement("ul", { style: { margin: 0, paddingLeft: 18, color: "var(--encre-2)" } }, /* @__PURE__ */ React.createElement("li", null, "Groupes Q1 à Q4 : agents ayant au moins ", SEUILS.qMin, " écoutes qualité ou ", SEUILS.rMin, " réponses clients, répartis en 4 groupes de même taille ; en dessous, « non classé »."), /* @__PURE__ */ React.createElement("li", null, "Statut « prioritaire » : écart significatif à 95 % avec la moyenne de l'équipe, à partir de ", SEUILS.qStatut, " écoutes ou ", SEUILS.rStatut, " réponses."), /* @__PURE__ */ React.createElement("li", null, "Score d'une écoute GRC : points obtenus / points possibles, critères « non applicable » exclus. Seules les écoutes complètes comptent."), /* @__PURE__ */ React.createElement("li", null, "Satisfaction : part des clients « très » ou « assez » satisfaits de l'agent. Détracteur : note de recommandation de 0 à 6."), /* @__PURE__ */ React.createElement("li", null, "Avant / après : une évolution est dite « nette » seulement quand elle dépasse ce que le hasard explique (seuil de 95 %) ; sinon « à confirmer » ou « pas assez de données »."), /* @__PURE__ */ React.createElement("li", null, "Avancement d'une action : agents accompagnés / agents visés quand ce nombre est renseigné, sinon saisi à la main."))));
 }
 const SansDonnees = ({ quoi, ctx }) => /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Aucune donnée sur ce périmètre"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, quoi, " ", ctx.filtres.projet || ctx.filtres.du || ctx.filtres.au ? `Aucune ligne ne correspond aux filtres en cours (${ctx.perimetre}).` : ""), ctx.peutEditer && /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => ctx.setVue("donnees") }, /* @__PURE__ */ React.createElement(Icone, { nom: "importer", taille: 15 }), " Importer un fichier"));
 function VueCarto({ ctx }) {
@@ -2087,7 +2390,7 @@ function VueRetours({ ctx }) {
     try {
       await classerVerbatim(l, champs);
     } catch (e) {
-      alert("Enregistrement impossible : " + e.message);
+      avertir("Enregistrement impossible : " + e.message);
     }
   };
   const exporter = () => exporterCSV("Analyse_retours_clients", ["Code", "Remarque client", "Famille", "Qui peut agir", "Retours", "Part des reproches"], ar.reproches.map((r) => [r.code, r.remarque, r.famille, r.qui, r.n, p100(r.part)]));
@@ -2143,15 +2446,15 @@ function VueEcoutes({ ctx }) {
       if (v) items[k] = v;
     });
     const d = { ...edition, items, reference: String(edition.reference || "").trim() };
-    if (!d.conseillerId) return alert("Choisis un agent.");
-    if (d.reference && ecoutesCol.items.some((e) => e.id !== d.id && e.conseillerId === d.conseillerId && String(e.reference) === d.reference)) return alert(`Une écoute existe déjà pour ${nomDe(d.conseillerId)} avec la référence ${d.reference}.`);
+    if (!d.conseillerId) return avertir("Choisis un agent.");
+    if (d.reference && ecoutesCol.items.some((e) => e.id !== d.id && e.conseillerId === d.conseillerId && String(e.reference) === d.reference)) return avertir(`Une écoute existe déjà pour ${nomDe(d.conseillerId)} avec la référence ${d.reference}.`);
     const data = { conseillerId: d.conseillerId, projet: g.projet, activite: g.activite, date: d.date || "", reference: d.reference, evaluateur: d.evaluateur || "", mode: d.mode || "", items, observations: d.observations || "", action: d.action || "" };
     let id = d.id;
     try {
       if (id) await ecoutesCol.modifier(id, data);
       else id = await ecoutesCol.ajouter({ ...data, ordre: Date.now() });
     } catch (e) {
-      alert("Enregistrement impossible : " + e.message);
+      avertir("Enregistrement impossible : " + e.message);
       return;
     }
     setEdition(null);
@@ -2207,7 +2510,7 @@ function VueEcoutes({ ctx }) {
         await grillesCol.modifier(g.id, { phrases: JSON.stringify({ ...g.phrases, [point]: { bien: lignes2(cour.bien), retravailler: lignes2(cour.retravailler), etape: lignes2(cour.etape) } }) });
         setPhr(null);
       } catch (e) {
-        alert("Enregistrement impossible : " + e.message);
+        avertir("Enregistrement impossible : " + e.message);
       }
     };
     return /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Phrases GRC prêtes à l'emploi"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Proposées dans les accompagnements selon le point travaillé. Une phrase par ligne ; tu peux les modifier, en ajouter ou en retirer."), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 12, alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { className: "label" }, "Point travaillé"), /* @__PURE__ */ React.createElement(Choix, { style: { width: 320 }, valeur: point, onChange: (v) => setPhr(null) || setPhr({ point: v, ...["bien", "retravailler", "etape"].reduce((o, k) => ({ ...o, [k]: ((g.phrases[v] || {})[k] || []).join("\n") }), {}), modifie: false }), options: pts2 }), peutEditer && /* @__PURE__ */ React.createElement("button", { className: "btn primaire", disabled: !cour.modifie, onClick: enreg }, "Enregistrer ce point")), /* @__PURE__ */ React.createElement("div", { className: "grille", style: { gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" } }, [["bien", "Bien traité"], ["retravailler", "À retravailler"], ["etape", "Prochaine étape"]].map(([k, lib]) => /* @__PURE__ */ React.createElement(Champ, { key: k, libelle: lib }, /* @__PURE__ */ React.createElement("textarea", { className: "input", style: { minHeight: 190 }, value: cour[k], onChange: (e) => setPhr({ ...cour, [k]: e.target.value, modifie: true }), readOnly: !peutEditer })))));
@@ -2242,16 +2545,16 @@ function VueFormations({ ctx }) {
   };
   const enregistrer = async () => {
     const d = { ...edition, titre: (edition.titre || "").trim(), dureeMin: +edition.dureeMin || 0 };
-    if (!d.titre) return alert("Le titre est obligatoire.");
-    if (!d.date) return alert("La date est obligatoire.");
-    if (!d.projet || !d.activite) return alert("Choisis le projet et l'activité de la session.");
+    if (!d.titre) return avertir("Le titre est obligatoire.");
+    if (!d.date) return avertir("La date est obligatoire.");
+    if (!d.projet || !d.activite) return avertir("Choisis le projet et l'activité de la session.");
     const { id, ...data } = d;
     try {
       if (id) await sessionsCol.modifier(id, data);
       else await sessionsCol.ajouter(data);
       setEdition(null);
     } catch (e) {
-      alert("Enregistrement impossible : " + e.message);
+      avertir("Enregistrement impossible : " + e.message);
     }
   };
   const exporter = () => exporterCSV(
@@ -2298,7 +2601,7 @@ function VuePlanning({ ctx }) {
     return /* @__PURE__ */ React.createElement("div", { key: iso, className: `jour ${iso === aujourdhui() ? "auj" : ""}` }, /* @__PURE__ */ React.createElement("div", { className: "jour-tete" }, /* @__PURE__ */ React.createElement("span", null, noms[i]), /* @__PURE__ */ React.createElement("span", null, pad(d.getDate()), "/", pad(d.getMonth() + 1))), ss.map((s) => /* @__PURE__ */ React.createElement("div", { key: s.id, className: `evt ${conflits.has(s.id) ? "conflit" : ""}`, onClick: () => setVue("formations") }, /* @__PURE__ */ React.createElement("b", null, [s.heure, s.titre].filter(Boolean).join(" · ")), /* @__PURE__ */ React.createElement("span", null, libPA(s), +s.dureeMin ? ` · ${s.dureeMin} min` : "", " · ", s.statut, conflits.has(s.id) ? " · Conflit" : ""))), sv.map((s) => /* @__PURE__ */ React.createElement("div", { key: s.id, className: "evt acc", onClick: () => setVue("suivi") }, /* @__PURE__ */ React.createElement("b", null, nomDe(s.conseillerId)), /* @__PURE__ */ React.createElement("span", null, typeDe(s), " · ", s.echeance === iso && s.datePrevue !== iso ? s.prochaine || "prochaine action" : s.action || "accompagnement", " · ", s.statut))), ac.map((a) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "evt acc", onClick: () => setVue("plan") }, /* @__PURE__ */ React.createElement("b", null, "Échéance du plan"), /* @__PURE__ */ React.createElement("span", null, a.action, " · ", a.statut))), ss.length + sv.length + ac.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "petit" }, "—"));
   })));
 }
-function VueProjets({ ctx }) {
+function VueProjets({ ctx, partie = "projets" }) {
   const { ref, enregistrerRef, conseillers, conseillersCol, lotsCol, grillesCol, ecoutesCol, actionsCol, suivisCol, sessionsCol } = ctx;
   const [brouillon, setBrouillon] = useState(ref);
   const [modifie, setModifie] = useState(false);
@@ -2318,10 +2621,10 @@ function VueProjets({ ctx }) {
   };
   const enregistrer = async () => {
     const projets = brouillon.projets.map((p) => ({ nom: (p.nom || "").trim(), origine: p.origine, activites: (p.activites || []).map((a) => ({ nom: (a.nom || "").trim(), canal: a.canal || "Entrant", origine: a.origine })).filter((a) => a.nom) })).filter((p) => p.nom);
-    if (new Set(projets.map((p) => norm(p.nom))).size !== projets.length) return alert("Deux projets portent le même nom.");
+    if (new Set(projets.map((p) => norm(p.nom))).size !== projets.length) return avertir("Deux projets portent le même nom.");
     for (const p of projets) {
-      if (!p.activites.length) return alert(`Le projet « ${p.nom} » doit avoir au moins une activité.`);
-      if (new Set(p.activites.map((a) => norm(a.nom))).size !== p.activites.length) return alert(`Deux activités du projet « ${p.nom} » portent le même nom.`);
+      if (!p.activites.length) return avertir(`Le projet « ${p.nom} » doit avoir au moins une activité.`);
+      if (new Set(p.activites.map((a) => norm(a.nom))).size !== p.activites.length) return avertir(`Deux activités du projet « ${p.nom} » portent le même nom.`);
     }
     setOccupe(true);
     try {
@@ -2342,9 +2645,9 @@ function VueProjets({ ctx }) {
       };
       await enregistrerRef(propre);
       setModifie(false);
-      if (reports) alert(`Nouveau nom reporté sur ${pl(reports, "enregistrement")}.`);
+      if (reports) avertir(`Nouveau nom reporté sur ${pl(reports, "enregistrement")}.`);
     } catch (e) {
-      alert("Enregistrement impossible : " + e.message);
+      avertir("Enregistrement impossible : " + e.message);
     }
     setOccupe(false);
   };
@@ -2352,20 +2655,20 @@ function VueProjets({ ctx }) {
   const retirerP = (i) => {
     const p = projetsB[i];
     const n = p.origine ? usage(p.origine) : 0;
-    if (n) return alert(`Le projet « ${p.origine} » contient ${pl(n, "enregistrement")} (agents, données, plan d'action…). Supprime d'abord ces données, ou garde le projet.`);
+    if (n) return avertir(`Le projet « ${p.origine} » contient ${pl(n, "enregistrement")} (agents, données, plan d'action…). Supprime d'abord ces données, ou garde le projet.`);
     maj("projets", projetsB.filter((_, j) => j !== i));
   };
   const retirerA = (i, k) => {
     const p = projetsB[i], a = p.activites[k];
     const n = p.origine && a.origine ? usage(p.origine, a.origine) : 0;
-    if (n) return alert(`L'activité « ${a.origine} » contient ${pl(n, "enregistrement")}. Supprime d'abord ces données, ou garde l'activité.`);
+    if (n) return avertir(`L'activité « ${a.origine} » contient ${pl(n, "enregistrement")}. Supprime d'abord ces données, ou garde l'activité.`);
     majP(i, { ...p, activites: p.activites.filter((_, j) => j !== k) });
   };
   const Liste = ({ cle, titre, aide }) => /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, titre), /* @__PURE__ */ React.createElement("p", { className: "sous" }, aide), (brouillon[cle] || []).map((v, i) => /* @__PURE__ */ React.createElement("div", { className: "ligne-ref", key: i }, /* @__PURE__ */ React.createElement("input", { className: "input", value: v, "aria-label": `${titre} ${i + 1}`, onChange: (e) => maj(cle, brouillon[cle].map((x, j) => j === i ? e.target.value : x)) }), /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: () => maj(cle, brouillon[cle].filter((_, j) => j !== i)) }, "Retirer"))), /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => maj(cle, [...brouillon[cle] || [], ""]) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 13 }), " Ajouter"));
   return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: enregistrer, disabled: !modifie || occupe }, occupe ? "Enregistrement…" : "Enregistrer"), modifie && !occupe && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => {
     setBrouillon(ref);
     setModifie(false);
-  } }, "Annuler les modifications")), projetsB.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "bandeau info" }, /* @__PURE__ */ React.createElement("div", null, "Commence par créer un projet (par exemple le nom du client), puis ajoute ses activités. Toutes les données de l'outil sont rangées par projet et par activité.")), projetsB.map((p, i) => /* @__PURE__ */ React.createElement("div", { className: "carte", key: i }, /* @__PURE__ */ React.createElement("div", { className: "ligne-ref" }, /* @__PURE__ */ React.createElement("input", { className: "input", style: { fontWeight: 700, fontSize: 15 }, value: p.nom, placeholder: "Nom du projet", "aria-label": `Projet ${i + 1}`, onChange: (e) => majP(i, { ...p, nom: e.target.value }) }), /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: () => retirerP(i) }, "Retirer le projet")), /* @__PURE__ */ React.createElement("p", { className: "sous" }, p.origine ? `${pl(conseillers.filter((c) => c.projet === p.origine).length, "agent")} · ${pl(usage(p.origine), "enregistrement")} au total` : "Nouveau projet"), /* @__PURE__ */ React.createElement("div", { className: "label", style: { marginBottom: 6 } }, "Activités"), p.activites.map((a, k) => /* @__PURE__ */ React.createElement("div", { className: "ligne-ref", key: k }, /* @__PURE__ */ React.createElement("input", { className: "input", value: a.nom, placeholder: "Nom de l'activité", "aria-label": `Activité ${k + 1} du projet ${i + 1}`, onChange: (e) => majP(i, { ...p, activites: p.activites.map((x, j) => j === k ? { ...x, nom: e.target.value } : x) }) }), /* @__PURE__ */ React.createElement("select", { className: "input", style: { width: 190 }, value: a.canal, "aria-label": `Canal de l'activité ${k + 1}`, onChange: (e) => majP(i, { ...p, activites: p.activites.map((x, j) => j === k ? { ...x, canal: e.target.value } : x) }) }, CANAUX.map((c) => /* @__PURE__ */ React.createElement("option", { key: c }, c))), /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: () => retirerA(i, k) }, "Retirer"))), /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => majP(i, { ...p, activites: [...p.activites, { nom: "", canal: "Entrant", origine: "" }] }) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 13 }), " Ajouter une activité"))), /* @__PURE__ */ React.createElement("button", { className: "btn", style: { marginBottom: 18 }, onClick: () => maj("projets", [...projetsB, { nom: "", origine: "", activites: [{ nom: "", canal: "Entrant", origine: "" }] }]) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Ajouter un projet"), Liste({ cle: "formateurs", titre: "Formateurs et responsables", aide: "Proposés comme responsable, évaluateur et animateur." }), Liste({ cle: "typesFormation", titre: "Types de formation", aide: "Ateliers GRC, micro-modules, formation initiale ou continue…" }), Liste({ cle: "sites", titre: "Sites", aide: "Facultatif." }), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Règles de calcul"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Reprises de tes classeurs d'analyse."), /* @__PURE__ */ React.createElement("ul", { style: { margin: 0, paddingLeft: 18, color: "var(--encre-2)" } }, /* @__PURE__ */ React.createElement("li", null, "Groupes Q1 à Q4 : agents ayant au moins ", SEUILS.qMin, " écoutes qualité ou ", SEUILS.rMin, " réponses clients, répartis en 4 groupes de même taille."), /* @__PURE__ */ React.createElement("li", null, "Statut « prioritaire » : écart significatif à 95 % avec la moyenne de l'équipe, à partir de ", SEUILS.qStatut, " écoutes ou ", SEUILS.rStatut, " réponses."), /* @__PURE__ */ React.createElement("li", null, "Écart GRC : item en écart (KO ou KO partiel) sur les axes information, relationnel ou prise en charge."), /* @__PURE__ */ React.createElement("li", null, "Détracteur : note de recommandation de 0 à 6. Satisfaction : clients « très » ou « assez » satisfaits de l'agent."), /* @__PURE__ */ React.createElement("li", null, "Avant / après : une évolution est dite « nette » quand elle dépasse ce que le hasard explique (seuil de 95 %)."))));
+  } }, "Annuler les modifications")), partie === "projets" && /* @__PURE__ */ React.createElement(React.Fragment, null, projetsB.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "bandeau info" }, /* @__PURE__ */ React.createElement("div", null, "Commence par créer un projet (par exemple le nom du client), puis ajoute ses activités. Toutes les données de l'outil sont rangées par projet et par activité.")), projetsB.map((p, i) => /* @__PURE__ */ React.createElement("div", { className: "carte", key: i }, /* @__PURE__ */ React.createElement("div", { className: "ligne-ref" }, /* @__PURE__ */ React.createElement("input", { className: "input", style: { fontWeight: 700, fontSize: 15 }, value: p.nom, placeholder: "Nom du projet", "aria-label": `Projet ${i + 1}`, onChange: (e) => majP(i, { ...p, nom: e.target.value }) }), /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: () => retirerP(i) }, "Retirer le projet")), /* @__PURE__ */ React.createElement("p", { className: "sous" }, p.origine ? `${pl(conseillers.filter((c) => c.projet === p.origine).length, "agent")} · ${pl(usage(p.origine), "enregistrement")} au total` : "Nouveau projet"), /* @__PURE__ */ React.createElement("div", { className: "label", style: { marginBottom: 6 } }, "Activités"), p.activites.map((a, k) => /* @__PURE__ */ React.createElement("div", { className: "ligne-ref", key: k }, /* @__PURE__ */ React.createElement("input", { className: "input", value: a.nom, placeholder: "Nom de l'activité", "aria-label": `Activité ${k + 1} du projet ${i + 1}`, onChange: (e) => majP(i, { ...p, activites: p.activites.map((x, j) => j === k ? { ...x, nom: e.target.value } : x) }) }), /* @__PURE__ */ React.createElement("select", { className: "input", style: { width: 190 }, value: a.canal, "aria-label": `Canal de l'activité ${k + 1}`, onChange: (e) => majP(i, { ...p, activites: p.activites.map((x, j) => j === k ? { ...x, canal: e.target.value } : x) }) }, CANAUX.map((c) => /* @__PURE__ */ React.createElement("option", { key: c }, c))), /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: () => retirerA(i, k) }, "Retirer"))), /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => majP(i, { ...p, activites: [...p.activites, { nom: "", canal: "Entrant", origine: "" }] }) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 13 }), " Ajouter une activité"))), /* @__PURE__ */ React.createElement("button", { className: "btn", style: { marginBottom: 18 }, onClick: () => maj("projets", [...projetsB, { nom: "", origine: "", activites: [{ nom: "", canal: "Entrant", origine: "" }] }]) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Ajouter un projet")), partie === "referentiels" && /* @__PURE__ */ React.createElement(React.Fragment, null, Liste({ cle: "formateurs", titre: "Formateurs et responsables", aide: "Proposés comme responsable, évaluateur et animateur." }), Liste({ cle: "typesFormation", titre: "Types de formation", aide: "Ateliers GRC, micro-modules, formation initiale ou continue…" }), Liste({ cle: "sites", titre: "Sites", aide: "Facultatif." })));
 }
 function VueConseillers({ ctx }) {
   const { ref, conseillers, conseillersCol, projets, activitesDe, suivisCol, ecoutesCol, sessions, jeux, ouvrirFiche, setVue } = ctx;
@@ -2389,10 +2692,10 @@ function VueConseillers({ ctx }) {
   const existe = (projetX, k, saufId) => conseillers.some((c) => c.id !== saufId && (c.projet || "") === projetX && clesDe(c).includes(k));
   const enregistrer = async () => {
     const d = { ...edition, nom: (edition.nom || "").trim() };
-    if (!d.nom) return alert("Le nom est obligatoire.");
-    if (!d.projet) return alert("Choisis le projet de cet agent.");
+    if (!d.nom) return avertir("Le nom est obligatoire.");
+    if (!d.projet) return avertir("Choisis le projet de cet agent.");
     const k = cleNom(d.nom);
-    if (existe(d.projet, k, d.id)) return alert(`Un agent porte déjà ce nom dans le projet ${d.projet}.`);
+    if (existe(d.projet, k, d.id)) return avertir(`Un agent porte déjà ce nom dans le projet ${d.projet}.`);
     const { id, donnees, ecoutes, ...data } = d;
     if (id) {
       const ancien = conseillers.find((c) => c.id === id);
@@ -2403,17 +2706,17 @@ function VueConseillers({ ctx }) {
       else await conseillersCol.ajouter(data);
       setEdition(null);
     } catch (e) {
-      alert("Enregistrement impossible : " + e.message);
+      avertir("Enregistrement impossible : " + e.message);
     }
   };
   const supprimer = async () => {
-    if (utilise(edition.id)) return alert("Cet agent a des écoutes, des suivis ou des formations enregistrés. Passe-le plutôt au statut « Sorti » pour conserver son historique.");
+    if (utilise(edition.id)) return avertir("Cet agent a des écoutes, des suivis ou des formations enregistrés. Passe-le plutôt au statut « Sorti » pour conserver son historique.");
     if (!confirm(`Supprimer ${edition.nom} de la liste ? Ses lignes dans les fichiers importés ne sont pas effacées.`)) return;
     await conseillersCol.supprimer(edition.id);
     setEdition(null);
   };
   const lancerImport = async () => {
-    if (!importe.projet) return alert("Choisis le projet.");
+    if (!importe.projet) return avertir("Choisis le projet.");
     const lgs = importe.texte.split(/\r?\n/).map((l) => l.split(/\t|;/).map((x) => x.trim())).filter((l) => l[0]);
     let ajoutes = 0, ignores = 0;
     const vus = new Set(conseillers.filter((c) => c.projet === importe.projet).flatMap(clesDe));
@@ -2430,7 +2733,7 @@ function VueConseillers({ ctx }) {
       await conseillersCol.ajouter({ nom: l[0], projet: importe.projet, activite: acts.find((a) => norm(a) === norm(l[1] || "")) || importe.activite || "", equipe: l[2] || "", site: l[3] || "", statut: "Actif", commentaire: "" });
       ajoutes++;
     }
-    alert(`${pl(ajoutes, "agent")} ${ajoutes > 1 ? "ajoutés" : "ajouté"} au projet ${importe.projet}${ignores ? `, ${ignores} déjà ${ignores > 1 ? "présents ignorés" : "présent ignoré"}` : ""}.`);
+    avertir(`${pl(ajoutes, "agent")} ${ajoutes > 1 ? "ajoutés" : "ajouté"} au projet ${importe.projet}${ignores ? `, ${ignores} déjà ${ignores > 1 ? "présents ignorés" : "présent ignoré"}` : ""}.`);
     setImporte(null);
   };
   const exporter = () => exporterCSV("Agents", ["Nom", "Projet", "Activité", "Équipe", "Site", "Statut", "Lignes de données", "Écoutes GRC", "Commentaire"], triees.map((c) => [c.nom, c.projet, c.activite, c.equipe, c.site, c.statut, c.donnees, c.ecoutes, c.commentaire]));
@@ -2464,7 +2767,7 @@ function VueDonnees({ ctx }) {
     setOccupe("");
   };
   const valider = async (a) => {
-    if (!a.projet || !a.activite) return alert("Choisis le projet et l'activité concernés par ce fichier.");
+    if (!a.projet || !a.activite) return avertir("Choisis le projet et l'activité concernés par ce fichier.");
     const existe = jeux.find((j) => j.type === a.type && j.projet === a.projet && j.activite === a.activite);
     if (existe && !confirm(`Des données « ${a.titre} » existent déjà pour ${a.projet} · ${a.activite} (${existe.nb} lignes). Elles seront remplacées par le contenu de ce fichier. Continuer ?`)) return;
     setOccupe(`Enregistrement de ${a.fichier}…`);
