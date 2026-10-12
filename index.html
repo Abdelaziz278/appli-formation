@@ -309,6 +309,9 @@ code { background: #f1f5f9; padding: 1px 6px; border-radius: 6px; font-size: 12p
 }
 @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
 @media print { .messages, .burger { display: none !important; } }
+
+.dest { border: 1px solid var(--bord); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; align-items: flex-start; background: #fbfafd; }
+.dest b { color: var(--prune); font-size: 14px; }
 </style>
 </head>
 <body>
@@ -3127,7 +3130,8 @@ function VueRapport({ ctx }) {
     ...ae ? [["Écoutes GRC réalisées", ae.nbCompletes], ["Score moyen des écoutes GRC", p100(ae.scoreMoyen)]] : [],
     ["Agents prioritaires", prio.length],
     ["Avancement du plan d'action", avanc === null ? "—" : Math.round(avanc) + " %"],
-    ["Suivis individuels en cours", suivis.filter((s) => s.statut !== "Clôturé").length],
+    ["Accompagnements réalisés", suivis.filter(suiviFait).length],
+    ["Accompagnements en cours ou prévus", suivis.filter((s) => s.statut !== "Clôturé").length],
     ...impacts.length ? [["Agents en progression après accompagnement", `${impacts.filter((i) => i.delta > 0).length} sur ${impacts.length}`]] : []
   ];
   const series = [aq && { nom: "Note qualité", valeurs: moisTous.map((m) => (aq.parMois.find((x) => x.mois === m) || {}).note ?? null) }, ar && { nom: "Satisfaction client", valeurs: moisTous.map((m) => (ar.parMois.find((x) => x.mois === m) || {}).sat ?? null) }].filter(Boolean);
@@ -3143,10 +3147,421 @@ function VueRapport({ ctx }) {
     ...g ? g.lignes.map((l, i) => ["Écoutes GRC", masquer ? `Agent ${i + 1}` : l.nom, l.suivi !== null ? `${p100(l.depart)} → ${p100(l.suivi)}` : p100(l.depart), l.bascule ? `formé ou accompagné le ${fmtDate(l.bascule)}` : "pas encore formé"]) : [],
     ...actions.map((a) => ["Plan d'action", a.action, a.statut, `${avancementDe(a)} % · échéance ${fmtDate(a.echeance) || "non fixée"}${a.resultat ? " · " + a.resultat : ""}`])
   ]);
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "carte no-print" }, /* @__PURE__ */ React.createElement("h2", null, "Préparer le rapport"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Le rapport reprend le périmètre et la période choisis en haut de page. Relis-le, puis imprime-le en PDF ou exporte-le pour Excel."), /* @__PURE__ */ React.createElement(Champ, { libelle: "Message d'introduction (facultatif)" }, /* @__PURE__ */ React.createElement(Zone, { valeur: message, onChange: setMessage, placeholder: "Contexte, décisions attendues, points d'attention…" })), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 12, alignItems: "center" } }, /* @__PURE__ */ React.createElement("label", { className: "coche" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: masquer, onChange: (e) => setMasquer(e.target.checked) }), " Masquer les noms des agents"), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: exporter }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Exporter pour Excel"), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => window.print() }, "Imprimer / enregistrer en PDF"))), /* @__PURE__ */ React.createElement("div", { className: "carte rapport" }, /* @__PURE__ */ React.createElement("div", { className: "rapport-tete" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "petit" }, "Point GRC · édité le ", fmtDate(aujourdhui())), /* @__PURE__ */ React.createElement("h2", { style: { fontSize: 22 } }, perimetre), /* @__PURE__ */ React.createElement("div", { className: "t-c2" }, "Période : ", periode))), message && /* @__PURE__ */ React.createElement("p", { style: { whiteSpace: "pre-wrap", margin: "14px 0" } }, message), /* @__PURE__ */ React.createElement(Retenir, { points: retenir }), /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Chiffres clés"), /* @__PURE__ */ React.createElement("div", { className: "fiche-kpi" }, chiffres.map(([l, v]) => /* @__PURE__ */ React.createElement("div", { key: l }, /* @__PURE__ */ React.createElement("span", null, l), /* @__PURE__ */ React.createElement("b", null, v)))), series.length > 0 && moisTous.length > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Évolution mensuelle"), /* @__PURE__ */ React.createElement(Courbe, { categories: moisTous.map(libMoisCourt), series, hauteur: 210 })), c.indicateurs.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Avant / après : ", c.libAvant, ", puis ", c.libApres), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Indicateur"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Avant"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Après"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Évolution"), /* @__PURE__ */ React.createElement("th", null, "Lecture"))), /* @__PURE__ */ React.createElement("tbody", null, c.indicateurs.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.cle }, /* @__PURE__ */ React.createElement("td", null, i.lib), /* @__PURE__ */ React.createElement("td", { className: "num" }, valInd(i, i.avant)), /* @__PURE__ */ React.createElement("td", { className: "num" }, valInd(i, i.apres)), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement(Delta, { i })), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Badge, { s: i.verdict }))))))), topEcarts.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Écarts GRC à travailler en priorité (écoutes qualité)"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Constat"), /* @__PURE__ */ React.createElement("th", null, "Axe"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Écarts"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Points perdus"), /* @__PURE__ */ React.createElement("th", null, "Priorité"))), /* @__PURE__ */ React.createElement("tbody", null, topEcarts.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.nom }, /* @__PURE__ */ React.createElement("td", null, i.remarque), /* @__PURE__ */ React.createElement("td", { className: "petit" }, i.famille), /* @__PURE__ */ React.createElement("td", { className: "num" }, i.ecarts), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.perdus, 1)), /* @__PURE__ */ React.createElement("td", null, i.priorite)))))), ar && ar.reproches.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Ce que disent les clients mécontents"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Cause du mécontentement"), /* @__PURE__ */ React.createElement("th", null, "Famille"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Retours"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Part"), /* @__PURE__ */ React.createElement("th", null, "Qui peut agir"))), /* @__PURE__ */ React.createElement("tbody", null, ar.reproches.slice(0, 6).map((x) => /* @__PURE__ */ React.createElement("tr", { key: x.code }, /* @__PURE__ */ React.createElement("td", null, x.remarque), /* @__PURE__ */ React.createElement("td", { className: "petit" }, x.famille), /* @__PURE__ */ React.createElement("td", { className: "num" }, x.n), /* @__PURE__ */ React.createElement("td", { className: "num" }, p100(x.part, 0)), /* @__PURE__ */ React.createElement("td", null, x.qui))))), ar.partConseiller[0].avec > 0 && /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 6 } }, "L'agent est directement en cause pour ", p100(ar.partConseiller[0].part, 0), " des clients insatisfaits qui expriment un reproche.")), (aq || ar) && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Cartographie des agents"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Source"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q1 (meilleur quart)"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q2"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q3"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q4"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Non classés"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Prioritaires"))), /* @__PURE__ */ React.createElement("tbody", null, aq && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", null, "Note qualité"), ["Q1", "Q2", "Q3", "Q4", "NI"].map((g2) => /* @__PURE__ */ React.createElement("td", { key: g2, className: "num" }, compte(aq, g2))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, prioQ.length))), ar && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", null, "Satisfaction client"), ["Q1", "Q2", "Q3", "Q4", "NI"].map((g2) => /* @__PURE__ */ React.createElement("td", { key: g2, className: "num" }, compte(ar, g2))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, prioR.length))))), prio.length > 0 && /* @__PURE__ */ React.createElement("table", { className: "tab", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Agent prioritaire"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Note qualité"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Satisfaction"), /* @__PURE__ */ React.createElement("th", null, "Principal écart GRC"))), /* @__PURE__ */ React.createElement("tbody", null, prio.map((x, i) => {
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "carte no-print" }, /* @__PURE__ */ React.createElement("h2", null, "Préparer le rapport"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Le rapport reprend le périmètre et la période choisis en haut de page. Relis-le, puis imprime-le en PDF ou exporte-le pour Excel."), /* @__PURE__ */ React.createElement(Champ, { libelle: "Message d'introduction (facultatif)" }, /* @__PURE__ */ React.createElement(Zone, { valeur: message, onChange: setMessage, placeholder: "Contexte, décisions attendues, points d'attention…" })), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 12, alignItems: "center" } }, /* @__PURE__ */ React.createElement("label", { className: "coche" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: masquer, onChange: (e) => setMasquer(e.target.checked) }), " Masquer les noms des agents"), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: exporter }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Exporter pour Excel"), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => window.print() }, "Imprimer / enregistrer en PDF"))), /* @__PURE__ */ React.createElement(CarteExtractions, { ctx, x: { c, g, retenir, chiffres, periode, message } }), /* @__PURE__ */ React.createElement("div", { className: "carte rapport" }, /* @__PURE__ */ React.createElement("div", { className: "rapport-tete" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "petit" }, "Point GRC · édité le ", fmtDate(aujourdhui())), /* @__PURE__ */ React.createElement("h2", { style: { fontSize: 22 } }, perimetre), /* @__PURE__ */ React.createElement("div", { className: "t-c2" }, "Période : ", periode))), message && /* @__PURE__ */ React.createElement("p", { style: { whiteSpace: "pre-wrap", margin: "14px 0" } }, message), /* @__PURE__ */ React.createElement(Retenir, { points: retenir }), /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Chiffres clés"), /* @__PURE__ */ React.createElement("div", { className: "fiche-kpi" }, chiffres.map(([l, v]) => /* @__PURE__ */ React.createElement("div", { key: l }, /* @__PURE__ */ React.createElement("span", null, l), /* @__PURE__ */ React.createElement("b", null, v)))), series.length > 0 && moisTous.length > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Évolution mensuelle"), /* @__PURE__ */ React.createElement(Courbe, { categories: moisTous.map(libMoisCourt), series, hauteur: 210 })), c.indicateurs.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Avant / après : ", c.libAvant, ", puis ", c.libApres), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Indicateur"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Avant"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Après"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Évolution"), /* @__PURE__ */ React.createElement("th", null, "Lecture"))), /* @__PURE__ */ React.createElement("tbody", null, c.indicateurs.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.cle }, /* @__PURE__ */ React.createElement("td", null, i.lib), /* @__PURE__ */ React.createElement("td", { className: "num" }, valInd(i, i.avant)), /* @__PURE__ */ React.createElement("td", { className: "num" }, valInd(i, i.apres)), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement(Delta, { i })), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Badge, { s: i.verdict }))))))), topEcarts.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Écarts GRC à travailler en priorité (écoutes qualité)"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Constat"), /* @__PURE__ */ React.createElement("th", null, "Axe"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Écarts"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Points perdus"), /* @__PURE__ */ React.createElement("th", null, "Priorité"))), /* @__PURE__ */ React.createElement("tbody", null, topEcarts.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.nom }, /* @__PURE__ */ React.createElement("td", null, i.remarque), /* @__PURE__ */ React.createElement("td", { className: "petit" }, i.famille), /* @__PURE__ */ React.createElement("td", { className: "num" }, i.ecarts), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.perdus, 1)), /* @__PURE__ */ React.createElement("td", null, i.priorite)))))), ar && ar.reproches.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Ce que disent les clients mécontents"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Cause du mécontentement"), /* @__PURE__ */ React.createElement("th", null, "Famille"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Retours"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Part"), /* @__PURE__ */ React.createElement("th", null, "Qui peut agir"))), /* @__PURE__ */ React.createElement("tbody", null, ar.reproches.slice(0, 6).map((x) => /* @__PURE__ */ React.createElement("tr", { key: x.code }, /* @__PURE__ */ React.createElement("td", null, x.remarque), /* @__PURE__ */ React.createElement("td", { className: "petit" }, x.famille), /* @__PURE__ */ React.createElement("td", { className: "num" }, x.n), /* @__PURE__ */ React.createElement("td", { className: "num" }, p100(x.part, 0)), /* @__PURE__ */ React.createElement("td", null, x.qui))))), ar.partConseiller[0].avec > 0 && /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 6 } }, "L'agent est directement en cause pour ", p100(ar.partConseiller[0].part, 0), " des clients insatisfaits qui expriment un reproche.")), (aq || ar) && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Cartographie des agents"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Source"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q1 (meilleur quart)"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q2"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q3"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q4"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Non classés"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Prioritaires"))), /* @__PURE__ */ React.createElement("tbody", null, aq && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", null, "Note qualité"), ["Q1", "Q2", "Q3", "Q4", "NI"].map((g2) => /* @__PURE__ */ React.createElement("td", { key: g2, className: "num" }, compte(aq, g2))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, prioQ.length))), ar && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", null, "Satisfaction client"), ["Q1", "Q2", "Q3", "Q4", "NI"].map((g2) => /* @__PURE__ */ React.createElement("td", { key: g2, className: "num" }, compte(ar, g2))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, prioR.length))))), prio.length > 0 && /* @__PURE__ */ React.createElement("table", { className: "tab", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Agent prioritaire"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Note qualité"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Satisfaction"), /* @__PURE__ */ React.createElement("th", null, "Principal écart GRC"))), /* @__PURE__ */ React.createElement("tbody", null, prio.map((x, i) => {
     const q = aq && aq.parConseiller.find((y) => y.k === x.k), r = ar && ar.parConseiller.find((y) => y.k === x.k);
     return /* @__PURE__ */ React.createElement("tr", { key: x.k }, /* @__PURE__ */ React.createElement("td", null, nomP(x, i)), /* @__PURE__ */ React.createElement("td", { className: "num" }, q ? p100(q.note) : "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, r ? p100(r.sat) : "—"), /* @__PURE__ */ React.createElement("td", null, q ? q.principal : "—"));
   })))), g && g.lignes.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Écoutes GRC : score par agent, avant et après la formation"), /* @__PURE__ */ React.createElement(CarteEcoutes, { g, masquer })), actions.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Plan d'action · avancement global ", avanc === null ? "—" : Math.round(avanc) + " %"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Action"), /* @__PURE__ */ React.createElement("th", null, "Statut"), /* @__PURE__ */ React.createElement("th", null, "Échéance"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Avancement"), /* @__PURE__ */ React.createElement("th", null, "Résultat / bilan"))), /* @__PURE__ */ React.createElement("tbody", null, actions.map((a) => /* @__PURE__ */ React.createElement("tr", { key: a.id }, /* @__PURE__ */ React.createElement("td", null, a.action, !filtres.activite && /* @__PURE__ */ React.createElement("div", { className: "petit" }, libPA(a))), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Badge, { s: a.statut }), actionEnRetard(a) && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(Badge, { s: "En retard" }))), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, fmtDate(a.echeance) || "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, avancementDe(a), " %"), /* @__PURE__ */ React.createElement("td", null, a.resultat || "—")))))), suivis.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Accompagnement individuel"), /* @__PURE__ */ React.createElement("p", null, pl(new Set(suivis.map((s) => s.conseillerId)).size, "agent"), " ", new Set(suivis.map((s) => s.conseillerId)).size > 1 ? "accompagnés" : "accompagné", ", ", suivis.filter((s) => s.statut !== "Clôturé").length, " suivi(s) en cours, ", suivis.filter((s) => s.statut === "Clôturé").length, " clôturé(s).", impacts.length ? ` ${impacts.filter((i) => i.delta > 0).length} sur ${impacts.length} progressent en note qualité après leur accompagnement.` : "")), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 16 } }, "Méthode : groupes Q1 à Q4 de même taille ; « prioritaire » = résultat significativement en dessous de l'équipe ; évolution « nette » = au-delà de la marge du hasard (seuil de 95 %).")));
+}
+const _crcTable = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+const _crc32 = (u8) => {
+  let c = 4294967295;
+  for (let i = 0; i < u8.length; i++) c = _crcTable[(c ^ u8[i]) & 255] ^ c >>> 8;
+  return (c ^ 4294967295) >>> 0;
+};
+function _zip(fichiers) {
+  const enc = new TextEncoder(), parts = [], centrale = [];
+  let offset = 0;
+  const u16 = (v) => [v & 255, v >>> 8 & 255], u32 = (v) => [v & 255, v >>> 8 & 255, v >>> 16 & 255, v >>> 24 & 255];
+  fichiers.forEach(({ nom, texte }) => {
+    const n = enc.encode(nom), d = enc.encode(texte), crc = _crc32(d);
+    const entete = new Uint8Array([...u32(67324752), ...u16(20), ...u16(2048), ...u16(0), ...u16(0), ...u16(33), ...u32(crc), ...u32(d.length), ...u32(d.length), ...u16(n.length), ...u16(0)]);
+    parts.push(entete, n, d);
+    centrale.push(new Uint8Array([...u32(33639248), ...u16(20), ...u16(20), ...u16(2048), ...u16(0), ...u16(0), ...u16(33), ...u32(crc), ...u32(d.length), ...u32(d.length), ...u16(n.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset)]), n);
+    offset += entete.length + n.length + d.length;
+  });
+  const tailleC = somme(centrale.map((x) => x.length));
+  const fin = new Uint8Array([...u32(101010256), ...u16(0), ...u16(0), ...u16(fichiers.length), ...u16(fichiers.length), ...u32(tailleC), ...u32(offset), ...u16(0)]);
+  return new Blob([...parts, ...centrale, fin], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+const _xml = (s) => String(s ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const _colL = (i) => {
+  let s = "";
+  i++;
+  while (i > 0) {
+    const m = (i - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    i = Math.floor((i - 1) / 26);
+  }
+  return s;
+};
+const _serie = (iso) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+  return m ? (Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(1899, 11, 30)) / 864e5 : null;
+};
+const _STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="3"><numFmt numFmtId="164" formatCode="0.0%"/><numFmt numFmtId="165" formatCode="dd/mm/yyyy"/><numFmt numFmtId="166" formatCode="+0.0;-0.0;0.0"/></numFmts>
+<fonts count="6"><font><sz val="10"/><name val="Calibri"/></font><font><b/><sz val="15"/><color rgb="FF2A0F3D"/><name val="Calibri"/></font><font><i/><sz val="10"/><color rgb="FF64748B"/><name val="Calibri"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="10"/><name val="Calibri"/></font><font><sz val="10"/><color rgb="FF64748B"/><name val="Calibri"/></font></fonts>
+<fills count="6"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2A0F3D"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDCFCE7"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFEE2E2"/></patternFill></fill></fills>
+<borders count="2"><border/><border><bottom style="thin"><color rgb="FFE2E8F0"/></bottom></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="14">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="0" fontId="3" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment wrapText="1" vertical="center"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment vertical="top"/></xf>
+<xf numFmtId="1" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment vertical="top"/></xf>
+<xf numFmtId="165" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment vertical="top"/></xf>
+<xf numFmtId="166" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment vertical="top"/></xf>
+<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top"/></xf>
+<xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
+<xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
+<xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
+<xf numFmtId="0" fontId="5" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top"/></xf>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+const _ton = (v) => {
+  const s = norm(v);
+  return /amelioration nette|en progression|^realise|^acquis|refere/.test(s) ? 10 : /degradation nette|en recul|prioritaire|en retard|^non acquis/.test(s) ? 12 : /a confirmer|a surveiller|partiel|a relancer|a reecouter|a poursuivre/.test(s) ? 11 : 4;
+};
+function _feuilleXml(f) {
+  const rows = [];
+  let r = 1;
+  const cell = (c, v, s) => {
+    const ref = _colL(c) + r;
+    if (v === null || v === void 0 || v === "" || typeof v === "number" && !isFinite(v)) return s ? `<c r="${ref}" s="${s}"/>` : "";
+    if (typeof v === "number") return `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+    return `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${_xml(v)}</t></is></c>`;
+  };
+  rows.push(`<row r="${r}" ht="22" customHeight="1">${cell(0, f.titre, 1)}</row>`);
+  r++;
+  if (f.sous) {
+    rows.push(`<row r="${r}">${cell(0, f.sous, 2)}</row>`);
+    r++;
+  }
+  r++;
+  const hRow = r;
+  rows.push(`<row r="${r}" ht="30" customHeight="1">${f.colonnes.map((c, i) => cell(i, c.lib, 3)).join("")}</row>`);
+  r++;
+  f.lignes.forEach((l) => {
+    if (l && l.section) {
+      rows.push(`<row r="${r}">${cell(0, l.section, 9)}</row>`);
+      r++;
+      return;
+    }
+    rows.push(`<row r="${r}">${f.colonnes.map((c, i) => {
+      let v = l[i];
+      if (c.f === "date") {
+        const n = _serie(v);
+        return cell(i, n !== null ? n : v, n !== null ? 7 : 4);
+      }
+      if (c.f === "pct") return cell(i, typeof v === "number" ? v : v, typeof v === "number" ? 5 : 4);
+      if (c.f === "int") return cell(i, v, typeof v === "number" ? 6 : 4);
+      if (c.f === "dec") return cell(i, typeof v === "number" ? Math.round(v * 10) / 10 : v, typeof v === "number" ? 8 : 4);
+      if (c.f === "ton") return cell(i, v, v ? _ton(v) : 4);
+      return cell(i, v, 4);
+    }).join("")}</row>`);
+    r++;
+  });
+  if (f.note) {
+    r++;
+    String(f.note).split("\n").forEach((t) => {
+      rows.push(`<row r="${r}">${cell(0, t, 13)}</row>`);
+      r++;
+    });
+  }
+  const der = _colL(f.colonnes.length - 1);
+  const filtre = f.lignes.length && !f.lignes.some((l) => l && l.section) ? `<autoFilter ref="A${hRow}:${der}${hRow + f.lignes.length}"/>` : "";
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="${hRow}" topLeftCell="A${hRow + 1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+<cols>${f.colonnes.map((c, i) => `<col min="${i + 1}" max="${i + 1}" width="${c.l || 14}" customWidth="1"/>`).join("")}</cols>
+<sheetData>${rows.join("")}</sheetData>${filtre}
+<pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/>
+</worksheet>`;
+}
+function creerXlsx(feuilles) {
+  const noms = [];
+  feuilles.forEach((f) => {
+    let n = String(f.nom).replace(/[\[\]:*?\/\\]/g, " ").slice(0, 31).trim() || "Feuille";
+    let k = 2;
+    while (noms.includes(n)) n = n.slice(0, 28) + " " + k++;
+    noms.push(n);
+  });
+  const fichiers = [
+    { nom: "[Content_Types].xml", texte: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${feuilles.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>` },
+    { nom: "_rels/.rels", texte: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+    { nom: "xl/workbook.xml", texte: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView/></bookViews><sheets>${noms.map((n, i) => `<sheet name="${_xml(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets><definedNames>${feuilles.map((f, i) => f.lignes.length && !f.lignes.some((l) => l && l.section) ? `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${_xml(noms[i]).replace(/'/g, "''")}'!$A$${f.sous ? 4 : 3}:$${_colL(f.colonnes.length - 1)}$${(f.sous ? 4 : 3) + f.lignes.length}</definedName>` : "").join("")}</definedNames></workbook>` },
+    { nom: "xl/_rels/workbook.xml.rels", texte: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${feuilles.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}<Relationship Id="rId${feuilles.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
+    { nom: "xl/styles.xml", texte: _STYLES },
+    ...feuilles.map((f, i) => ({ nom: `xl/worksheets/sheet${i + 1}.xml`, texte: _feuilleXml(f) }))
+  ];
+  return _zip(fichiers);
+}
+const DESTINATAIRES = [
+  { id: "manager", lib: "Mon manager", fichier: "Manager", aide: "Vue complète et nominative : résultats, évolution, avant / après, score GRC par agent, plan d'action, accompagnements, ce qui est à relancer.", feuilles: ["synthese", "mois", "avantApres", "agentsGRC", "plan", "accSynthese", "accDetail", "aTraiter"] },
+  { id: "client", lib: "Le client Roole", fichier: "Client", aide: "Résultats et progrès collectifs, plan d'action et accompagnements en volume. Noms des agents toujours masqués, aucun verbatim.", anonyme: true, feuilles: ["synthese", "mois", "avantApres", "competences", "agentsGRC", "plan", "accSynthese"] },
+  { id: "qualite", lib: "La direction qualité", fichier: "Direction_qualite", aide: "Écarts GRC, compétences par critère, reproches clients, avant / après par axe et cartographie des agents.", feuilles: ["synthese", "mois", "avantApres", "ecartsQualite", "competences", "reproches", "carto"] },
+  { id: "prod", lib: "La production", fichier: "Production", aide: "Agent par agent : score GRC, points à travailler, accompagnements faits et prévus, et ce qui est à relancer. Pour les superviseurs.", feuilles: ["agentsGRC", "agentsPoints", "accDetail", "aTraiter", "carto"] }
+];
+function construireExtraction(dest, ctx, x) {
+  const { aq, ar, ae, actions, suivis, sessions, perimetre, nomDe, actionsCol, aTraiter } = ctx;
+  const { c, g, retenir, chiffres, periode, message } = x;
+  const anonyme = dest.anonyme || x.masquer;
+  const pseudos = {};
+  let nP = 0;
+  const qui = (id, nom) => {
+    if (!anonyme) return nom || nomDe(id);
+    const k = id || nom;
+    return pseudos[k] || (pseudos[k] = `Agent ${++nP}`);
+  };
+  const verdictPts = (d) => d === null || d === void 0 ? "" : d > 0.5 ? "En progression" : d < -0.5 ? "En recul" : "Stable";
+  const blocs = {
+    synthese: () => ({
+      nom: "Synthèse",
+      titre: "Chiffres clés",
+      sous: `${perimetre} · ${periode}`,
+      colonnes: [{ lib: "Indicateur", l: 46 }, { lib: "Valeur", l: 16 }, { lib: "Base ou détail", l: 50 }],
+      lignes: [...chiffres.map(([l, v]) => [l, v === null || v === void 0 ? "" : String(v)]), ...ae ? ae.parGrille.filter((p) => p.ecoutes.length).map((p) => [`Score GRC · ${libPA(p.grille)}`, p100(p.scoreMoyen), `${pl(p.nbCompletes, "écoute")} complète${p.nbCompletes > 1 ? "s" : ""}, ${pl(p.nbAgents, "agent")}`]) : []]
+    }),
+    mois: () => {
+      const ecM = ae ? ae.ecoutes.filter((e) => e.complete && e.date) : [];
+      const mois = [.../* @__PURE__ */ new Set([...aq ? aq.mois : [], ...ar ? ar.mois : [], ...ecM.map((e) => moisDe(e.date))])].sort();
+      if (!mois.length) return null;
+      return {
+        nom: "Évolution mensuelle",
+        titre: "Évolution mois par mois",
+        sous: perimetre,
+        colonnes: [{ lib: "Mois", l: 16 }, { lib: "Écoutes qualité", l: 12, f: "int" }, { lib: "Note qualité", l: 12, f: "pct" }, { lib: "Réponses clients", l: 12, f: "int" }, { lib: "Satisfaction vis-à-vis de l’agent", l: 16, f: "pct" }, { lib: "NPS", l: 8, f: "int" }, { lib: "Écoutes GRC complètes", l: 12, f: "int" }, { lib: "Score GRC", l: 12, f: "pct" }],
+        lignes: mois.map((m) => {
+          const q = aq && aq.parMois.find((y) => y.mois === m), r = ar && ar.parMois.find((y) => y.mois === m), es = ecM.filter((e) => moisDe(e.date) === m);
+          const p = somme(es.map((e) => e.possibles));
+          return [libMois(m), q ? q.n : "", q ? q.note : "", r ? r.n : "", r ? r.sat : "", r ? r.nps : "", es.length || "", p ? somme(es.map((e) => e.obtenus)) / p : ""];
+        }),
+        note: "Une case vide signifie qu’aucune donnée n’existe ce mois-là pour cet indicateur.\nScore GRC du mois = points obtenus / points possibles sur les écoutes complètes du mois (critères non applicables exclus)."
+      };
+    },
+    avantApres: () => {
+      if (!c.indicateurs.length && !(g && g.lignes.length)) return null;
+      const L = [];
+      if (c.indicateurs.length) {
+        L.push({ section: `Indicateurs : ${c.libAvant}, puis ${c.libApres}` });
+        c.indicateurs.forEach((i) => L.push([i.lib, i.pourcent === false ? `${i.avant}` : i.avant, i.pourcent === false ? `${i.apres}` : i.apres, i.delta, i.verdict, i.base]));
+      }
+      if (dest.id === "qualite" && c.axes.length) {
+        L.push({ section: "Appels avec un écart, par axe GRC" });
+        c.axes.forEach((a) => L.push([a.lib, a.avant, a.apres, a.delta, a.verdict, a.module]));
+      }
+      if (g && g.mesures) {
+        L.push({ section: "Écoutes GRC : agents formés ou accompagnés, avant puis après" });
+        L.push(["Score GRC moyen", g.departMesures, g.suiviMesures, (g.suiviMesures - g.departMesures) * 100, `${g.progres} agent${g.progres > 1 ? "s" : ""} en progression sur ${g.mesures}`, `${pl(g.mesures, "agent")} avec des écoutes avant et après`]);
+      }
+      return {
+        nom: "Avant-après",
+        titre: "Avant / après",
+        sous: perimetre,
+        colonnes: [{ lib: "Indicateur", l: 44 }, { lib: "Avant", l: 12, f: "pct" }, { lib: "Après", l: 12, f: "pct" }, { lib: "Évolution (points)", l: 12, f: "dec" }, { lib: "Verdict", l: 30, f: "ton" }, { lib: "Base", l: 36 }],
+        lignes: L.map((l) => l.section ? l : l),
+        note: "Verdict « nette » : l’évolution dépasse ce que le hasard explique (seuil de 95 %). « À confirmer » : la tendance existe mais les données ne suffisent pas pour conclure. « Pas assez de données » : la comparaison n’est pas possible.\nLe NPS est exprimé en points, pas en pourcentage."
+      };
+    },
+    agentsGRC: () => {
+      if (!g || !g.lignes.length) return null;
+      const pa = (id) => ae ? ae.parAgent.find((a) => a.id === id) : null;
+      return {
+        nom: "Score GRC par agent",
+        titre: "Écoutes GRC : score de départ et score de suivi",
+        sous: `${perimetre}${anonyme ? " · noms masqués" : ""}`,
+        colonnes: [{ lib: "Agent", l: 26 }, { lib: "Écoutes de départ", l: 10, f: "int" }, { lib: "Score de départ", l: 11, f: "pct" }, { lib: "Formé ou accompagné le", l: 13, f: "date" }, { lib: "Écoutes de suivi", l: 10, f: "int" }, { lib: "Score de suivi", l: 11, f: "pct" }, { lib: "Évolution (points)", l: 11, f: "dec" }, { lib: "Lecture", l: 22, f: "ton" }, { lib: "Points acquis", l: 11 }],
+        lignes: g.lignes.map((l) => {
+          const a = pa(l.id);
+          return [qui(l.id, l.nom), l.nD, l.depart, l.bascule || "", l.nS || "", l.suivi, l.delta, l.delta !== null ? verdictPts(l.delta) : l.bascule ? "Écoute de suivi à faire" : "À former ou accompagner", a && a.points.length ? `${a.pointsAcquis} / ${a.points.length}` : ""];
+        }),
+        note: "Départ = écoutes avant la première formation ou le premier accompagnement réalisé ; suivi = écoutes à partir de cette date.\nAvec une ou deux écoutes de chaque côté, l’évolution est une indication, pas une preuve."
+      };
+    },
+    agentsPoints: () => {
+      if (!ae) return null;
+      const L = [];
+      ae.parGrille.filter((p) => p.ecoutes.length && p.points.length).forEach((p) => p.parAgent.forEach((a) => {
+        const aTr = a.points.filter((y) => y.niveau && y.niveau !== "Acquis");
+        const prochain = suivis.filter((s) => s.conseillerId === a.id && !suiviFait(s)).sort((u, v) => String(u.datePrevue || "9").localeCompare(String(v.datePrevue || "9")))[0];
+        L.push([qui(a.id), libPA(p.grille), a.score, `${a.pointsAcquis} / ${a.points.length}`, aTr.map((y) => `${y.point} (${y.niveau.toLowerCase()})`).join(" ; ") || "Aucun", a.points.filter((y) => !y.niveau).map((y) => y.point).join(" ; "), prochain ? `${typeDe(prochain)}${prochain.point ? " · " + prochain.point : ""}` : "", prochain ? prochain.datePrevue || "" : ""]);
+      }));
+      if (!L.length) return null;
+      return {
+        nom: "Points à travailler",
+        titre: "Points travaillés : où en est chaque agent",
+        sous: perimetre,
+        colonnes: [{ lib: "Agent", l: 26 }, { lib: "Activité", l: 18 }, { lib: "Score GRC", l: 10, f: "pct" }, { lib: "Points acquis", l: 10 }, { lib: "À travailler (dernier niveau observé)", l: 50 }, { lib: "Pas encore observés", l: 30 }, { lib: "Prochain accompagnement prévu", l: 32 }, { lib: "Date prévue", l: 12, f: "date" }],
+        lignes: L.sort((u, v) => (u[2] ?? 9) - (v[2] ?? 9))
+      };
+    },
+    competences: () => {
+      if (!ae) return null;
+      const L = [];
+      ae.parGrille.filter((p) => p.ecoutes.length).forEach((p) => {
+        L.push({ section: libPA(p.grille) });
+        [...p.equipe].sort((u, v) => (u.taux ?? 9) - (v.taux ?? 9)).forEach((i) => L.push([i.court, i.point || "", i.applicables, i.taux, i.synthese, p.parAgent.filter((a) => {
+          const it = a.items.find((y) => y.code === i.code);
+          return it && it.taux !== null && it.taux < 1;
+        }).length]));
+      });
+      return {
+        nom: "Compétences GRC",
+        titre: "Maîtrise de chaque critère GRC par l’équipe",
+        sous: perimetre,
+        colonnes: [{ lib: "Critère", l: 40 }, { lib: "Point travaillé", l: 26 }, { lib: "Évaluations", l: 11, f: "int" }, { lib: "Taux de maîtrise", l: 11, f: "pct" }, { lib: "Synthèse", l: 20, f: "ton" }, { lib: "Agents pas encore à 100 %", l: 13, f: "int" }],
+        lignes: L,
+        note: "Taux de maîtrise = points obtenus / points possibles sur les écoutes complètes (acquis = tous les points, partiel = la moitié)."
+      };
+    },
+    ecartsQualite: () => {
+      if (!aq) return null;
+      const its = aq.items.filter((i) => i.grc && i.ecarts > 0).sort((a, b) => a.priorite.localeCompare(b.priorite) || b.ecarts - a.ecarts);
+      return {
+        nom: "Écarts qualité",
+        titre: "Écarts GRC relevés par le service qualité",
+        sous: `${perimetre} · ${aq.n} écoutes`,
+        colonnes: [{ lib: "Remarque de l’évaluateur", l: 46 }, { lib: "Axe", l: 26 }, { lib: "Écarts", l: 9, f: "int" }, { lib: "Taux d’écart", l: 10, f: "pct" }, { lib: "Points perdus", l: 10, f: "dec" }, { lib: "Priorité", l: 22 }],
+        lignes: its.map((i) => [i.remarque, i.famille, i.ecarts, i.taux, i.perdus, i.priorite])
+      };
+    },
+    reproches: () => {
+      if (!ar || !ar.comportements.length) return null;
+      return {
+        nom: "Reproches clients",
+        titre: "Ce que les clients reprochent à l’agent",
+        sous: `${perimetre} · ${ar.n} réponses`,
+        colonnes: [{ lib: "Comportement reproché", l: 50 }, { lib: "Axe GRC", l: 28 }, { lib: "Retours", l: 9, f: "int" }, { lib: "Agents concernés", l: 10, f: "int" }, { lib: "Module de formation associé", l: 30 }],
+        lignes: [...ar.comportements].sort((a, b) => b.n - a.n).map((k) => [k.remarque, k.axe, k.n, k.conseillers, k.module]),
+        note: "Verbatims négatifs classés « agent ». Un verbatim est une perception du client : à rapprocher des écoutes avant de conclure."
+      };
+    },
+    carto: () => {
+      const m = {};
+      const poser = (k, nom) => m[k] || (m[k] = { k, nom });
+      (aq ? aq.parConseiller : []).forEach((y) => Object.assign(poser(y.k, y.nom), { qN: y.n, q: y.note, qG: y.groupe, qS: y.statut, pr: y.principal }));
+      (ar ? ar.parConseiller : []).forEach((y) => Object.assign(poser(y.k, y.nom), { rN: y.n, r: y.sat, rG: y.groupe, rS: y.statut }));
+      (ae ? ae.parAgent : []).forEach((y) => Object.assign(poser(y.id, nomDe(y.id)), { eN: y.completes, e: y.score, eG: y.quartile }));
+      const L = Object.values(m);
+      if (!L.length) return null;
+      return {
+        nom: "Cartographie",
+        titre: "Cartographie des agents",
+        sous: `${perimetre}${anonyme ? " · noms masqués" : ""}`,
+        colonnes: [{ lib: "Agent", l: 26 }, { lib: "Écoutes qualité", l: 9, f: "int" }, { lib: "Note qualité", l: 10, f: "pct" }, { lib: "Groupe", l: 8 }, { lib: "Statut qualité", l: 16, f: "ton" }, { lib: "Principal écart GRC", l: 34 }, { lib: "Réponses clients", l: 9, f: "int" }, { lib: "Satisfaction", l: 10, f: "pct" }, { lib: "Groupe", l: 8 }, { lib: "Statut satisfaction", l: 16, f: "ton" }, { lib: "Écoutes GRC", l: 9, f: "int" }, { lib: "Score GRC", l: 10, f: "pct" }, { lib: "Quartile GRC", l: 9 }],
+        lignes: L.sort((u, v) => (u.q ?? u.e ?? 9) - (v.q ?? v.e ?? 9)).map((y) => [qui(y.k, y.nom), y.qN, y.q, y.qG === "NI" ? "Non classé" : y.qG, y.qS, y.pr, y.rN, y.r, y.rG === "NI" ? "Non classé" : y.rG, y.rS, y.eN, y.e, y.eG]),
+        note: `Groupes Q1 à Q4 : quatre groupes de même taille (Q1 = meilleur quart), à partir de ${SEUILS.qMin} écoutes qualité ou ${SEUILS.rMin} réponses clients ; en dessous, « non classé ».
+Prioritaire : nettement sous l’équipe (seuil de 95 %), à partir de ${SEUILS.qStatut} écoutes ou ${SEUILS.rStatut} réponses. Quartile GRC : à partir de 4 agents évalués.`
+      };
+    },
+    plan: () => {
+      if (!actions.length) return null;
+      return {
+        nom: "Plan d’action",
+        titre: "Plan d’action",
+        sous: perimetre,
+        colonnes: [{ lib: "Activité", l: 16 }, { lib: "Action", l: 34 }, { lib: "Objectif", l: 40 }, { lib: "Population", l: 20 }, { lib: "Responsable", l: 16 }, { lib: "Échéance", l: 11, f: "date" }, { lib: "Statut", l: 12, f: "ton" }, { lib: "Avancement", l: 10, f: "pct" }, { lib: "Accompagnements réalisés", l: 12 }, { lib: "Résultat / bilan", l: 40 }, { lib: "Suite à donner", l: 30 }],
+        lignes: actions.map((a) => [a.activite, a.action, a.objectif, a.population, a.responsable, a.echeance, actionEnRetard(a) ? "En retard" : a.statut, avancementDe(a) / 100, a.terrain && a.terrain.n ? `${a.terrain.faits} / ${a.terrain.n}` : "", a.resultat, a.suite])
+      };
+    },
+    accSynthese: () => {
+      if (!suivis.length) return null;
+      const types = [...new Set(suivis.map(typeDe))];
+      return {
+        nom: "Accompagnements",
+        titre: "Accompagnements : volume par type",
+        sous: perimetre,
+        colonnes: [{ lib: "Type", l: 26 }, { lib: "Réalisés", l: 10, f: "int" }, { lib: "Prévus ou à planifier", l: 12, f: "int" }, { lib: "Agents accompagnés", l: 12, f: "int" }, { lib: "Dernière réalisation", l: 14, f: "date" }],
+        lignes: types.map((t) => {
+          const ls = suivis.filter((s) => typeDe(s) === t), f = ls.filter(suiviFait);
+          return [t, f.length, ls.length - f.length, new Set(f.map((s) => s.conseillerId)).size, f.map((s) => s.dateRealisee || s.dateConstat).filter(Boolean).sort().slice(-1)[0] || ""];
+        })
+      };
+    },
+    accDetail: () => {
+      if (!suivis.length) return null;
+      const L = [...suivis].sort((u, v) => String(v.dateRealisee || v.datePrevue || v.dateConstat || "").localeCompare(String(u.dateRealisee || u.datePrevue || u.dateConstat || "")));
+      return {
+        nom: "Détail accompagnements",
+        titre: "Accompagnements agent par agent",
+        sous: `${perimetre}${anonyme ? " · noms masqués" : ""}`,
+        colonnes: [{ lib: "Agent", l: 24 }, { lib: "Type", l: 20 }, { lib: "Réalisé le", l: 11, f: "date" }, { lib: "Prévu le", l: 11, f: "date" }, { lib: "Point travaillé", l: 26 }, { lib: "Niveau observé", l: 16, f: "ton" }, { lib: "Action du plan", l: 28 }, { lib: "Statut", l: 13, f: "ton" }, { lib: "Prochaine étape", l: 36 }, { lib: "Échéance", l: 11, f: "date" }],
+        lignes: L.map((s) => [qui(s.conseillerId), typeDe(s), s.dateRealisee, s.datePrevue, s.point, s.niveau, (actionsCol.items.find((a) => lieA(s, a)) || {}).action || s.action || "", suiviEnRetard(s) ? "À relancer" : s.statut, s.prochaine, s.echeance])
+      };
+    },
+    aTraiter: () => {
+      const L = aTraiter.filter((t) => !/sauvegarde/i.test(t.texte));
+      if (!L.length) return null;
+      return { nom: "À relancer", titre: "À relancer ou à traiter", sous: `${perimetre} · au ${fmtDate(aujourdhui())}`, colonnes: [{ lib: "Date", l: 12, f: "date" }, { lib: "Quoi", l: 90 }], lignes: L.map((t) => [t.date, anonyme ? t.texte.replace(/ de .+? (à relancer)/, " $1") : t.texte]) };
+    }
+  };
+  const inclus = [], absents = [];
+  dest.feuilles.forEach((k) => {
+    const f = blocs[k]();
+    if (f && f.lignes.length) inclus.push(f);
+    else absents.push({ synthese: "Chiffres clés", mois: "Évolution mensuelle", avantApres: "Avant / après", agentsGRC: "Score GRC par agent", agentsPoints: "Points à travailler", competences: "Compétences GRC", ecartsQualite: "Écarts qualité", reproches: "Reproches clients", carto: "Cartographie", plan: "Plan d'action", accSynthese: "Accompagnements", accDetail: "Détail des accompagnements", aTraiter: "À relancer" }[k]);
+  });
+  const lisez = {
+    nom: "Lisez-moi",
+    titre: `Extraction GRC · ${dest.lib}`,
+    sous: `Édité le ${fmtDate(aujourdhui())}`,
+    colonnes: [{ lib: "Rubrique", l: 26 }, { lib: "Contenu", l: 110 }],
+    lignes: [
+      ["Périmètre", perimetre],
+      ["Période", periode],
+      ...message ? [["Message", message]] : [],
+      ["Noms des agents", anonyme ? "Masqués (Agent 1, Agent 2… : le même agent garde le même numéro dans tout le classeur)" : "Affichés"],
+      ...retenir.filter(Boolean).map((t, i) => [i ? "" : "À retenir", t]),
+      ["Onglets", inclus.map((f) => f.nom).join(" · ")],
+      ...absents.length ? [["Non inclus", `${absents.join(", ")} : aucune donnée sur ce périmètre et cette période.`]] : [],
+      ["Lecture des évolutions", "Une évolution est dite « nette » seulement quand elle dépasse ce que le hasard explique. Sinon elle est « à confirmer », ou il n’y a « pas assez de données ». Aucune amélioration n’est présentée comme démontrée quand les données sont insuffisantes."]
+    ]
+  };
+  if (anonyme) {
+    const echap = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const agents = ctx.conseillers.filter((a) => a.nom).sort((u, v) => v.nom.length - u.nom.length);
+    const complets = agents.map((a) => [new RegExp(echap(a.nom), "gi"), qui(a.id, a.nom)]);
+    const morceaux = [...new Set(agents.flatMap((a) => a.nom.split(/\s+/)).filter((m) => m.length >= 4))].map((m) => new RegExp(`(^|[^\\p{L}])${echap(m)}(?=$|[^\\p{L}])`, "gu"));
+    const nettoyer = (v) => {
+      if (typeof v !== "string" || !v) return v;
+      let t = v;
+      complets.forEach(([re, ps]) => {
+        t = t.replace(re, ps);
+      });
+      morceaux.forEach((re) => {
+        t = t.replace(re, "$1[agent]");
+      });
+      return t;
+    };
+    [lisez, ...inclus].forEach((f) => {
+      f.lignes = f.lignes.map((l) => l && l.section ? l : l.map((v, i) => i === 0 && /^Agent \d+$/.test(v) ? v : nettoyer(v)));
+    });
+  }
+  return creerXlsx([lisez, ...inclus]);
+}
+function CarteExtractions({ ctx, x }) {
+  const [masquer, setMasquer] = useState(false);
+  const lancer = (d) => {
+    try {
+      const blob = construireExtraction(d, ctx, { ...x, masquer });
+      const nom = `Extraction_GRC_${d.fichier}_${slug(ctx.perimetre)}_${aujourdhui()}.xlsx`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nom;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1e3);
+      avertir(`Extraction « ${d.lib} » téléchargée : ${nom}`);
+    } catch (e) {
+      avertir("Extraction impossible : " + e.message, "erreur");
+    }
+  };
+  return /* @__PURE__ */ React.createElement("div", { className: "carte no-print" }, /* @__PURE__ */ React.createElement("h2", null, "Extractions Excel par destinataire"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Un classeur mis en forme, un onglet par sujet, sur le périmètre et la période choisis en haut de page. Chacun reçoit ce qui le concerne."), /* @__PURE__ */ React.createElement("div", { className: "grille", style: { gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 } }, DESTINATAIRES.map((d) => /* @__PURE__ */ React.createElement("div", { key: d.id, className: "dest" }, /* @__PURE__ */ React.createElement("b", null, d.lib), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { margin: "4px 0 10px", flex: 1 } }, d.aide), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => lancer(d) }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Télécharger")))), /* @__PURE__ */ React.createElement("label", { className: "coche", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: masquer, onChange: (e) => setMasquer(e.target.checked) }), " Masquer aussi les noms pour le manager, la qualité et la production"));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(App, null));
 </script>
