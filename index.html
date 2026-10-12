@@ -312,6 +312,11 @@ code { background: #f1f5f9; padding: 1px 6px; border-radius: 6px; font-size: 12p
 
 .dest { border: 1px solid var(--bord); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; align-items: flex-start; background: #fbfafd; }
 .dest b { color: var(--prune); font-size: 14px; }
+
+.bilan { border-color: #d9c6f5; background: linear-gradient(180deg, #fbf8ff, #fff); }
+.etapes { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; padding: 0; }
+.etapes li { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e4d8fb; border-radius: 99px; padding: 6px 14px 6px 6px; font-weight: 600; font-size: 13px; color: var(--prune); }
+.etapes li span { width: 24px; height: 24px; border-radius: 99px; background: var(--violet); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -3147,7 +3152,7 @@ function VueRapport({ ctx }) {
     ...g ? g.lignes.map((l, i) => ["Écoutes GRC", masquer ? `Agent ${i + 1}` : l.nom, l.suivi !== null ? `${p100(l.depart)} → ${p100(l.suivi)}` : p100(l.depart), l.bascule ? `formé ou accompagné le ${fmtDate(l.bascule)}` : "pas encore formé"]) : [],
     ...actions.map((a) => ["Plan d'action", a.action, a.statut, `${avancementDe(a)} % · échéance ${fmtDate(a.echeance) || "non fixée"}${a.resultat ? " · " + a.resultat : ""}`])
   ]);
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "carte no-print" }, /* @__PURE__ */ React.createElement("h2", null, "Préparer le rapport"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Le rapport reprend le périmètre et la période choisis en haut de page. Relis-le, puis imprime-le en PDF ou exporte-le pour Excel."), /* @__PURE__ */ React.createElement(Champ, { libelle: "Message d'introduction (facultatif)" }, /* @__PURE__ */ React.createElement(Zone, { valeur: message, onChange: setMessage, placeholder: "Contexte, décisions attendues, points d'attention…" })), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 12, alignItems: "center" } }, /* @__PURE__ */ React.createElement("label", { className: "coche" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: masquer, onChange: (e) => setMasquer(e.target.checked) }), " Masquer les noms des agents"), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: exporter }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Exporter pour Excel"), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => window.print() }, "Imprimer / enregistrer en PDF"))), /* @__PURE__ */ React.createElement(CarteExtractions, { ctx, x: { c, g, retenir, chiffres, periode, message } }), /* @__PURE__ */ React.createElement("div", { className: "carte rapport" }, /* @__PURE__ */ React.createElement("div", { className: "rapport-tete" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "petit" }, "Point GRC · édité le ", fmtDate(aujourdhui())), /* @__PURE__ */ React.createElement("h2", { style: { fontSize: 22 } }, perimetre), /* @__PURE__ */ React.createElement("div", { className: "t-c2" }, "Période : ", periode))), message && /* @__PURE__ */ React.createElement("p", { style: { whiteSpace: "pre-wrap", margin: "14px 0" } }, message), /* @__PURE__ */ React.createElement(Retenir, { points: retenir }), /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Chiffres clés"), /* @__PURE__ */ React.createElement("div", { className: "fiche-kpi" }, chiffres.map(([l, v]) => /* @__PURE__ */ React.createElement("div", { key: l }, /* @__PURE__ */ React.createElement("span", null, l), /* @__PURE__ */ React.createElement("b", null, v)))), series.length > 0 && moisTous.length > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Évolution mensuelle"), /* @__PURE__ */ React.createElement(Courbe, { categories: moisTous.map(libMoisCourt), series, hauteur: 210 })), c.indicateurs.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Avant / après : ", c.libAvant, ", puis ", c.libApres), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Indicateur"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Avant"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Après"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Évolution"), /* @__PURE__ */ React.createElement("th", null, "Lecture"))), /* @__PURE__ */ React.createElement("tbody", null, c.indicateurs.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.cle }, /* @__PURE__ */ React.createElement("td", null, i.lib), /* @__PURE__ */ React.createElement("td", { className: "num" }, valInd(i, i.avant)), /* @__PURE__ */ React.createElement("td", { className: "num" }, valInd(i, i.apres)), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement(Delta, { i })), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Badge, { s: i.verdict }))))))), topEcarts.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Écarts GRC à travailler en priorité (écoutes qualité)"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Constat"), /* @__PURE__ */ React.createElement("th", null, "Axe"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Écarts"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Points perdus"), /* @__PURE__ */ React.createElement("th", null, "Priorité"))), /* @__PURE__ */ React.createElement("tbody", null, topEcarts.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.nom }, /* @__PURE__ */ React.createElement("td", null, i.remarque), /* @__PURE__ */ React.createElement("td", { className: "petit" }, i.famille), /* @__PURE__ */ React.createElement("td", { className: "num" }, i.ecarts), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.perdus, 1)), /* @__PURE__ */ React.createElement("td", null, i.priorite)))))), ar && ar.reproches.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Ce que disent les clients mécontents"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Cause du mécontentement"), /* @__PURE__ */ React.createElement("th", null, "Famille"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Retours"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Part"), /* @__PURE__ */ React.createElement("th", null, "Qui peut agir"))), /* @__PURE__ */ React.createElement("tbody", null, ar.reproches.slice(0, 6).map((x) => /* @__PURE__ */ React.createElement("tr", { key: x.code }, /* @__PURE__ */ React.createElement("td", null, x.remarque), /* @__PURE__ */ React.createElement("td", { className: "petit" }, x.famille), /* @__PURE__ */ React.createElement("td", { className: "num" }, x.n), /* @__PURE__ */ React.createElement("td", { className: "num" }, p100(x.part, 0)), /* @__PURE__ */ React.createElement("td", null, x.qui))))), ar.partConseiller[0].avec > 0 && /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 6 } }, "L'agent est directement en cause pour ", p100(ar.partConseiller[0].part, 0), " des clients insatisfaits qui expriment un reproche.")), (aq || ar) && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Cartographie des agents"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Source"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q1 (meilleur quart)"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q2"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q3"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q4"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Non classés"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Prioritaires"))), /* @__PURE__ */ React.createElement("tbody", null, aq && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", null, "Note qualité"), ["Q1", "Q2", "Q3", "Q4", "NI"].map((g2) => /* @__PURE__ */ React.createElement("td", { key: g2, className: "num" }, compte(aq, g2))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, prioQ.length))), ar && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", null, "Satisfaction client"), ["Q1", "Q2", "Q3", "Q4", "NI"].map((g2) => /* @__PURE__ */ React.createElement("td", { key: g2, className: "num" }, compte(ar, g2))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, prioR.length))))), prio.length > 0 && /* @__PURE__ */ React.createElement("table", { className: "tab", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Agent prioritaire"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Note qualité"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Satisfaction"), /* @__PURE__ */ React.createElement("th", null, "Principal écart GRC"))), /* @__PURE__ */ React.createElement("tbody", null, prio.map((x, i) => {
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "carte no-print" }, /* @__PURE__ */ React.createElement("h2", null, "Préparer le rapport"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Le rapport reprend le périmètre et la période choisis en haut de page. Relis-le, puis imprime-le en PDF ou exporte-le pour Excel."), /* @__PURE__ */ React.createElement(Champ, { libelle: "Message d'introduction (facultatif)" }, /* @__PURE__ */ React.createElement(Zone, { valeur: message, onChange: setMessage, placeholder: "Contexte, décisions attendues, points d'attention…" })), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 12, alignItems: "center" } }, /* @__PURE__ */ React.createElement("label", { className: "coche" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: masquer, onChange: (e) => setMasquer(e.target.checked) }), " Masquer les noms des agents"), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: exporter }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Exporter pour Excel"), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => window.print() }, "Imprimer / enregistrer en PDF"))), /* @__PURE__ */ React.createElement(CarteBilan, { ctx, x: { c, g, periode, message } }), /* @__PURE__ */ React.createElement(CarteExtractions, { ctx, x: { c, g, retenir, chiffres, periode, message } }), /* @__PURE__ */ React.createElement("div", { className: "carte rapport" }, /* @__PURE__ */ React.createElement("div", { className: "rapport-tete" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "petit" }, "Point GRC · édité le ", fmtDate(aujourdhui())), /* @__PURE__ */ React.createElement("h2", { style: { fontSize: 22 } }, perimetre), /* @__PURE__ */ React.createElement("div", { className: "t-c2" }, "Période : ", periode))), message && /* @__PURE__ */ React.createElement("p", { style: { whiteSpace: "pre-wrap", margin: "14px 0" } }, message), /* @__PURE__ */ React.createElement(Retenir, { points: retenir }), /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Chiffres clés"), /* @__PURE__ */ React.createElement("div", { className: "fiche-kpi" }, chiffres.map(([l, v]) => /* @__PURE__ */ React.createElement("div", { key: l }, /* @__PURE__ */ React.createElement("span", null, l), /* @__PURE__ */ React.createElement("b", null, v)))), series.length > 0 && moisTous.length > 1 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Évolution mensuelle"), /* @__PURE__ */ React.createElement(Courbe, { categories: moisTous.map(libMoisCourt), series, hauteur: 210 })), c.indicateurs.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Avant / après : ", c.libAvant, ", puis ", c.libApres), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Indicateur"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Avant"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Après"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Évolution"), /* @__PURE__ */ React.createElement("th", null, "Lecture"))), /* @__PURE__ */ React.createElement("tbody", null, c.indicateurs.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.cle }, /* @__PURE__ */ React.createElement("td", null, i.lib), /* @__PURE__ */ React.createElement("td", { className: "num" }, valInd(i, i.avant)), /* @__PURE__ */ React.createElement("td", { className: "num" }, valInd(i, i.apres)), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement(Delta, { i })), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Badge, { s: i.verdict }))))))), topEcarts.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Écarts GRC à travailler en priorité (écoutes qualité)"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Constat"), /* @__PURE__ */ React.createElement("th", null, "Axe"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Écarts"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Points perdus"), /* @__PURE__ */ React.createElement("th", null, "Priorité"))), /* @__PURE__ */ React.createElement("tbody", null, topEcarts.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.nom }, /* @__PURE__ */ React.createElement("td", null, i.remarque), /* @__PURE__ */ React.createElement("td", { className: "petit" }, i.famille), /* @__PURE__ */ React.createElement("td", { className: "num" }, i.ecarts), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.perdus, 1)), /* @__PURE__ */ React.createElement("td", null, i.priorite)))))), ar && ar.reproches.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Ce que disent les clients mécontents"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Cause du mécontentement"), /* @__PURE__ */ React.createElement("th", null, "Famille"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Retours"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Part"), /* @__PURE__ */ React.createElement("th", null, "Qui peut agir"))), /* @__PURE__ */ React.createElement("tbody", null, ar.reproches.slice(0, 6).map((x) => /* @__PURE__ */ React.createElement("tr", { key: x.code }, /* @__PURE__ */ React.createElement("td", null, x.remarque), /* @__PURE__ */ React.createElement("td", { className: "petit" }, x.famille), /* @__PURE__ */ React.createElement("td", { className: "num" }, x.n), /* @__PURE__ */ React.createElement("td", { className: "num" }, p100(x.part, 0)), /* @__PURE__ */ React.createElement("td", null, x.qui))))), ar.partConseiller[0].avec > 0 && /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 6 } }, "L'agent est directement en cause pour ", p100(ar.partConseiller[0].part, 0), " des clients insatisfaits qui expriment un reproche.")), (aq || ar) && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Cartographie des agents"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Source"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q1 (meilleur quart)"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q2"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q3"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Q4"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Non classés"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Prioritaires"))), /* @__PURE__ */ React.createElement("tbody", null, aq && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", null, "Note qualité"), ["Q1", "Q2", "Q3", "Q4", "NI"].map((g2) => /* @__PURE__ */ React.createElement("td", { key: g2, className: "num" }, compte(aq, g2))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, prioQ.length))), ar && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", null, "Satisfaction client"), ["Q1", "Q2", "Q3", "Q4", "NI"].map((g2) => /* @__PURE__ */ React.createElement("td", { key: g2, className: "num" }, compte(ar, g2))), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, prioR.length))))), prio.length > 0 && /* @__PURE__ */ React.createElement("table", { className: "tab", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Agent prioritaire"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Note qualité"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Satisfaction"), /* @__PURE__ */ React.createElement("th", null, "Principal écart GRC"))), /* @__PURE__ */ React.createElement("tbody", null, prio.map((x, i) => {
     const q = aq && aq.parConseiller.find((y) => y.k === x.k), r = ar && ar.parConseiller.find((y) => y.k === x.k);
     return /* @__PURE__ */ React.createElement("tr", { key: x.k }, /* @__PURE__ */ React.createElement("td", null, nomP(x, i)), /* @__PURE__ */ React.createElement("td", { className: "num" }, q ? p100(q.note) : "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, r ? p100(r.sat) : "—"), /* @__PURE__ */ React.createElement("td", null, q ? q.principal : "—"));
   })))), g && g.lignes.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Écoutes GRC : score par agent, avant et après la formation"), /* @__PURE__ */ React.createElement(CarteEcoutes, { g, masquer })), actions.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Plan d'action · avancement global ", avanc === null ? "—" : Math.round(avanc) + " %"), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Action"), /* @__PURE__ */ React.createElement("th", null, "Statut"), /* @__PURE__ */ React.createElement("th", null, "Échéance"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Avancement"), /* @__PURE__ */ React.createElement("th", null, "Résultat / bilan"))), /* @__PURE__ */ React.createElement("tbody", null, actions.map((a) => /* @__PURE__ */ React.createElement("tr", { key: a.id }, /* @__PURE__ */ React.createElement("td", null, a.action, !filtres.activite && /* @__PURE__ */ React.createElement("div", { className: "petit" }, libPA(a))), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Badge, { s: a.statut }), actionEnRetard(a) && /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(Badge, { s: "En retard" }))), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, fmtDate(a.echeance) || "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, avancementDe(a), " %"), /* @__PURE__ */ React.createElement("td", null, a.resultat || "—")))))), suivis.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Accompagnement individuel"), /* @__PURE__ */ React.createElement("p", null, pl(new Set(suivis.map((s) => s.conseillerId)).size, "agent"), " ", new Set(suivis.map((s) => s.conseillerId)).size > 1 ? "accompagnés" : "accompagné", ", ", suivis.filter((s) => s.statut !== "Clôturé").length, " suivi(s) en cours, ", suivis.filter((s) => s.statut === "Clôturé").length, " clôturé(s).", impacts.length ? ` ${impacts.filter((i) => i.delta > 0).length} sur ${impacts.length} progressent en note qualité après leur accompagnement.` : "")), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 16 } }, "Méthode : groupes Q1 à Q4 de même taille ; « prioritaire » = résultat significativement en dessous de l'équipe ; évolution « nette » = au-delà de la marge du hasard (seuil de 95 %).")));
@@ -3564,7 +3569,233 @@ function CarteExtractions({ ctx, x }) {
       avertir("Extraction impossible : " + e.message, "erreur");
     }
   };
-  return /* @__PURE__ */ React.createElement("div", { className: "carte no-print" }, /* @__PURE__ */ React.createElement("h2", null, "Extractions Excel par destinataire"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Un classeur mis en forme, un onglet par sujet, sur le périmètre et la période choisis en haut de page. Chacun reçoit ce qui le concerne."), /* @__PURE__ */ React.createElement("div", { className: "grille", style: { gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 } }, DESTINATAIRES.map((d) => /* @__PURE__ */ React.createElement("div", { key: d.id, className: "dest" }, /* @__PURE__ */ React.createElement("b", null, d.lib), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { margin: "4px 0 10px", flex: 1 } }, d.aide), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => lancer(d) }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Télécharger")))), /* @__PURE__ */ React.createElement("label", { className: "coche", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: masquer, onChange: (e) => setMasquer(e.target.checked) }), " Masquer aussi les noms pour le manager, la qualité et la production"));
+  return /* @__PURE__ */ React.createElement("div", { className: "carte no-print" }, /* @__PURE__ */ React.createElement("h2", null, "Extractions ciblées par destinataire"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Un classeur mis en forme, un onglet par sujet, sur le périmètre et la période choisis en haut de page. Chacun reçoit ce qui le concerne."), /* @__PURE__ */ React.createElement("div", { className: "grille", style: { gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 } }, DESTINATAIRES.map((d) => /* @__PURE__ */ React.createElement("div", { key: d.id, className: "dest" }, /* @__PURE__ */ React.createElement("b", null, d.lib), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { margin: "4px 0 10px", flex: 1 } }, d.aide), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => lancer(d) }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Télécharger")))), /* @__PURE__ */ React.createElement("label", { className: "coche", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: masquer, onChange: (e) => setMasquer(e.target.checked) }), " Masquer aussi les noms pour le manager, la qualité et la production"));
+}
+function construireBilan(ctx, x, masquer) {
+  const { aq, ar, ae, actions, suivis, sessions, perimetre, nomDe, ok } = ctx;
+  const { c, g, periode, message } = x;
+  const pseudos = {};
+  let nP = 0;
+  const qui = (id) => {
+    if (!masquer) return nomDe(id);
+    return pseudos[id] || (pseudos[id] = `Agent ${++nP}`);
+  };
+  const bascule = Object.fromEntries((g ? g.lignes : []).map((l) => [l.id, l.bascule]));
+  const feuilles = [], absents = [];
+  const groupes = ae ? ae.parGrille.filter((p) => p.ecoutes.length) : [];
+  const depart = groupes.map((p) => {
+    const ecs = p.ecoutes.filter((e) => !bascule[e.conseillerId] || e.date && e.date < bascule[e.conseillerId]);
+    return { p, d: analyserEcoutes(ecs, p.grille.items, [], p.grille.points) };
+  }).filter((y) => y.d && y.d.ecoutes.length);
+  const sc = (ls) => {
+    const o = somme(ls.map((e) => e.obtenus)), q = somme(ls.map((e) => e.possibles));
+    return q ? o / q : null;
+  };
+  const dates = (g ? g.lignes.map((l) => l.bascule).filter(Boolean) : []).sort();
+  const ind = (k) => c.indicateurs.find((i) => i.cle === k);
+  const quartiles = (vals) => vals.length >= 4 ? bornes(vals) : null;
+  const L1 = [];
+  depart.forEach(({ p, d }) => {
+    const dts = d.ecoutes.map((e) => e.date).filter(Boolean).sort();
+    L1.push({ section: `Écoutes GRC · ${libPA(p.grille)}` });
+    L1.push(["Score GRC moyen de départ", d.scoreMoyen, `${pl(d.nbCompletes, "écoute")} complète${d.nbCompletes > 1 ? "s" : ""}, ${pl(d.nbAgents, "agent")}${dts.length ? `, du ${fmtDate(dts[0])} au ${fmtDate(dts[dts.length - 1])}` : ""}`]);
+    if (d.points.length) d.points.forEach((pt) => {
+      const n = d.parAgent.filter((a) => (a.points.find((y) => y.point === pt) || {}).niveau === "Acquis").length;
+      L1.push([`Point acquis : ${pt}`, d.parAgent.length ? n / d.parAgent.length : null, `${n} agent${n > 1 ? "s" : ""} sur ${d.parAgent.length}`]);
+    });
+    else [...d.equipe].filter((i) => i.taux !== null).sort((u, v) => u.taux - v.taux).forEach((i) => L1.push([`Maîtrise : ${i.court}`, i.taux, `${i.applicables} évaluations`]));
+  });
+  const qA = ind("note"), eA = ind("ecart"), sA = ind("sat"), nA = ind("nps");
+  if (qA || sA) {
+    L1.push({ section: `Écoutes qualité et satisfaction client · ${c.libAvant}` });
+    if (qA) L1.push(["Note qualité moyenne", qA.avant, qA.base.split(" puis ")[0]]);
+    if (eA) L1.push(["Appels avec au moins un écart GRC", eA.avant, eA.base.split(" puis ")[0]]);
+    if (sA) L1.push(["Satisfaction client vis-à-vis de l'agent", sA.avant, sA.base.split(" puis ")[0]]);
+    if (nA) L1.push(["NPS (en points)", String(nA.avant), nA.base.split(" puis ")[0]]);
+  }
+  if (L1.length) feuilles.push({
+    nom: "1. Point de départ",
+    titre: "Point de départ : la situation avant formation et actions",
+    sous: `${perimetre}${dates.length ? ` · premières formations ou accompagnements à partir du ${fmtDate(dates[0])}` : ""}`,
+    colonnes: [{ lib: "Indicateur", l: 52 }, { lib: "Valeur de départ", l: 14, f: "pct" }, { lib: "Base", l: 60 }],
+    lignes: L1,
+    note: "Écoutes GRC de départ = écoutes faites avant la première formation ou le premier accompagnement de chaque agent.\nPoint acquis = tous les critères du point acquis sur la dernière écoute de départ."
+  });
+  else absents.push("Point de départ");
+  const L2 = [];
+  depart.forEach(({ p, d }) => {
+    L2.push({ section: libPA(p.grille) });
+    [...d.parAgent].sort((u, v) => (u.score ?? 9) - (v.score ?? 9)).forEach((a) => {
+      const faibles = a.points.length ? a.points.filter((y) => y.niveau && y.niveau !== "Acquis").map((y) => `${y.point} (${y.niveau.toLowerCase()})`) : a.aTravailler.slice(0, 4).map((i) => `${i.court} (${Math.round(i.taux * 100)} %)`);
+      L2.push([qui(a.id), a.completes, a.score, a.quartile || "Non classé", a.points.length ? `${a.pointsAcquis} / ${a.points.length}` : "", faibles.join(" ; ") || "Aucun"]);
+    });
+  });
+  if (L2.length) feuilles.push({
+    nom: "2. Cartographie de départ",
+    titre: "Cartographie de départ : où en était chaque agent",
+    sous: `${perimetre}${masquer ? " · noms masqués" : ""}`,
+    colonnes: [{ lib: "Agent", l: 26 }, { lib: "Écoutes de départ", l: 10, f: "int" }, { lib: "Score GRC de départ", l: 12, f: "pct" }, { lib: "Quartile de départ", l: 11 }, { lib: "Points acquis au départ", l: 12 }, { lib: "À travailler au départ", l: 80 }],
+    lignes: L2,
+    note: "Quartile : Q1 = meilleur quart de l’équipe au départ, Q4 = quart le plus faible. Calculé dès 4 agents évalués ; sinon « non classé »."
+  });
+  else absents.push("Cartographie de départ");
+  const L3 = [];
+  const sess = sessions.filter((s) => ok(s) || s.activite === TRANSVERSE).filter((s) => s.statut === "Réalisée" && s.date).sort((u, v) => u.date.localeCompare(v.date));
+  if (actions.length) {
+    L3.push({ section: "Plan d'action" });
+    actions.forEach((a) => L3.push([a.realisation || a.debut || a.echeance || "", a.action, a.objectif || "", a.population || "", actionEnRetard(a) ? "En retard" : a.statut, avancementDe(a) / 100, a.terrain && a.terrain.n ? `${a.terrain.faits} réalisé${a.terrain.faits > 1 ? "s" : ""} sur ${a.terrain.n}, ${pl(a.terrain.agentsFaits, "agent")}` : "", a.resultat || ""]));
+  }
+  if (sess.length) {
+    L3.push({ section: "Formations et ateliers réalisés" });
+    sess.forEach((s) => {
+      const k = compteSession(s);
+      L3.push([s.date, s.titre, s.type || "", k.prevus ? `${k.prevus} inscrit${k.prevus > 1 ? "s" : ""}` : "", "Réalisé", null, k.prevus ? `${k.presents} présent${k.presents > 1 ? "s" : ""} sur ${k.prevus}` : "", s.commentaire || ""]);
+    });
+  }
+  const faits = suivis.filter(suiviFait);
+  if (suivis.length) {
+    L3.push({ section: "Accompagnements individuels" });
+    [...new Set(suivis.map(typeDe))].forEach((t) => {
+      const ls = suivis.filter((s) => typeDe(s) === t), f = ls.filter(suiviFait);
+      const dts = f.map((s) => s.dateRealisee || s.dateConstat).filter(Boolean).sort();
+      L3.push([dts[0] || "", t, dts.length > 1 ? `du ${fmtDate(dts[0])} au ${fmtDate(dts[dts.length - 1])}` : "", `${pl(new Set(f.map((s) => s.conseillerId)).size, "agent")} accompagné${f.length > 1 ? "s" : ""}`, f.length ? "Réalisé" : "Prévu", null, `${f.length} réalisé${f.length > 1 ? "s" : ""}, ${ls.length - f.length} prévu${ls.length - f.length > 1 ? "s" : ""}`, ""]);
+    });
+  }
+  if (L3.length) feuilles.push({
+    nom: "3. Actions mises en place",
+    titre: "Actions mises en place",
+    sous: perimetre,
+    colonnes: [{ lib: "Date", l: 11, f: "date" }, { lib: "Action", l: 36 }, { lib: "Objectif / détail", l: 44 }, { lib: "Population", l: 22 }, { lib: "Statut", l: 12, f: "ton" }, { lib: "Avancement", l: 10, f: "pct" }, { lib: "Réalisation sur le terrain", l: 30 }, { lib: "Résultat / bilan", l: 44 }],
+    lignes: L3
+  });
+  else absents.push("Actions mises en place");
+  const L4 = [];
+  const ecM = ae ? ae.ecoutes.filter((e) => e.complete && e.date) : [];
+  const mois = [.../* @__PURE__ */ new Set([...aq ? aq.mois : [], ...ar ? ar.mois : [], ...ecM.map((e) => moisDe(e.date))])].sort();
+  mois.forEach((m) => {
+    const q = aq && aq.parMois.find((y) => y.mois === m), r = ar && ar.parMois.find((y) => y.mois === m), es = ecM.filter((e) => moisDe(e.date) === m);
+    const parAg = [...new Set(es.map((e) => e.conseillerId))].map((id) => sc(es.filter((e) => e.conseillerId === id))).filter((v) => v !== null);
+    L4.push([libMois(m), es.length || "", parAg.length ? moyenne(parAg) : "", q ? q.n : "", q ? q.note : "", r ? r.n : "", r ? r.sat : "", r ? String(r.nps) : ""]);
+  });
+  if (L4.length) feuilles.push({
+    nom: "4. Évolutions",
+    titre: "Évolution mois par mois",
+    sous: `${perimetre}${dates.length ? ` · actions à partir du ${fmtDate(dates[0])}` : ""}`,
+    colonnes: [{ lib: "Mois", l: 16 }, { lib: "Écoutes GRC", l: 10, f: "int" }, { lib: "Score GRC", l: 11, f: "pct" }, { lib: "Écoutes qualité", l: 11, f: "int" }, { lib: "Note qualité", l: 11, f: "pct" }, { lib: "Réponses clients", l: 11, f: "int" }, { lib: "Satisfaction", l: 11, f: "pct" }, { lib: "NPS", l: 8 }],
+    lignes: L4,
+    note: "Case vide : aucune donnée ce mois-là. Score GRC du mois : moyenne des scores des agents écoutés ce mois-là (même calcul que le point de départ)."
+  });
+  else absents.push("Évolutions");
+  const L5 = [];
+  if (g && g.lignes.length) {
+    L5.push({ section: "Écoutes GRC · équipe" });
+    L5.push(["Score GRC moyen", g.depart, g.mesures ? g.suiviMesures : "", g.mesures ? (g.suiviMesures - g.departMesures) * 100 : "", g.mesures ? `${g.progres} agent${g.progres > 1 ? "s" : ""} en progression sur ${g.mesures} mesurés` : "En attente des écoutes de suivi", g.mesures ? `${pl(g.mesures, "agent")} réécouté${g.mesures > 1 ? "s" : ""} sur ${g.lignes.length}` : `0 agent réécouté sur ${g.lignes.length}`]);
+  }
+  depart.forEach(({ p, d }) => {
+    const fin = groupes.find((y) => y.grille.id === p.grille.id);
+    if (!fin || !fin.points.length) return;
+    fin.points.forEach((pt) => {
+      const n0 = d.parAgent.filter((a) => (a.points.find((y) => y.point === pt) || {}).niveau === "Acquis").length, n1 = fin.parAgent.filter((a) => (a.points.find((y) => y.point === pt) || {}).niveau === "Acquis").length;
+      const t0 = d.parAgent.length ? n0 / d.parAgent.length : null, t1 = fin.parAgent.length ? n1 / fin.parAgent.length : null;
+      L5.push([`Point acquis : ${pt}`, t0, t1, t0 !== null && t1 !== null ? (t1 - t0) * 100 : "", n1 > n0 ? "En progression" : n1 < n0 ? "En recul" : "Stable", `${n0} → ${n1} agent${n1 > 1 ? "s" : ""} sur ${fin.parAgent.length}`]);
+    });
+  });
+  if (c.indicateurs.length) {
+    L5.push({ section: `Écoutes qualité et satisfaction : ${c.libAvant}, puis ${c.libApres}` });
+    c.indicateurs.forEach((i) => L5.push([i.lib, i.pourcent === false ? String(i.avant) : i.avant, i.pourcent === false ? String(i.apres) : i.apres, i.delta, i.verdict, i.base]));
+  }
+  const parAgent = [];
+  groupes.forEach((p) => p.parAgent.forEach((a) => {
+    const d0 = (depart.find((y) => y.p.grille.id === p.grille.id) || {}).d;
+    const a0 = d0 ? d0.parAgent.find((y) => y.id === a.id) : null;
+    const l = g ? g.lignes.find((y) => y.id === a.id) : null;
+    const s = suivis.filter((y) => y.conseillerId === a.id), sf = s.filter(suiviFait), proch = s.filter((y) => !suiviFait(y)).sort((u, v) => String(u.datePrevue || "9").localeCompare(String(v.datePrevue || "9")))[0];
+    parAgent.push([qui(a.id), a0 ? a0.score : null, l && l.suivi !== null ? l.suivi : null, l && l.delta !== null ? l.delta : "", a0 && a0.points.length ? `${a0.pointsAcquis} / ${a0.points.length}` : "", a.points.length ? `${a.pointsAcquis} / ${a.points.length}` : "", `${sf.length} réalisé${sf.length > 1 ? "s" : ""}`, l && l.delta !== null ? l.delta > 0.5 ? "En progression" : l.delta < -0.5 ? "En recul" : "Stable" : l && l.bascule ? "Écoute de suivi à faire" : "À former ou accompagner", proch ? `${typeDe(proch)}${proch.point ? " · " + proch.point : ""}${proch.datePrevue ? " · " + fmtDate(proch.datePrevue) : ""}` : ""]);
+  }));
+  if (L5.length || parAgent.length) feuilles.push({
+    nom: "5. Photo d'arrivée",
+    titre: "Photo d'arrivée : où en est l'équipe aujourd'hui, comparé au départ",
+    sous: `${perimetre} · au ${fmtDate(aujourdhui())}`,
+    colonnes: [{ lib: "Indicateur", l: 48 }, { lib: "Départ", l: 11, f: "pct" }, { lib: "Aujourd’hui", l: 11, f: "pct" }, { lib: "Évolution (points)", l: 11, f: "dec" }, { lib: "Lecture", l: 30, f: "ton" }, { lib: "Base", l: 40 }],
+    lignes: L5,
+    note: "Points acquis « aujourd’hui » : dernier niveau observé, en écoute ou en accompagnement. Score « aujourd’hui » : écoutes faites après la formation ou le premier accompagnement.\nUne évolution n’est présentée comme nette que si les données suffisent. Avec peu d’écoutes, elle reste une indication."
+  });
+  if (parAgent.length) feuilles.push({
+    nom: "5b. Arrivée par agent",
+    titre: "Photo d'arrivée agent par agent",
+    sous: `${perimetre}${masquer ? " · noms masqués" : ""}`,
+    colonnes: [{ lib: "Agent", l: 26 }, { lib: "Score GRC départ", l: 11, f: "pct" }, { lib: "Score GRC aujourd’hui", l: 12, f: "pct" }, { lib: "Évolution (points)", l: 11, f: "dec" }, { lib: "Points acquis départ", l: 11 }, { lib: "Points acquis aujourd’hui", l: 12 }, { lib: "Accompagnements", l: 13 }, { lib: "Lecture", l: 22, f: "ton" }, { lib: "Prochaine étape prévue", l: 40 }],
+    lignes: parAgent.sort((u, v) => (u[1] ?? 9) - (v[1] ?? 9))
+  });
+  if (!L5.length && !parAgent.length) absents.push("Photo d'arrivée");
+  const dTxt = dates.length ? `Formations et accompagnements à partir du ${fmtDate(dates[0])}` : "Aucune formation ni accompagnement réalisé pour le moment";
+  const retenir = [
+    g && g.lignes.length ? `Point de départ : score GRC moyen ${p100(g.depart)} sur ${pl(g.lignes.length, "agent")}.` : "",
+    `Actions : ${actions.filter((a) => a.statut === "Réalisé").length} action${actions.filter((a) => a.statut === "Réalisé").length > 1 ? "s" : ""} du plan réalisée${actions.filter((a) => a.statut === "Réalisé").length > 1 ? "s" : ""} sur ${actions.filter((a) => a.statut !== "Annulé").length}, ${faits.length} accompagnement${faits.length > 1 ? "s" : ""} réalisé${faits.length > 1 ? "s" : ""}, ${sess.length} session${sess.length > 1 ? "s" : ""} de formation.`,
+    g && g.mesures ? `Arrivée : ${g.progres} agent${g.progres > 1 ? "s" : ""} sur ${g.mesures} réécoutés en progression (${p100(g.departMesures)} → ${p100(g.suiviMesures)}).` : "Arrivée : aucune écoute de suivi pour le moment. Les prochaines écoutes mesureront l'effet des actions.",
+    ...c.indicateurs.filter((i) => /nette/.test(i.verdict)).map((i) => `${i.lib} : ${i.verdict.toLowerCase()} (${i.pourcent === false ? i.avant : p100(i.avant)} → ${i.pourcent === false ? i.apres : p100(i.apres)}).`)
+  ].filter(Boolean);
+  const lisez = {
+    nom: "Lisez-moi",
+    titre: "Bilan GRC : du point de départ à la photo d’arrivée",
+    sous: `Édité le ${fmtDate(aujourdhui())}`,
+    colonnes: [{ lib: "Rubrique", l: 26 }, { lib: "Contenu", l: 110 }],
+    lignes: [
+      ["Périmètre", perimetre],
+      ["Période", periode],
+      ["Repère", dTxt],
+      ...message ? [["Message", message]] : [],
+      ["Noms des agents", masquer ? "Masqués (Agent 1, Agent 2… : le même agent garde le même numéro dans tout le classeur)" : "Affichés"],
+      ...retenir.map((t, i) => [i ? "" : "À retenir", t]),
+      ["Onglets", feuilles.map((f) => f.nom).join(" · ")],
+      ...absents.length ? [["Non inclus", `${absents.join(", ")} : aucune donnée sur ce périmètre.`]] : [],
+      ["Lecture", "Départ = avant la formation ou le premier accompagnement de chaque agent. Aujourd’hui = dernières observations. Une évolution n’est dite « nette » que si elle dépasse ce que le hasard explique."]
+    ]
+  };
+  const tout = [lisez, ...feuilles];
+  if (masquer) {
+    const echap = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const ags = ctx.conseillers.filter((a) => a.nom).sort((u, v) => v.nom.length - u.nom.length);
+    const complets = ags.map((a) => [new RegExp(echap(a.nom), "gi"), qui(a.id)]);
+    const morceaux = [...new Set(ags.flatMap((a) => a.nom.split(/\s+/)).filter((m) => m.length >= 4))].map((m) => new RegExp(`(^|[^\\p{L}])${echap(m)}(?=$|[^\\p{L}])`, "gu"));
+    const net = (v) => {
+      if (typeof v !== "string" || !v) return v;
+      let t = v;
+      complets.forEach(([re, ps]) => {
+        t = t.replace(re, ps);
+      });
+      morceaux.forEach((re) => {
+        t = t.replace(re, "$1[agent]");
+      });
+      return t;
+    };
+    tout.forEach((f) => {
+      f.lignes = f.lignes.map((l) => l && l.section ? l : l.map((v, i) => i === 0 && /^Agent \d+$/.test(v) ? v : net(v)));
+    });
+  }
+  return creerXlsx(tout);
+}
+function CarteBilan({ ctx, x }) {
+  const [masquer, setMasquer] = useState(false);
+  const lancer = () => {
+    try {
+      const blob = construireBilan(ctx, x, masquer);
+      const nom = `Bilan_GRC_${slug(ctx.perimetre)}_${aujourdhui()}${masquer ? "_anonyme" : ""}.xlsx`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nom;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1e3);
+      avertir(`Bilan téléchargé : ${nom}`);
+    } catch (e) {
+      avertir("Bilan impossible : " + e.message, "erreur");
+    }
+  };
+  const etapes = ["Point de départ", "Cartographie de départ", "Actions mises en place", "Évolutions", "Photo d'arrivée"];
+  return /* @__PURE__ */ React.createElement("div", { className: "carte no-print bilan" }, /* @__PURE__ */ React.createElement("h2", null, "Bilan : du point de départ à la photo d'arrivée"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Le classeur à présenter aux parties prenantes. Il raconte le parcours dans l'ordre, sur le périmètre et la période choisis en haut de page."), /* @__PURE__ */ React.createElement("ol", { className: "etapes" }, etapes.map((e, i) => /* @__PURE__ */ React.createElement("li", { key: e }, /* @__PURE__ */ React.createElement("span", null, i + 1), e))), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { alignItems: "center", marginTop: 12 } }, /* @__PURE__ */ React.createElement("label", { className: "coche" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: masquer, onChange: (e) => setMasquer(e.target.checked) }), " Masquer les noms des agents (pour le client)"), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: lancer }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Télécharger le bilan")));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(App, null));
 </script>
