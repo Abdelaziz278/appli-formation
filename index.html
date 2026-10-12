@@ -686,9 +686,15 @@ async function analyserFichier(fichier) {
     const hR = ligneEntete(lignes, ["conseiller", "satisfaction conseiller"]);
     if (hR >= 0) return await lireRetours(wb, lignes, hR, fichier.name);
   }
+  const nSaisie = wb.trouver("saisie");
+  if (nSaisie) {
+    const l = await wb.feuille(nSaisie);
+    const h = ligneEntete(l, ["conseiller", "type d'action"], 20);
+    if (h >= 0) return lireSaisie(l, h, fichier.name);
+  }
   if (wb.trouver("ecoutes") && wb.trouver("referentiel", "referentiel grc", "referentiel grille")) return await lireGrille(wb, fichier.name);
   if (wb.trouver("plan d'action") || wb.trouver("suivi individuel")) return await lirePlan(wb, fichier.name);
-  throw new Error("Fichier non reconnu. L'outil lit quatre modèles : analyse des évaluations qualité, analyse des retours clients, grille d'évaluation GRC et suivi du plan d'action.");
+  throw new Error("Fichier non reconnu. L'outil lit cinq modèles : analyse des évaluations qualité, analyse des retours clients, grille d'évaluation GRC, suivi du plan d'action, et classeur de suivi GRC avec un onglet « Saisie ».");
 }
 async function lireQualite(wb, lignes, h, nomFichier) {
   const e = lignes[h];
@@ -902,6 +908,45 @@ async function lirePlan(wb, nomFichier) {
     noms: distincts(noms),
     periode: { du: "", au: "" },
     resume: [pl(actions.length, "action"), `${suivis.length} suivi${suivis.length > 1 ? "s" : ""} individuel${suivis.length > 1 ? "s" : ""}`]
+  };
+}
+const TYPE_SAISIE = { "formation": "Atelier / formation", "atelier": "Atelier / formation", "ecoute": "Débrief d'écoute", "accompagnement terrain": "Coaching de proximité", "coaching": "Coaching de proximité", "coaching de proximite": "Coaching de proximité", "double ecoute": "Double écoute" };
+function lireSaisie(lignes, h, nomFichier) {
+  const e = lignes[h];
+  const c = { date: colonne(e, "Date"), ag: colonne(e, "Conseiller"), type: colonne(e, "Type d'action"), point: colonne(e, "Point travaillé"), niv: colonne(e, "Niveau observé"), ref: colonne(e, "Réf. appel", "Référence"), bien: colonne(e, "Bien traité"), ret: colonne(e, "À retravailler"), pro: colonne(e, "Prochaine étape"), ech: colonne(e, "Échéance"), resp: colonne(e, "Accompagnateur"), st: colonne(e, "Statut") };
+  const actions = [], collectif = [];
+  lignes.slice(h + 1).forEach((l) => {
+    const agent = txt(l, c.ag), typeF = txt(l, c.type);
+    if (!agent || !typeF) return;
+    const ligne = {
+      agent,
+      date: dateExcel(cel(l, c.date)),
+      typeFichier: typeF,
+      type: TYPE_SAISIE[norm(typeF)] || "Autre",
+      point: txt(l, c.point),
+      niveau: NIVEAUX_POINT.find((n) => norm(n) === norm(txt(l, c.niv))) || "",
+      reference: txt(l, c.ref),
+      bien: txt(l, c.bien),
+      retravailler: txt(l, c.ret),
+      prochaine: txt(l, c.pro),
+      echeance: dateExcel(cel(l, c.ech)),
+      responsable: txt(l, c.resp),
+      statutFichier: txt(l, c.st)
+    };
+    if (/collectif|equipe/.test(norm(agent))) collectif.push(ligne);
+    else actions.push(ligne);
+  });
+  const faite = (x) => !!x.date && (!x.statutFichier || norm(x.statutFichier) === "realise");
+  const nF = actions.filter(faite).length;
+  return {
+    type: "saisie",
+    titre: "Actions GRC (onglet Saisie)",
+    fichier: nomFichier,
+    actions,
+    collectif,
+    noms: distincts(actions.map((x) => x.agent)),
+    periode: periodeDe(actions.map((x) => x.date)),
+    resume: [`${pl(actions.length, "action")} individuelle${actions.length > 1 ? "s" : ""}`, `${nF} réalisée${nF > 1 ? "s" : ""}`, `${actions.length - nF} prévue${actions.length - nF > 1 ? "s" : ""} ou reportée${actions.length - nF > 1 ? "s" : ""}`, collectif.length ? `${collectif.length} collective${collectif.length > 1 ? "s" : ""} (non reprise${collectif.length > 1 ? "s" : ""} : déjà au plan)` : ""].filter(Boolean)
   };
 }
 const estGRC = (famille) => /^\d\./.test(famille || "");
@@ -1681,6 +1726,74 @@ function Outil({ user, modeLocalInitial }) {
         ajoutees++;
       }
       return `Grille de ${a.grille.length} items enregistrée pour ${ou}. ${pl(ajoutees, "écoute")} ${ajoutees > 1 ? "ajoutées" : "ajoutée"}${a.ecoutes.length - ajoutees ? `, ${a.ecoutes.length - ajoutees} déjà ${a.ecoutes.length - ajoutees > 1 ? "présentes ignorées" : "présente ignorée"}` : ""}.` + suffixe;
+    }
+    if (a.type === "saisie") {
+      const faite = (x) => !!x.date && (!x.statutFichier || norm(x.statutFichier) === "realise");
+      const statutDe = (x) => {
+        const st = norm(x.statutFichier);
+        if (faite(x)) return x.echeance && x.echeance >= aujourdhui() ? "En cours" : "Clôturé";
+        if (st === "annule") return "Clôturé";
+        if (st === "planifie") return "Planifié";
+        if (st === "en cours") return "En cours";
+        return "À planifier";
+      };
+      const MOTS = { "Atelier / formation": ["formation", "atelier"], "Coaching de proximité": ["accompagnement terrain", "coaching", "accompagnement"], "Débrief d'écoute": ["ecoute"], "Double écoute": ["double ecoute", "ecoute"] };
+      const plan = actionsCol.items.filter((x) => x.projet === projet && x.activite === activite && x.statut !== "Annulé");
+      const actionPour = (x) => {
+        const mots = norm(x.typeFichier) === "atelier" ? ["atelier"] : norm(x.typeFichier) === "formation" ? ["formation"] : MOTS[x.type] || [];
+        for (const m of mots) {
+          const d = plan.filter((p) => norm(p.action).startsWith(m));
+          if (d.length === 1) return d[0];
+          const i = plan.filter((p) => norm(p.action).includes(m));
+          if (i.length === 1) return i[0];
+        }
+        return null;
+      };
+      const cle = (x, id) => [id, norm(x.typeFichier), x.date || "-", norm(x.point)].join("|");
+      const pris = /* @__PURE__ */ new Set();
+      let nAj = 0, nMaj = 0, nId = 0;
+      for (const x of a.actions) {
+        const conseillerId = cons.idPour(x.agent);
+        if (!conseillerId) continue;
+        const fait = faite(x), act = actionPour(x), k = cle(x, conseillerId);
+        const champs = {
+          type: x.type,
+          projet,
+          activite,
+          conseillerId,
+          cleSaisie: k,
+          origine: "saisie",
+          dateConstat: x.date || "",
+          dateRealisee: fait ? x.date : "",
+          datePrevue: fait ? "" : x.date,
+          statut: statutDe(x),
+          point: x.point,
+          niveau: x.niveau,
+          dateNiveau: x.niveau ? x.date : "",
+          echeance: x.echeance,
+          actionId: act ? act.id : "",
+          action: act ? act.action : x.typeFichier
+        };
+        const ecarts = [x.reference && `Appel ${x.reference}.`, x.retravailler].filter(Boolean).join(" ");
+        [["pointsAppui", x.bien], ["ecarts", ecarts], ["prochaine", x.prochaine], ["responsable", x.responsable]].forEach(([k2, v]) => {
+          if (v) champs[k2] = v;
+        });
+        if (!fait && norm(x.statutFichier) === "reporte") champs.progres = "Reporté.";
+        const cands = suivisCol.items.filter((s) => !pris.has(s.id) && s.conseillerId === conseillerId && s.projet === projet && s.activite === activite);
+        const ex = cands.find((s) => s.cleSaisie === k) || x.date && cands.find((s) => typeDe(s) === x.type && (s.dateRealisee === x.date || s.datePrevue === x.date || !s.dateRealisee && !s.datePrevue && s.dateConstat === x.date)) || cands.find((s) => s.origine === "saisie" && typeDe(s) === x.type && !s.dateRealisee && !s.datePrevue && norm(s.point) === norm(x.point));
+        if (!ex) {
+          await suivisCol.ajouter({ objectif1: "", objectif2: "", ecouteApres: "", progres: "", pointsAppui: "", ecarts: "", prochaine: "", responsable: "", ecouteId: "", ...champs });
+          nAj++;
+          continue;
+        }
+        pris.add(ex.id);
+        const diff = Object.fromEntries(Object.entries(champs).filter(([k2, v]) => (ex[k2] ?? "") !== v));
+        if (Object.keys(diff).length) {
+          await suivisCol.modifier(ex.id, diff);
+          nMaj++;
+        } else nId++;
+      }
+      return `${ou} : ${pl(nAj, "accompagnement")} ${nAj > 1 ? "ajoutés" : "ajouté"}, ${nMaj} mis à jour, ${nId} déjà à jour.` + (a.collectif.length ? ` ${pl(a.collectif.length, "ligne")} collective${a.collectif.length > 1 ? "s" : ""} non reprise${a.collectif.length > 1 ? "s" : ""} (à suivre dans le plan d'action).` : "") + suffixe;
     }
     if (a.type === "plan") {
       const connuesA = new Set(actionsCol.items.filter((x) => x.projet === projet && x.activite === activite).map((x) => norm(x.action)));
@@ -2791,7 +2904,7 @@ function VueDonnees({ ctx }) {
     e.preventDefault();
     setSurvol(false);
     lire([...e.dataTransfer.files]);
-  } }, /* @__PURE__ */ React.createElement("b", null, "Déposer des fichiers Excel ici, ou cliquer pour les choisir"), /* @__PURE__ */ React.createElement("span", { className: "t-c2" }, "Quatre modèles sont reconnus automatiquement : analyse des retours clients (SATCLI), analyse des évaluations qualité, grille d'évaluation GRC, suivi du plan d'action."), /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".xlsx", multiple: true, hidden: true, onChange: (e) => {
+  } }, /* @__PURE__ */ React.createElement("b", null, "Déposer des fichiers Excel ici, ou cliquer pour les choisir"), /* @__PURE__ */ React.createElement("span", { className: "t-c2" }, "Cinq modèles sont reconnus automatiquement : analyse des retours clients (SATCLI), analyse des évaluations qualité, grille d'évaluation GRC, suivi du plan d'action, classeur de suivi GRC (onglet « Saisie »)."), /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".xlsx", multiple: true, hidden: true, onChange: (e) => {
     lire([...e.target.files]);
     e.target.value = "";
   } })), occupe && /* @__PURE__ */ React.createElement("div", { className: "bandeau info", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("div", null, occupe)), attente.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Fichiers prêts à être enregistrés"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Vérifie le contenu reconnu, choisis le projet et l'activité, puis enregistre."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Contenu reconnu"), /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", null, "Projet"), /* @__PURE__ */ React.createElement("th", null, "Activité"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, attente.map((a) => /* @__PURE__ */ React.createElement("tr", { key: a.fichier }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, a.titre), /* @__PURE__ */ React.createElement("div", { className: "petit" }, a.fichier)), /* @__PURE__ */ React.createElement("td", null, a.resume.join(" · ")), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, a.periode.du ? `${fmtDate(a.periode.du)} → ${fmtDate(a.periode.au)}` : "—"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Choix, { style: { width: 150 }, valeur: a.projet, onChange: (v) => majA(a, { projet: v, activite: activitesDe(v).length === 1 ? activitesDe(v)[0] : "" }), options: projets, vide: "Choisir…" })), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Choix, { style: { width: 170 }, valeur: a.activite, onChange: (v) => majA(a, { activite: v }), options: activitesDe(a.projet), vide: "Choisir…", disabled: !a.projet })), /* @__PURE__ */ React.createElement("td", { className: "num", style: { whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => setAttente((l) => l.filter((x) => x !== a)) }, "Retirer"), " ", /* @__PURE__ */ React.createElement("button", { className: "btn mini primaire", disabled: !!occupe, onClick: () => valider(a) }, "Enregistrer")))))))), journal.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Journal des imports"), /* @__PURE__ */ React.createElement("table", { className: "tab", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("tbody", null, journal.map((j, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, /* @__PURE__ */ React.createElement("td", { style: { width: 60 } }, j.h), /* @__PURE__ */ React.createElement("td", { style: { width: 90 } }, /* @__PURE__ */ React.createElement("span", { className: `badge ${j.ok ? "ok" : "ko"}` }, j.ok ? "Enregistré" : "Erreur")), /* @__PURE__ */ React.createElement("td", null, j.texte)))))), /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Données chargées"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Un nouvel import du même type pour la même activité remplace le précédent : ton fichier Excel reste la source, tu y ajoutes les nouvelles lignes puis tu le réimportes."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Projet · activité"), /* @__PURE__ */ React.createElement("th", null, "Données"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Lignes"), /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Importé le"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, trier(jeux.map((j) => ({ ...j, ou: libPA(j) })), "ou").map((j) => /* @__PURE__ */ React.createElement("tr", { key: j.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, j.ou || "Sans projet")), /* @__PURE__ */ React.createElement("td", null, LIB[j.type] || j.type), /* @__PURE__ */ React.createElement("td", { className: "num" }, j.nb), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, j.du ? `${fmtDate(j.du)} → ${fmtDate(j.au)}` : "—"), /* @__PURE__ */ React.createElement("td", { className: "petit" }, j.fichier), /* @__PURE__ */ React.createElement("td", null, j.importeLe ? new Date(j.importeLe).toLocaleDateString("fr-FR") : "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: async () => {
