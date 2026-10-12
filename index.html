@@ -3353,9 +3353,12 @@ function construireExtraction(dest, ctx, x) {
         L.push({ section: "Appels avec un écart, par axe GRC" });
         c.axes.forEach((a) => L.push([a.lib, a.avant, a.apres, a.delta, a.verdict, a.module]));
       }
-      if (g && g.mesures) {
-        L.push({ section: "Écoutes GRC : agents formés ou accompagnés, avant puis après" });
-        L.push(["Score GRC moyen", g.departMesures, g.suiviMesures, (g.suiviMesures - g.departMesures) * 100, `${g.progres} agent${g.progres > 1 ? "s" : ""} en progression sur ${g.mesures}`, `${pl(g.mesures, "agent")} avec des écoutes avant et après`]);
+      if (g && g.lignes.length) {
+        const nD = somme(g.lignes.map((l) => l.nD)), formes = g.lignes.filter((l) => l.bascule), dates = formes.map((l) => l.bascule).sort();
+        L.push({ section: "Écoutes GRC : point de départ (avant formation et actions), puis suivi" });
+        L.push(["Score GRC moyen · point de départ", g.depart, g.mesures ? g.suiviMesures : "", g.mesures ? (g.suiviMesures - g.departMesures) * 100 : "", g.mesures ? `${g.progres} agent${g.progres > 1 ? "s" : ""} en progression sur ${g.mesures} mesurés` : "Point de départ posé : en attente des écoutes de suivi", `${pl(nD, "écoute")} de départ, ${pl(g.lignes.length, "agent")}`]);
+        if (formes.length) L.push(["Agents formés ou accompagnés depuis", "", "", "", `${formes.length} sur ${g.lignes.length}`, dates.length ? `entre le ${fmtDate(dates[0])} et le ${fmtDate(dates[dates.length - 1])}` : ""]);
+        if (g.mesures) L.push(["Score GRC des agents mesurés (départ → suivi)", g.departMesures, g.suiviMesures, (g.suiviMesures - g.departMesures) * 100, (g.suiviMesures - g.departMesures) * 100 > 0.5 ? "En progression, à confirmer" : "Stable ou en recul, à confirmer", `${pl(g.mesures, "agent")} avec des écoutes avant et après`]);
       }
       return {
         nom: "Avant-après",
@@ -3363,7 +3366,7 @@ function construireExtraction(dest, ctx, x) {
         sous: perimetre,
         colonnes: [{ lib: "Indicateur", l: 44 }, { lib: "Avant", l: 12, f: "pct" }, { lib: "Après", l: 12, f: "pct" }, { lib: "Évolution (points)", l: 12, f: "dec" }, { lib: "Verdict", l: 30, f: "ton" }, { lib: "Base", l: 36 }],
         lignes: L.map((l) => l.section ? l : l),
-        note: "Verdict « nette » : l’évolution dépasse ce que le hasard explique (seuil de 95 %). « À confirmer » : la tendance existe mais les données ne suffisent pas pour conclure. « Pas assez de données » : la comparaison n’est pas possible.\nLe NPS est exprimé en points, pas en pourcentage."
+        note: "Le point de départ est calculé sur les écoutes faites avant la première formation ou le premier accompagnement de chaque agent. La colonne « Après » se remplit avec les écoutes de suivi.\nVerdict « nette » : l’évolution dépasse ce que le hasard explique (seuil de 95 %). « À confirmer » : la tendance existe mais les données ne suffisent pas pour conclure. « Pas assez de données » : la comparaison n’est pas possible.\nLe NPS est exprimé en points, pas en pourcentage."
       };
     },
     agentsGRC: () => {
