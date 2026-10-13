@@ -2326,12 +2326,11 @@ function VueSuivi({ ctx, typeFixe }) {
       ecouteId,
       responsable: d.responsable || ctx.ref.formateurs[0] || ""
     };
-    if (suivisCol.items.some((s) => s.id !== d.id && s.conseillerId === data.conseillerId && typeDe(s) === data.type && (s.dateRealisee || s.datePrevue) === (data.dateRealisee || data.datePrevue) && (data.dateRealisee || data.datePrevue))) return avertir(`Un accompagnement « ${data.type} » existe déjà pour ${nomDe(data.conseillerId)} à cette date. Ouvre-le pour le compléter.`);
     try {
       if (d.id) await suivisCol.modifier(d.id, data);
       else await suivisCol.ajouter({ ...data, origine: "outil" });
       setEdition(null);
-      avertir(fait ? `${data.type} enregistré pour ${nomDe(data.conseillerId)}.` : `${data.type} prévu pour ${nomDe(data.conseillerId)}${data.datePrevue ? " le " + fmtDate(data.datePrevue) : ""}.`);
+      avertir(fait ? `Enregistré : ${data.type.charAt(0).toLowerCase() + data.type.slice(1)} pour ${nomDe(data.conseillerId)}.` : `${data.type} prévu pour ${nomDe(data.conseillerId)}${data.datePrevue ? " le " + fmtDate(data.datePrevue) : ""}.`);
     } catch (e) {
       avertir("Enregistrement impossible : " + e.message);
     }
