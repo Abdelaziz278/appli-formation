@@ -711,6 +711,19 @@ async function analyserFichier(fichier) {
     const hR = ligneEntete(lignes, ["conseiller", "satisfaction conseiller"]);
     if (hR >= 0) return await lireRetours(wb, lignes, hR, fichier.name);
   }
+  const ongletsGrille = [];
+  for (const n of wb.noms.filter((n2) => /^grille/.test(norm(n2)))) {
+    const l = await wb.feuille(n);
+    const h = ligneEntete(l, ["critere grc"], 20);
+    if (h >= 0) ongletsGrille.push({ n, l, h });
+  }
+  if (ongletsGrille.length) return ongletsGrille.map((o) => lireGrilleObservation(o.n, o.l, o.h, fichier.name));
+  const nPh = wb.noms.find((n) => norm(n).includes("phrases"));
+  if (nPh && !wb.trouver("saisie")) {
+    const l = await wb.feuille(nPh);
+    const h = l.slice(0, 15).findIndex((x) => Array.from(x, norm).some((v) => v.includes("bien traite")));
+    if (h >= 0) return lirePhrases(l, h, fichier.name);
+  }
   const nSaisie = wb.trouver("saisie");
   if (nSaisie) {
     const l = await wb.feuille(nSaisie);
@@ -973,6 +986,57 @@ function lireSaisie(lignes, h, nomFichier) {
     periode: periodeDe(actions.map((x) => x.date)),
     resume: [`${pl(actions.length, "action")} individuelle${actions.length > 1 ? "s" : ""}`, `${nF} réalisée${nF > 1 ? "s" : ""}`, `${actions.length - nF} prévue${actions.length - nF > 1 ? "s" : ""} ou reportée${actions.length - nF > 1 ? "s" : ""}`, collectif.length ? `${collectif.length} collective${collectif.length > 1 ? "s" : ""} (non reprise${collectif.length > 1 ? "s" : ""} : déjà au plan)` : ""].filter(Boolean)
   };
+}
+function lireGrilleObservation(onglet, lignes, h, nomFichier) {
+  const e = lignes[h];
+  const c = { n: colonne(e, "N°"), crit: colonne(e, "Critère GRC", "Critère"), comp: colonne(e, "Comportements observables attendus", "Comportements") };
+  const titre = txt(lignes[0], 0) || onglet;
+  const prefixe = /sortant/.test(norm(onglet + " " + titre)) ? "S" : /entrant/.test(norm(onglet + " " + titre)) ? "E" : "G";
+  const items = [];
+  let bloc = "";
+  for (const l of lignes.slice(h + 1)) {
+    const a = txt(l, c.n), crit = txt(l, c.crit);
+    if (/^score/i.test(a)) break;
+    if (!crit && /^\d+\.\s*/.test(a)) {
+      bloc = a.replace(/^\d+\.\s*/, "");
+      continue;
+    }
+    if (!crit || !/^\d+$/.test(a)) continue;
+    items.push({ code: `${prefixe}${pad(+a)}`, item: crit, court: crit, point: bloc, pts: 2, ptsPartiel: 1, na: true, siOk: false, acquis: txt(l, c.comp), partiel: "", nonAcquis: "", casNA: "N/O : critère non observé sur l'appel (exclu du calcul).", si: "" });
+  }
+  if (!items.length) throw new Error(`Onglet « ${onglet} » : aucun critère trouvé.`);
+  const blocs = distincts(items.map((i) => i.point));
+  return {
+    type: "grille",
+    titre: `Grille GRC · ${onglet.replace(/^grille\s*/i, "")}`,
+    fichier: `${nomFichier} · ${onglet}`,
+    grille: items,
+    ecoutes: [],
+    noms: [],
+    periode: { du: "", au: "" },
+    canal: prefixe === "S" ? "Sortant" : prefixe === "E" ? "Entrant" : "",
+    nouvelleGrille: true,
+    resume: [`${items.length} critères GRC`, `${blocs.length} blocs`, "notation 2 / 1 / 0, N/O exclu"]
+  };
+}
+function lirePhrases(lignes, h, nomFichier) {
+  const e = Array.from(lignes[h], norm);
+  const col = (m) => e.findIndex((v) => v.includes(m));
+  const c = { bloc: 0, b: col("bien traite"), r: col("a retravailler"), p: col("prochaine") };
+  const phrases = {};
+  let bloc = "";
+  lignes.slice(h + 1).forEach((l) => {
+    const k = txt(l, c.bloc);
+    if (k) bloc = k;
+    if (!bloc) return;
+    const o = phrases[bloc] || (phrases[bloc] = { bien: [], retravailler: [], etape: [] });
+    [["bien", c.b], ["retravailler", c.r], ["etape", c.p]].forEach(([k2, i]) => {
+      const v = txt(l, i);
+      if (v && !o[k2].includes(v)) o[k2].push(v);
+    });
+  });
+  const n = somme(Object.values(phrases).map((o) => o.bien.length + o.retravailler.length + o.etape.length));
+  return { type: "phrases", titre: "Phrases GRC prêtes à l’emploi", fichier: nomFichier, phrases, noms: [], periode: { du: "", au: "" }, resume: [`${Object.keys(phrases).length} blocs`, `${n} phrases`] };
 }
 const estGRC = (famille) => /^\d\./.test(famille || "");
 const familleNorm = (f) => norm(f);
@@ -1588,8 +1652,17 @@ function Outil({ user, modeLocalInitial }) {
     const items = tous.filter((i) => !i.horsGRC);
     const pts2 = lireJson(g.points, []);
     return { ...g, tousItems: tous, items, points: pts2.filter((p) => items.some((i) => i.point === p)), phrases: lireJson(g.phrases, {}) };
-  }), [grillesCol.items]);
-  const grilleDe = (projet, activite) => grilles.find((g) => g.projet === projet && g.activite === activite) || grilles.find((g) => g.projet === projet && !g.activite) || grilles.find((g) => g.projet === projet) || null;
+  }).sort((a, b) => (a.archive ? 0 : 1) - (b.archive ? 0 : 1) || String(a.depuis || "").localeCompare(String(b.depuis || ""))), [grillesCol.items]);
+  const enVigueur = grilles.filter((g) => !g.archive);
+  const grilleDe = (projet, activite) => enVigueur.find((g) => g.projet === projet && g.activite === activite) || enVigueur.find((g) => g.projet === projet && !g.activite) || enVigueur.find((g) => g.projet === projet) || null;
+  const grilleEcoute = (e) => {
+    if (e.grilleId) {
+      const g = grilles.find((x) => x.id === e.grilleId);
+      if (g) return g;
+    }
+    const arch = grilles.filter((g) => g.archive && g.projet === e.projet && g.activite === e.activite && e.date && g.jusquau && e.date < g.jusquau).sort((a, b) => String(a.jusquau).localeCompare(String(b.jusquau)))[0];
+    return arch || grilleDe(e.projet, e.activite);
+  };
   const jeux = useMemo(() => {
     const g = {};
     lots.forEach((l) => {
@@ -1635,7 +1708,7 @@ function Outil({ user, modeLocalInitial }) {
   const ecoutes = useMemo(() => ecoutesCol.items.filter((e) => ok(e) && (!e.date || dansPeriode(e.date)) && (parId[e.conseillerId] || {}).statut !== "Sorti"), [ecoutesCol.items, filtres, parId]);
   const ae = useMemo(() => {
     const obs = suivisCol.items.flatMap((s) => pointsDe(s).filter((x) => x.niveau).map((x) => ({ conseillerId: s.conseillerId, point: x.point, niveau: x.niveau, date: s.dateNiveau || s.dateRealisee || s.dateConstat })));
-    const parGrille = grilles.map((g) => ({ grille: g, ...analyserEcoutes(ecoutes.filter((e) => grilleDe(e.projet, e.activite) === g), g.items, obs, g.points) || {} })).filter((x) => x.ecoutes);
+    const parGrille = grilles.map((g) => ({ grille: g, ...analyserEcoutes(ecoutes.filter((e) => grilleEcoute(e) === g), g.items, obs.filter((o) => g.points.includes(o.point) || g.items.some((i) => i.court === o.point)), g.points) || {} })).filter((x) => x.ecoutes);
     const avec = parGrille.filter((x) => x.ecoutes.length);
     if (!avec.length) return null;
     const parAgent = avec.flatMap((x) => x.parAgent), scores = parAgent.filter((a) => a.score !== null).map((a) => a.score);
@@ -1754,12 +1827,23 @@ function Outil({ user, modeLocalInitial }) {
       return `${rows.length} réponses clients enregistrées pour ${ou}.` + (repris ? ` ${pl(repris, "classement")} déjà ${repris > 1 ? "faits" : "fait"} dans l'outil ${repris > 1 ? "conservés" : "conservé"}.` : "") + suffixe;
     }
     if (a.type === "grille") {
-      const anc = grilles.find((g) => g.projet === projet && g.activite === activite);
+      const anc = grilles.find((g) => !g.archive && g.projet === projet && g.activite === activite);
+      const memes = anc && a.grille.some((it) => anc.tousItems.some((x) => x.code === it.code));
+      const idG = `g__${slug(projet)}__${slug(activite)}`;
+      let archive = "";
+      if (anc && !memes) {
+        const jour = aujourdhui();
+        const { id: _i, ...src } = grillesCol.items.find((g) => g.id === anc.id) || {};
+        await grillesCol.definir(`${idG}__jusqu_${jour}`, { ...src, archive: true, jusquau: jour });
+        for (const e of ecoutesCol.items.filter((e2) => e2.projet === projet && e2.activite === activite && !e2.grilleId)) await ecoutesCol.modifier(e.id, { grilleId: `${idG}__jusqu_${jour}` });
+        archive = ` L'ancienne grille (${pl(anc.items.length, "critère")}) est archivée : les écoutes déjà notées gardent leurs scores et servent de point de départ.`;
+      }
       const items = a.grille.map((it) => {
-        const v = (anc ? anc.tousItems : []).find((x) => x.code === it.code) || {};
+        const v = (memes ? anc.tousItems : []).find((x) => x.code === it.code) || {};
         return { ...it, point: it.point || v.point || "", ...v.horsGRC ? { horsGRC: true } : {} };
       });
-      await grillesCol.definir(`g__${slug(projet)}__${slug(activite)}`, { projet, activite, json: JSON.stringify(items), points: JSON.stringify(anc && anc.points.length ? anc.points : [...new Set(items.map((i) => i.point).filter(Boolean))]), phrases: JSON.stringify(anc ? anc.phrases : {}), fichier: a.fichier, importeLe: Date.now() });
+      await grillesCol.definir(idG, { projet, activite, json: JSON.stringify(items), points: JSON.stringify(memes && anc.points.length ? anc.points : [...new Set(items.map((i) => i.point).filter(Boolean))]), phrases: JSON.stringify(memes ? anc.phrases : anc ? anc.phrases : {}), fichier: a.fichier, importeLe: Date.now(), depuis: memes ? anc.depuis || "" : aujourdhui() });
+      if (!a.ecoutes.length) return `Grille de ${a.grille.length} critères enregistrée pour ${ou}.` + archive;
       const cleE = (e) => e.conseillerId + "|" + (e.reference || "") + "|" + (e.date || "");
       const connues = new Set(ecoutesCol.items.map(cleE));
       let ajoutees = 0;
@@ -1770,7 +1854,16 @@ function Outil({ user, modeLocalInitial }) {
         await ecoutesCol.ajouter(x);
         ajoutees++;
       }
-      return `Grille de ${a.grille.length} items enregistrée pour ${ou}. ${pl(ajoutees, "écoute")} ${ajoutees > 1 ? "ajoutées" : "ajoutée"}${a.ecoutes.length - ajoutees ? `, ${a.ecoutes.length - ajoutees} déjà ${a.ecoutes.length - ajoutees > 1 ? "présentes ignorées" : "présente ignorée"}` : ""}.` + suffixe;
+      return `Grille de ${a.grille.length} items enregistrée pour ${ou}.${archive} ${pl(ajoutees, "écoute")} ${ajoutees > 1 ? "ajoutées" : "ajoutée"}${a.ecoutes.length - ajoutees ? `, ${a.ecoutes.length - ajoutees} déjà ${a.ecoutes.length - ajoutees > 1 ? "présentes ignorées" : "présente ignorée"}` : ""}.` + suffixe;
+    }
+    if (a.type === "phrases") {
+      const g = grilleDe(projet, activite);
+      if (!g) throw new Error(`aucune grille pour ${ou} : importe d'abord la grille`);
+      const connus = (a2) => g.points.includes(a2) || g.items.some((i) => i.court === a2);
+      const horsGrille = Object.keys(a.phrases).filter((k) => !connus(k));
+      const gardees = Object.fromEntries(Object.entries(g.phrases).filter(([k]) => connus(k)));
+      await grillesCol.modifier(g.id, { phrases: JSON.stringify({ ...gardees, ...a.phrases }) });
+      return `Phrases GRC enregistrées pour ${ou} : ${pl(Object.keys(a.phrases).length - horsGrille.length, "bloc")} de la grille mis à jour.` + (horsGrille.length ? ` Non rattachés à un bloc de la grille : ${horsGrille.join(", ")}.` : "");
     }
     if (a.type === "saisie") {
       const faite = (x) => !!x.date && (!x.statutFichier || norm(x.statutFichier) === "realise");
@@ -1934,6 +2027,7 @@ function Outil({ user, modeLocalInitial }) {
     ae,
     grilles,
     grilleDe,
+    grilleEcoute,
     grillesCol,
     ecoutes,
     ecoutesCol,
@@ -2179,7 +2273,7 @@ function VueSuivi({ ctx, typeFixe }) {
     const act = actionLiee;
     let ecouteId = d.ecouteId || "";
     if (d.toutAppel && Object.keys(items).length) {
-      const ec = { conseillerId: d.conseillerId, projet, activite, date: d.date || aujourdhui(), reference: String(d.reference || "").trim(), evaluateur: d.responsable || ref.formateurs[0] || "", mode: d.type === "Double écoute" ? MODES_ECOUTE[1] : MODES_ECOUTE[0], items, observations: (d.commentaire || "").trim(), action: (d.partage || "").trim() };
+      const ec = { grilleId: gr ? gr.id : "", conseillerId: d.conseillerId, projet, activite, date: d.date || aujourdhui(), reference: String(d.reference || "").trim(), evaluateur: d.responsable || ref.formateurs[0] || "", mode: d.type === "Double écoute" ? MODES_ECOUTE[1] : MODES_ECOUTE[0], items, observations: (d.commentaire || "").trim(), action: (d.partage || "").trim() };
       try {
         if (ecouteId && ecoutesCol.items.some((e) => e.id === ecouteId)) await ecoutesCol.modifier(ecouteId, ec);
         else ecouteId = await ecoutesCol.ajouter({ ...ec, ordre: Date.now() });
@@ -2327,10 +2421,10 @@ function VueGrilles({ ctx }) {
     }
   };
   if (!grilles.length) return /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Aucune grille d'évaluation"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Une grille GRC appartient à une activité. Importe ton fichier de grille dans « Import / export » : les critères, leurs points et leurs repères seront repris."), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => setVue("donnees") }, /* @__PURE__ */ React.createElement(Icone, { nom: "importer", taille: 15 }), " Importer une grille"));
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bandeau info" }, /* @__PURE__ */ React.createElement("div", null, "Les grilles sont créées par import Excel. Tu peux retirer de la GRC un critère qui relève du process : il n'est plus proposé dans les évaluations, et tous les scores (passés compris) sont recalculés sans lui. Tu peux le remettre à tout moment.")), trier(grilles.map((g) => ({ ...g, ou: libPA(g) })), "ou").map((g) => {
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bandeau info" }, /* @__PURE__ */ React.createElement("div", null, "Les grilles sont créées par import Excel. Tu peux retirer de la GRC un critère qui relève du process : il n'est plus proposé dans les évaluations, et tous les scores (passés compris) sont recalculés sans lui. Tu peux le remettre à tout moment.")), trier(grilles.map((g) => ({ ...g, ou: libPA(g) })), "ou").sort((a, b) => a.ou.localeCompare(b.ou) || (a.archive ? 1 : 0) - (b.archive ? 1 : 0)).map((g) => {
     const n = ecoutesCol.items.filter((e) => e.projet === g.projet && e.activite === g.activite).length;
     const max = somme(g.items.map((i) => +i.pts || 0));
-    return /* @__PURE__ */ React.createElement("div", { className: "carte", key: g.id }, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("h2", null, g.ou), /* @__PURE__ */ React.createElement("p", { className: "sous", style: { marginBottom: 0 } }, pl(g.items.length, "critère"), " évalué", g.items.length > 1 ? "s" : "", " en GRC", g.tousItems.length > g.items.length ? ` (${g.tousItems.length - g.items.length} hors GRC)` : "", " · ", fr(max), " points au maximum · ", pl(g.points.length, "point travaillé"), " · ", pl(n, "écoute"), " enregistrée", n > 1 ? "s" : "", g.fichier ? ` · importée depuis « ${g.fichier} »` : "")), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setOuverte(ouverte === g.id ? null : g.id), "aria-expanded": ouverte === g.id }, ouverte === g.id ? "Masquer les critères" : "Voir les critères")), ouverte === g.id && /* @__PURE__ */ React.createElement("div", { className: "tab-wrap", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Code"), /* @__PURE__ */ React.createElement("th", null, "Critère"), /* @__PURE__ */ React.createElement("th", null, "Point travaillé"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Acquis"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Partiel"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "N/A possible"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "SI"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "Évalué en GRC"))), /* @__PURE__ */ React.createElement("tbody", null, g.tousItems.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.code, style: i.horsGRC ? { opacity: 0.55 } : null }, /* @__PURE__ */ React.createElement("td", null, i.code), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, i.court), i.item && i.item !== i.court && /* @__PURE__ */ React.createElement("div", { className: "petit" }, i.item)), /* @__PURE__ */ React.createElement("td", null, i.point || "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.pts)), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.ptsPartiel)), /* @__PURE__ */ React.createElement("td", { className: "centre" }, i.na ? "Oui" : "—"), /* @__PURE__ */ React.createElement("td", { className: "centre" }, i.siOk ? "Oui" : "—"), /* @__PURE__ */ React.createElement("td", { className: "centre" }, /* @__PURE__ */ React.createElement("label", { className: "coche" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: !i.horsGRC, disabled: !peutEditer, onChange: () => basculerGRC(g, i.code), "aria-label": `${i.court} évalué en GRC` }), " ", i.horsGRC ? "Hors GRC" : "Oui"))))))));
+    return /* @__PURE__ */ React.createElement("div", { className: "carte", key: g.id }, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("h2", null, g.ou, g.archive ? /* @__PURE__ */ React.createElement("span", { className: "badge", style: { marginLeft: 8 } }, "Ancienne grille · jusqu'au ", fmtDate(g.jusquau)) : g.depuis ? /* @__PURE__ */ React.createElement("span", { className: "badge ok", style: { marginLeft: 8 } }, "En vigueur depuis le ", fmtDate(g.depuis)) : null), /* @__PURE__ */ React.createElement("p", { className: "sous", style: { marginBottom: 0 } }, pl(g.items.length, "critère"), " évalué", g.items.length > 1 ? "s" : "", " en GRC", g.tousItems.length > g.items.length ? ` (${g.tousItems.length - g.items.length} hors GRC)` : "", " · ", fr(max), " points au maximum · ", pl(g.points.length, "point travaillé"), " · ", pl(n, "écoute"), " enregistrée", n > 1 ? "s" : "", g.fichier ? ` · importée depuis « ${g.fichier} »` : "")), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setOuverte(ouverte === g.id ? null : g.id), "aria-expanded": ouverte === g.id }, ouverte === g.id ? "Masquer les critères" : "Voir les critères")), ouverte === g.id && /* @__PURE__ */ React.createElement("div", { className: "tab-wrap", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Code"), /* @__PURE__ */ React.createElement("th", null, "Critère"), /* @__PURE__ */ React.createElement("th", null, "Point travaillé"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Acquis"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Partiel"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "N/A possible"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "SI"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "Évalué en GRC"))), /* @__PURE__ */ React.createElement("tbody", null, g.tousItems.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.code, style: i.horsGRC ? { opacity: 0.55 } : null }, /* @__PURE__ */ React.createElement("td", null, i.code), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, i.court), i.item && i.item !== i.court && /* @__PURE__ */ React.createElement("div", { className: "petit" }, i.item)), /* @__PURE__ */ React.createElement("td", null, i.point || "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.pts)), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.ptsPartiel)), /* @__PURE__ */ React.createElement("td", { className: "centre" }, i.na ? "Oui" : "—"), /* @__PURE__ */ React.createElement("td", { className: "centre" }, i.siOk ? "Oui" : "—"), /* @__PURE__ */ React.createElement("td", { className: "centre" }, /* @__PURE__ */ React.createElement("label", { className: "coche" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: !i.horsGRC, disabled: !peutEditer, onChange: () => basculerGRC(g, i.code), "aria-label": `${i.court} évalué en GRC` }), " ", i.horsGRC ? "Hors GRC" : "Oui"))))))));
   }));
 }
 const COLLECTIONS_SAUV = [["conseillers", "Agents"], ["lots", "Données importées (qualité, SATCLI)"], ["grilles", "Grilles GRC"], ["ecoutes", "Écoutes GRC"], ["actions", "Actions du plan"], ["suivis", "Accompagnements"], ["sessions", "Formations et ateliers"]];
@@ -2514,7 +2608,7 @@ function FicheConseiller({ id, ctx, onFermer }) {
   const { aq, ar, ae, parId, rTout, peutEditer, creerSuivi, creerEcoute, filtres, sessions, suivisCol, actionsCol, grilleDe } = ctx;
   const suivis = suivisCol.items;
   const c = parId[id] || {};
-  const q = aq && aq.parConseiller.find((x) => x.k === id), r = ar && ar.parConseiller.find((x) => x.k === id), e = ae && ae.parAgent.find((x) => x.id === id);
+  const q = aq && aq.parConseiller.find((x) => x.k === id), r = ar && ar.parConseiller.find((x) => x.k === id), e = ae && [...ae.parAgent].reverse().find((x) => x.id === id);
   const nom = c.nom || (q || r || {}).nom || "Conseiller";
   const sv = suivis.filter((s) => s.conseillerId === id).sort((a, b) => String(b.dateConstat).localeCompare(String(a.dateConstat)));
   const mois = [.../* @__PURE__ */ new Set([...q ? q.parMois.map((m) => m.mois) : [], ...r ? r.parMois.map((m) => m.mois) : []])].sort();
@@ -2524,7 +2618,7 @@ function FicheConseiller({ id, ctx, onFermer }) {
   };
   const verbatims = rTout.filter((l) => l.k === id && dansP(l.d) && l.v && (l.s === 2 || l.s === 3 || l.nps !== null && l.nps <= 6)).sort((a, b) => String(b.d).localeCompare(String(a.d)));
   const libCode = (code) => code && ar && ar.codes[code] ? ar.codes[code].remarque : code;
-  const ecoutesAgent = e ? [...e.ecoutes].sort((a, b) => String(a.date).localeCompare(String(b.date)) || (a.ordre || 0) - (b.ordre || 0)) : [];
+  const ecoutesAgent = ae ? ae.ecoutes.filter((x) => x.conseillerId === id).sort((a, b) => String(a.date).localeCompare(String(b.date)) || (a.ordre || 0) - (b.ordre || 0)) : [];
   const journal = [
     ...ecoutesAgent.map((x) => ({ date: x.date, quoi: estDouble(x) ? "Double écoute évaluée" : "Écoute GRC", texte: [x.reference && `Appel ${x.reference}`, x.observations, x.action && `À travailler : ${x.action}`].filter(Boolean).join(" · "), val: x.score !== null ? p100(x.score, 0) : "", etat: x.statut })),
     ...sv.map((s) => ({ date: s.dateRealisee || s.datePrevue || s.dateConstat, quoi: typeDe(s), texte: [pointsDe(s).map((x) => `${x.point}${x.niveau ? ` : ${x.niveau.toLowerCase()}` : ""}`).join(" ; "), s.partage, [s.objectif1, s.objectif2].filter(Boolean).join(" · "), s.progres, s.prochaine && `Suite : ${s.prochaine}`].filter(Boolean).join(" · ") || s.action || "", val: (actionsCol.items.find((a) => lieA(s, a)) || {}).action || "", etat: suiviFait(s) ? s.statut : `${s.statut} (pas encore réalisé)` })),
@@ -2633,7 +2727,7 @@ function VueEcoutes({ ctx }) {
   const { ae: aeTout, grilles, grillesCol, ok, ecoutesCol, conseillers, parId, nomDe, peutEditer, ouvrirFiche, setVue, ref, nouvelleEcoute, setNouvelleEcoute, grilleDe, creerSuivi, suivisCol } = ctx;
   const [onglet, setOnglet] = useState("liste");
   const [idGrille, setIdGrille] = useState("");
-  const dispo = grilles.filter(ok);
+  const dispo = grilles.filter(ok).sort((a, b) => (a.archive ? 1 : 0) - (b.archive ? 1 : 0));
   const g = dispo.find((x) => x.id === idGrille) || dispo[0] || null;
   const grille = g ? g.items : [];
   const ae = useMemo(() => !g ? null : (aeTout ? aeTout.parGrille : []).find((x) => x.grille.id === g.id) || analyserEcoutes([], g.items, [], g.points), [aeTout, g]);
@@ -2666,7 +2760,7 @@ function VueEcoutes({ ctx }) {
     const d = { ...edition, items, reference: String(edition.reference || "").trim() };
     if (!d.conseillerId) return avertir("Choisis un agent.");
     if (d.reference && ecoutesCol.items.some((e) => e.id !== d.id && e.conseillerId === d.conseillerId && String(e.reference) === d.reference)) return avertir(`Une écoute existe déjà pour ${nomDe(d.conseillerId)} avec la référence ${d.reference}.`);
-    const data = { conseillerId: d.conseillerId, projet: g.projet, activite: g.activite, date: d.date || "", reference: d.reference, evaluateur: d.evaluateur || "", mode: d.mode || "", items, observations: d.observations || "", action: d.action || "" };
+    const data = { grilleId: g.id, conseillerId: d.conseillerId, projet: g.projet, activite: g.activite, date: d.date || "", reference: d.reference, evaluateur: d.evaluateur || "", mode: d.mode || "", items, observations: d.observations || "", action: d.action || "" };
     let id = d.id;
     try {
       if (id) await ecoutesCol.modifier(id, data);
@@ -2700,7 +2794,7 @@ function VueEcoutes({ ctx }) {
   })()), dispo.length > 1 && /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 14, alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { className: "label" }, "Grille"), /* @__PURE__ */ React.createElement(Choix, { style: { width: 320 }, valeur: g.id, onChange: (v) => {
     setIdGrille(v);
     setAgent("");
-  }, options: dispo.map((x) => ({ v: x.id, lib: `${libPA(x)} · ${x.items.length} items` })) })), /* @__PURE__ */ React.createElement(Onglets, { liste: [{ id: "liste", lib: "Écoutes" }, { id: "synthese", lib: "Cartographie des compétences" }, ae.points.length > 0 && { id: "points", lib: "Points travaillés" }, { id: "bilan", lib: "Bilan par agent" }, ae.points.length > 0 && { id: "phrases", lib: "Phrases GRC" }].filter(Boolean), actif: onglet, onChange: setOnglet }), onglet === "points" && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Points travaillés : dernier niveau observé"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Les ", grille.length, " items sont regroupés en ", ae.points.length, " points travaillés. Niveau = celui de la dernière écoute complète où le point a été évalué, ou d'un accompagnement terrain plus récent. Un point est acquis quand tous ses items le sont."), /* @__PURE__ */ React.createElement("div", { className: "legende" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cell-h niv n4", style: { minWidth: 26 } }, "A"), " Acquis"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cell-h niv n2", style: { minWidth: 26 } }, "P"), " Partiellement acquis"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cell-h niv n1", style: { minWidth: 26 } }, "N"), " Non acquis"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cell-h niv n0", style: { minWidth: 26 } }, "–"), " À observer")), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Agent"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Points acquis"), ae.points.map((p) => /* @__PURE__ */ React.createElement("th", { key: p, className: "centre", style: { whiteSpace: "normal", minWidth: 74, fontSize: 10 } }, p)))), /* @__PURE__ */ React.createElement("tbody", null, [...agents].sort((a, b) => a.pointsAcquis - b.pointsAcquis).map((a) => /* @__PURE__ */ React.createElement("tr", { key: a.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("button", { className: "lien-nom", onClick: () => ouvrirFiche(a.id) }, a.nom)), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, a.pointsAcquis), " / ", ae.points.length), a.points.map((x) => /* @__PURE__ */ React.createElement("td", { key: x.point, className: "centre" }, /* @__PURE__ */ React.createElement("span", { className: `cell-h niv ${x.niveau === "Acquis" ? "n4" : x.niveau === "Partiellement acquis" ? "n2" : x.niveau === "Non acquis" ? "n1" : "n0"}`, "data-bulle": `${a.nom} · ${x.point} : ${x.niveau || "à observer"}${x.date ? ` (${x.source} du ${fmtDate(x.date)})` : ""}` }, x.niveau === "Acquis" ? "A" : x.niveau === "Partiellement acquis" ? "P" : x.niveau === "Non acquis" ? "N" : "–"))))), /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, "Agents ayant acquis le point")), /* @__PURE__ */ React.createElement("td", null), ae.points.map((p) => /* @__PURE__ */ React.createElement("td", { key: p, className: "centre" }, /* @__PURE__ */ React.createElement("b", null, agents.filter((a) => (a.points.find((x) => x.point === p) || {}).niveau === "Acquis").length), " / ", agents.length))))))), onglet === "phrases" && (() => {
+  }, options: dispo.map((x) => ({ v: x.id, lib: `${libPA(x)} · ${x.items.length} critères${x.archive ? ` · ancienne grille, jusqu'au ${fmtDate(x.jusquau)}` : ""}` })) })), /* @__PURE__ */ React.createElement(Onglets, { liste: [{ id: "liste", lib: "Écoutes" }, { id: "synthese", lib: "Cartographie des compétences" }, ae.points.length > 0 && { id: "points", lib: "Points travaillés" }, { id: "bilan", lib: "Bilan par agent" }, ae.points.length > 0 && { id: "phrases", lib: "Phrases GRC" }].filter(Boolean), actif: onglet, onChange: setOnglet }), onglet === "points" && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Points travaillés : dernier niveau observé"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Les ", grille.length, " items sont regroupés en ", ae.points.length, " points travaillés. Niveau = celui de la dernière écoute complète où le point a été évalué, ou d'un accompagnement terrain plus récent. Un point est acquis quand tous ses items le sont."), /* @__PURE__ */ React.createElement("div", { className: "legende" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cell-h niv n4", style: { minWidth: 26 } }, "A"), " Acquis"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cell-h niv n2", style: { minWidth: 26 } }, "P"), " Partiellement acquis"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cell-h niv n1", style: { minWidth: 26 } }, "N"), " Non acquis"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cell-h niv n0", style: { minWidth: 26 } }, "–"), " À observer")), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Agent"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Points acquis"), ae.points.map((p) => /* @__PURE__ */ React.createElement("th", { key: p, className: "centre", style: { whiteSpace: "normal", minWidth: 74, fontSize: 10 } }, p)))), /* @__PURE__ */ React.createElement("tbody", null, [...agents].sort((a, b) => a.pointsAcquis - b.pointsAcquis).map((a) => /* @__PURE__ */ React.createElement("tr", { key: a.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("button", { className: "lien-nom", onClick: () => ouvrirFiche(a.id) }, a.nom)), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, a.pointsAcquis), " / ", ae.points.length), a.points.map((x) => /* @__PURE__ */ React.createElement("td", { key: x.point, className: "centre" }, /* @__PURE__ */ React.createElement("span", { className: `cell-h niv ${x.niveau === "Acquis" ? "n4" : x.niveau === "Partiellement acquis" ? "n2" : x.niveau === "Non acquis" ? "n1" : "n0"}`, "data-bulle": `${a.nom} · ${x.point} : ${x.niveau || "à observer"}${x.date ? ` (${x.source} du ${fmtDate(x.date)})` : ""}` }, x.niveau === "Acquis" ? "A" : x.niveau === "Partiellement acquis" ? "P" : x.niveau === "Non acquis" ? "N" : "–"))))), /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, "Agents ayant acquis le point")), /* @__PURE__ */ React.createElement("td", null), ae.points.map((p) => /* @__PURE__ */ React.createElement("td", { key: p, className: "centre" }, /* @__PURE__ */ React.createElement("b", null, agents.filter((a) => (a.points.find((x) => x.point === p) || {}).niveau === "Acquis").length), " / ", agents.length))))))), onglet === "phrases" && (() => {
     const pts2 = [...ae.points, ...Object.keys(g.phrases).filter((p) => !ae.points.includes(p))];
     const point = phr && pts2.includes(phr.point) ? phr.point : pts2[0];
     const cour = phr && phr.point === point ? phr : { point, ...["bien", "retravailler", "etape"].reduce((o, k) => ({ ...o, [k]: ((g.phrases[point] || {})[k] || []).join("\n") }), {}), modifie: false };
@@ -2952,14 +3046,18 @@ function VueDonnees({ ctx }) {
     const t = norm(a.fichier).replace(/[_-]+/g, " ");
     for (const p2 of projets) for (const act of activitesDe(p2)) if (t.includes(norm(act))) return { projet: p2, activite: act };
     const p = projets.find((x) => t.includes(norm(x))) || filtres.projet || (projets.length === 1 ? projets[0] : "");
+    if (p && a.canal) {
+      const acts = ((ctx.ref.projets.find((x) => x.nom === p) || {}).activites || []).filter((x) => x.canal === a.canal);
+      if (acts.length === 1) return { projet: p, activite: acts[0].nom };
+    }
     return { projet: p, activite: p && activitesDe(p).length === 1 ? activitesDe(p)[0] : p === filtres.projet ? filtres.activite : "" };
   };
   const lire = async (fichiers) => {
     for (const f of fichiers) {
       setOccupe(`Lecture de ${f.name}…`);
       try {
-        const a = await analyserFichier(f);
-        setAttente((l) => [...l.filter((x) => x.fichier !== a.fichier), { ...a, ...deviner(a) }]);
+        const r = await analyserFichier(f);
+        for (const a of Array.isArray(r) ? r : [r]) setAttente((l) => [...l.filter((x) => x.fichier !== a.fichier), { ...a, ...deviner(a) }]);
       } catch (e) {
         noter(false, `${f.name} : ${e.message}`);
       }
@@ -2969,6 +3067,12 @@ function VueDonnees({ ctx }) {
   const valider = async (a) => {
     if (!a.projet || !a.activite) return avertir("Choisis le projet et l'activité concernés par ce fichier.");
     const existe = jeux.find((j) => j.type === a.type && j.projet === a.projet && j.activite === a.activite);
+    const grAct = a.type === "grille" && a.nouvelleGrille ? grilles.find((g) => !g.archive && g.projet === a.projet && g.activite === a.activite) : null;
+    if (grAct && !a.grille.some((it) => grAct.tousItems.some((x) => x.code === it.code)) && !confirm(`${a.projet} · ${a.activite} a déjà une grille (${grAct.items.length} critères, ${ecoutesCol.items.filter((e) => e.projet === a.projet && e.activite === a.activite).length} écoutes).
+
+La nouvelle grille deviendra la grille en vigueur. L'ancienne sera archivée : les écoutes déjà notées gardent leurs scores et restent le point de départ.
+
+Continuer ?`)) return;
     if (existe && !confirm(`Des données « ${a.titre} » existent déjà pour ${a.projet} · ${a.activite} (${existe.nb} lignes). Elles seront remplacées par le contenu de ce fichier. Continuer ?`)) return;
     setOccupe(`Enregistrement de ${a.fichier}…`);
     try {
@@ -2991,7 +3095,7 @@ function VueDonnees({ ctx }) {
     e.preventDefault();
     setSurvol(false);
     lire([...e.dataTransfer.files]);
-  } }, /* @__PURE__ */ React.createElement("b", null, "Déposer des fichiers Excel ici, ou cliquer pour les choisir"), /* @__PURE__ */ React.createElement("span", { className: "t-c2" }, "Cinq modèles sont reconnus automatiquement : analyse des retours clients (SATCLI), analyse des évaluations qualité, grille d'évaluation GRC, suivi du plan d'action, classeur de suivi GRC (onglet « Saisie »)."), /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".xlsx", multiple: true, hidden: true, onChange: (e) => {
+  } }, /* @__PURE__ */ React.createElement("b", null, "Déposer des fichiers Excel ici, ou cliquer pour les choisir"), /* @__PURE__ */ React.createElement("span", { className: "t-c2" }, "Modèles reconnus automatiquement : analyse des retours clients (SATCLI), analyse des évaluations qualité, grilles d'évaluation GRC (un onglet par grille), suivi du plan d'action, classeur de suivi GRC (onglet « Saisie »)."), /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".xlsx", multiple: true, hidden: true, onChange: (e) => {
     lire([...e.target.files]);
     e.target.value = "";
   } })), occupe && /* @__PURE__ */ React.createElement("div", { className: "bandeau info", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("div", null, occupe)), attente.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Fichiers prêts à être enregistrés"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Vérifie le contenu reconnu, choisis le projet et l'activité, puis enregistre."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Contenu reconnu"), /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", null, "Projet"), /* @__PURE__ */ React.createElement("th", null, "Activité"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, attente.map((a) => /* @__PURE__ */ React.createElement("tr", { key: a.fichier }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, a.titre), /* @__PURE__ */ React.createElement("div", { className: "petit" }, a.fichier)), /* @__PURE__ */ React.createElement("td", null, a.resume.join(" · ")), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, a.periode.du ? `${fmtDate(a.periode.du)} → ${fmtDate(a.periode.au)}` : "—"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Choix, { style: { width: 150 }, valeur: a.projet, onChange: (v) => majA(a, { projet: v, activite: activitesDe(v).length === 1 ? activitesDe(v)[0] : "" }), options: projets, vide: "Choisir…" })), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Choix, { style: { width: 170 }, valeur: a.activite, onChange: (v) => majA(a, { activite: v }), options: activitesDe(a.projet), vide: "Choisir…", disabled: !a.projet })), /* @__PURE__ */ React.createElement("td", { className: "num", style: { whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => setAttente((l) => l.filter((x) => x !== a)) }, "Retirer"), " ", /* @__PURE__ */ React.createElement("button", { className: "btn mini primaire", disabled: !!occupe, onClick: () => valider(a) }, "Enregistrer")))))))), journal.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Journal des imports"), /* @__PURE__ */ React.createElement("table", { className: "tab", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("tbody", null, journal.map((j, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, /* @__PURE__ */ React.createElement("td", { style: { width: 60 } }, j.h), /* @__PURE__ */ React.createElement("td", { style: { width: 90 } }, /* @__PURE__ */ React.createElement("span", { className: `badge ${j.ok ? "ok" : "ko"}` }, j.ok ? "Enregistré" : "Erreur")), /* @__PURE__ */ React.createElement("td", null, j.texte)))))), /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Données chargées"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Un nouvel import du même type pour la même activité remplace le précédent : ton fichier Excel reste la source, tu y ajoutes les nouvelles lignes puis tu le réimportes."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Projet · activité"), /* @__PURE__ */ React.createElement("th", null, "Données"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Lignes"), /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Importé le"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, trier(jeux.map((j) => ({ ...j, ou: libPA(j) })), "ou").map((j) => /* @__PURE__ */ React.createElement("tr", { key: j.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, j.ou || "Sans projet")), /* @__PURE__ */ React.createElement("td", null, LIB[j.type] || j.type), /* @__PURE__ */ React.createElement("td", { className: "num" }, j.nb), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, j.du ? `${fmtDate(j.du)} → ${fmtDate(j.au)}` : "—"), /* @__PURE__ */ React.createElement("td", { className: "petit" }, j.fichier), /* @__PURE__ */ React.createElement("td", null, j.importeLe ? new Date(j.importeLe).toLocaleDateString("fr-FR") : "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: async () => {
@@ -3115,7 +3219,8 @@ function evolutionEcoutes(ctx) {
     const o = somme(ls.map((e) => e.obtenus)), p = somme(ls.map((e) => e.possibles));
     return p ? o / p : null;
   };
-  const lignes = ae.parAgent.map((a) => {
+  const ids = [...new Set(ae.ecoutes.map((e) => e.conseillerId))];
+  const lignes = ids.map((id) => ({ id, ecoutes: ae.ecoutes.filter((e) => e.conseillerId === id) })).map((a) => {
     const ok = a.ecoutes.filter((e) => e.complete), b = bascule[a.id] || "";
     const dep = b ? ok.filter((e) => e.date < b) : ok, sui = b ? ok.filter((e) => e.date >= b) : [];
     const sd = score(dep), ss = score(sui);
@@ -3779,18 +3884,26 @@ function construireBilan(ctx, x, masquer) {
       L5.push([`Point acquis : ${pt}`, t0, t1, t0 !== null && t1 !== null ? (t1 - t0) * 100 : "", n1 > n0 ? "En progression" : n1 < n0 ? "En recul" : "Stable", `${n0} → ${n1} agent${n1 > 1 ? "s" : ""} sur ${fin.parAgent.length}`]);
     });
   });
+  groupes.filter((p) => !p.grille.archive && p.points.length && !depart.some((y) => y.p.grille.id === p.grille.id)).forEach((p) => {
+    L5.push({ section: `Grille en vigueur · ${libPA(p.grille)}${p.grille.depuis ? ` (depuis le ${fmtDate(p.grille.depuis)})` : ""}` });
+    p.points.forEach((pt) => {
+      const n1 = p.parAgent.filter((a) => (a.points.find((y) => y.point === pt) || {}).niveau === "Acquis").length;
+      L5.push([`Bloc acquis : ${pt}`, "", p.parAgent.length ? n1 / p.parAgent.length : null, "", "", `${n1} agent${n1 > 1 ? "s" : ""} sur ${p.parAgent.length} · départ mesuré avec l'ancienne grille`]);
+    });
+  });
   if (c.indicateurs.length) {
     L5.push({ section: `Écoutes qualité et satisfaction : ${c.libAvant}, puis ${c.libApres}` });
     c.indicateurs.forEach((i) => L5.push([i.lib, i.pourcent === false ? String(i.avant) : i.avant, i.pourcent === false ? String(i.apres) : i.apres, i.delta, i.verdict, i.base]));
   }
   const parAgent = [];
-  groupes.forEach((p) => p.parAgent.forEach((a) => {
-    const d0 = (depart.find((y) => y.p.grille.id === p.grille.id) || {}).d;
-    const a0 = d0 ? d0.parAgent.find((y) => y.id === a.id) : null;
-    const l = g ? g.lignes.find((y) => y.id === a.id) : null;
-    const s = suivis.filter((y) => y.conseillerId === a.id), sf = s.filter(suiviFait), proch = s.filter((y) => !suiviFait(y)).sort((u, v) => String(u.datePrevue || "9").localeCompare(String(v.datePrevue || "9")))[0];
-    parAgent.push([qui(a.id), a0 ? a0.score : null, l && l.suivi !== null ? l.suivi : null, l && l.delta !== null ? l.delta : "", a0 && a0.points.length ? `${a0.pointsAcquis} / ${a0.points.length}` : "", a.points.length ? `${a.pointsAcquis} / ${a.points.length}` : "", `${sf.length} réalisé${sf.length > 1 ? "s" : ""}`, l && l.delta !== null ? l.delta > 0.5 ? "En progression" : l.delta < -0.5 ? "En recul" : "Stable" : l && l.bascule ? "Écoute de suivi à faire" : "À former ou accompagner", proch ? `${typeDe(proch)}${proch.point ? " · " + proch.point : ""}${proch.datePrevue ? " · " + fmtDate(proch.datePrevue) : ""}` : ""]);
-  }));
+  const idsAg = [...new Set(groupes.flatMap((p) => p.parAgent.map((a) => a.id)))];
+  idsAg.forEach((id) => {
+    const a0 = depart.map((y) => y.d.parAgent.find((z) => z.id === id)).find(Boolean);
+    const a = [...groupes].reverse().map((p) => p.parAgent.find((z) => z.id === id)).find(Boolean);
+    const l = g ? g.lignes.find((y) => y.id === id) : null;
+    const s = suivis.filter((y) => y.conseillerId === id), sf = s.filter(suiviFait), proch = s.filter((y) => !suiviFait(y)).sort((u, v) => String(u.datePrevue || "9").localeCompare(String(v.datePrevue || "9")))[0];
+    parAgent.push([qui(id), a0 ? a0.score : null, l && l.suivi !== null ? l.suivi : null, l && l.delta !== null ? l.delta : "", a0 && a0.points.length ? `${a0.pointsAcquis} / ${a0.points.length}` : "", a && a.points.length ? `${a.pointsAcquis} / ${a.points.length}` : "", `${sf.length} réalisé${sf.length > 1 ? "s" : ""}`, l && l.delta !== null ? l.delta > 0.5 ? "En progression" : l.delta < -0.5 ? "En recul" : "Stable" : l && l.bascule ? "Écoute de suivi à faire" : "À former ou accompagner", proch ? `${typeDe(proch)}${proch.point ? " · " + proch.point : ""}${proch.datePrevue ? " · " + fmtDate(proch.datePrevue) : ""}` : ""]);
+  });
   if (L5.length || parAgent.length) feuilles.push({
     nom: "5. Photo d'arrivée",
     titre: "Photo d'arrivée : où en est l'équipe aujourd'hui, comparé au départ",
