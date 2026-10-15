@@ -986,6 +986,20 @@ async function lirePlan(wb, nomFichier) {
       });
     }
   }
+  const objectifs = [];
+  const nO = wb.trouver("objectifs", "objectifs de coaching");
+  if (nO) {
+    const o = await wb.feuille(nO);
+    const h = ligneEntete(o, ["code", "objectif"]);
+    if (h >= 0) {
+      const e = o[h];
+      const c = { code: colonne(e, "Code"), obj: colonne(e, "Objectif"), axe: colonne(e, "Axe GRC", "Axe"), se: colonne(e, "En séance"), re: colonne(e, "Réussi quand") };
+      o.slice(h + 1).forEach((l) => {
+        const code = txt(l, c.code).toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (code && txt(l, c.obj)) objectifs.push({ code, objectif: txt(l, c.obj), axe: txt(l, c.axe), seance: txt(l, c.se), reussite: txt(l, c.re) });
+      });
+    }
+  }
   const nPrio = Object.keys(priorites).length, nObj = suivis.filter((x) => x.objectif1 || x.objectif2).length;
   return {
     type: "plan",
@@ -994,6 +1008,7 @@ async function lirePlan(wb, nomFichier) {
     actions,
     suivis,
     priorites,
+    objectifs,
     noms: distincts(noms),
     periode: { du: "", au: "" },
     resume: [pl(actions.length, "action"), `${suivis.length} suivi${suivis.length > 1 ? "s" : ""} individuel${suivis.length > 1 ? "s" : ""}`, ...nPrio ? [`${nPrio} conseiller${nPrio > 1 ? "s" : ""} prioritaire${nPrio > 1 ? "s" : ""}`] : [], ...nObj ? [`objectifs de coaching pour ${nObj}`] : []]
@@ -1505,6 +1520,7 @@ const impactSuivi = (s, lignesQualite) => {
   return { suffisant: true, avant: a, apres: b, delta: (b - a) * 100, nAvant: avant.length, nApres: apres.length };
 };
 const objDe = (code, refs) => !code ? null : refs.find((o) => o.code === code) || { code, objectif: code, axe: "", seance: "", reussite: "" };
+const activiteDispositif = (c) => c.coaching && c.coaching.activite || c.activite;
 const dansDispositif = (c) => !!(c && (c.priorite || c.coaching && (c.coaching.obj1 || c.coaching.obj2)));
 function etatCoaching(c, suivis, refs) {
   const co = c.coaching || {};
@@ -2102,9 +2118,12 @@ function Outil({ user, modeLocalInitial }) {
         await suivisCol.ajouter(x);
         nS++;
       }
+      const nouveauxObj = (a.objectifs || []).filter((o) => !objectifsCoaching.some((y) => y.code === o.code));
+      const refObj = [...objectifsCoaching, ...nouveauxObj];
+      if (nouveauxObj.length) await enregistrerRef({ ...ref, objectifsCoaching: refObj });
       const codeObj = (t) => {
         if (!t) return "";
-        const o = objectifsCoaching.find((y) => norm(y.objectif) === norm(t) || norm(y.code) === norm(t));
+        const o = refObj.find((y) => norm(y.objectif) === norm(t) || norm(y.code) === norm(t));
         return o ? o.code : t;
       };
       const fiches = {};
@@ -2124,12 +2143,12 @@ function Outil({ user, modeLocalInitial }) {
         }
         const f = fiches[ag];
         if (f && !(c.coaching && (c.coaching.obj1 || c.coaching.obj2))) {
-          maj.coaching = { ecarts: String(f.ecarts || "").split(/\s*;\s*/).map(sansChiffres).filter(Boolean), obj1: codeObj(f.objectif1), obj2: codeObj(f.objectif2), depuis: f.dateConstat || aujourdhui() };
+          maj.coaching = { ecarts: String(f.ecarts || "").split(/\s*;\s*/).map(sansChiffres).filter(Boolean), obj1: codeObj(f.objectif1), obj2: codeObj(f.objectif2), depuis: f.dateConstat || aujourdhui(), activite };
           nO++;
         }
         if (Object.keys(maj).length) await conseillersCol.modifier(id, maj);
       }
-      return `${pl(nA, "action")} ${nA > 1 ? "ajoutées" : "ajoutée"} au plan de ${ou}${a.actions.length - nA ? ` (${a.actions.length - nA} déjà ${a.actions.length - nA > 1 ? "présentes" : "présente"})` : ""}, ${nS} suivi${nS > 1 ? "s" : ""} individuel${nS > 1 ? "s" : ""} ${nS > 1 ? "ajoutés" : "ajouté"}.${nP ? ` Priorité renseignée pour ${pl(nP, "conseiller")}.` : ""}${nO ? ` Objectifs de coaching posés pour ${pl(nO, "conseiller")}.` : ""}` + suffixe;
+      return `${pl(nA, "action")} ${nA > 1 ? "ajoutées" : "ajoutée"} au plan de ${ou}${a.actions.length - nA ? ` (${a.actions.length - nA} déjà ${a.actions.length - nA > 1 ? "présentes" : "présente"})` : ""}, ${nS} suivi${nS > 1 ? "s" : ""} individuel${nS > 1 ? "s" : ""} ${nS > 1 ? "ajoutés" : "ajouté"}.${nP ? ` Priorité renseignée pour ${pl(nP, "conseiller")}.` : ""}${nO ? ` Objectifs de coaching posés pour ${pl(nO, "conseiller")}.` : ""}${nouveauxObj.length ? ` ${pl(nouveauxObj.length, "objectif")} ${nouveauxObj.length > 1 ? "ajoutés" : "ajouté"} au référentiel.` : ""}` + suffixe;
     }
     return "";
   };
@@ -2834,7 +2853,7 @@ function BlocCoaching({ id, ctx }) {
   const ouvrirEd = () => setEd({ priorite: c.priorite || "", obj1: (c.coaching || {}).obj1 || "", obj2: (c.coaching || {}).obj2 || "", ecarts: ((c.coaching || {}).ecarts || []).join("\n") });
   const enregistrer = async () => {
     if (ed.obj1 && ed.obj1 === ed.obj2) return avertir("Choisis deux objectifs différents.");
-    const coaching = { ...c.coaching || {}, obj1: ed.obj1, obj2: ed.obj2, ecarts: ed.ecarts.split(/\n+/).map(sansChiffres).filter(Boolean), depuis: (c.coaching || {}).depuis || aujourdhui() };
+    const coaching = { ...c.coaching || {}, activite: (c.coaching || {}).activite || c.activite || "", obj1: ed.obj1, obj2: ed.obj2, ecarts: ed.ecarts.split(/\n+/).map(sansChiffres).filter(Boolean), depuis: (c.coaching || {}).depuis || aujourdhui() };
     try {
       await conseillersCol.modifier(id, { priorite: ed.priorite, coaching });
       setEd(null);
@@ -2848,7 +2867,7 @@ function BlocCoaching({ id, ctx }) {
   const Objectif = ({ n, o, st }) => /* @__PURE__ */ React.createElement("div", { className: "obj-coaching" }, /* @__PURE__ */ React.createElement("div", { className: "obj-tete" }, /* @__PURE__ */ React.createElement("span", { className: "label" }, "Objectif ", n, o && o.axe ? ` · ${o.axe}` : ""), /* @__PURE__ */ React.createElement(Badge, { s: st || "Non démarré" })), o ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("b", null, o.objectif), o.seance && /* @__PURE__ */ React.createElement("p", null, /* @__PURE__ */ React.createElement("span", { className: "petit" }, "En séance :"), " ", o.seance), o.reussite && /* @__PURE__ */ React.createElement("p", null, /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Réussi quand :"), " ", o.reussite)) : /* @__PURE__ */ React.createElement("p", { className: "petit" }, "Objectif à choisir."));
   return /* @__PURE__ */ React.createElement("div", { className: "bloc-coaching" }, /* @__PURE__ */ React.createElement("div", { className: "sec", style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } }, "Coaching GRC ", et && et.priorite && /* @__PURE__ */ React.createElement(Badge, { s: et.priorite }), " ", et && /* @__PURE__ */ React.createElement(Badge, { s: et.situation }), " ", et && /* @__PURE__ */ React.createElement("span", { className: "petit", style: { textTransform: "none", letterSpacing: 0 } }, et.n, " séance", et.n > 1 ? "s" : "", " sur 3"), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), peutEditer && !ed && /* @__PURE__ */ React.createElement("span", { className: "actions no-print" }, et && et.prochaine && /* @__PURE__ */ React.createElement("button", { className: "btn mini primaire", onClick: () => {
     const prevu = ctx.suivisCol.items.find((s) => s.conseillerId === id && !suiviFait(s) && (!s.type || s.type === "Coaching de proximité") && norm(s.action || "").startsWith("coaching individuel"));
-    creerSuivi(prevu ? { ...prevu, type: "Coaching de proximité", seance: et.prochaine, date: aujourdhui() } : { type: "Coaching de proximité", conseillerId: id, projet: c.projet || "", activite: c.activite || "", seance: et.prochaine });
+    creerSuivi(prevu ? { ...prevu, type: "Coaching de proximité", seance: et.prochaine, date: aujourdhui() } : { type: "Coaching de proximité", conseillerId: id, projet: c.projet || "", activite: activiteDispositif(c) || "", seance: et.prochaine });
   } }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 13 }), " Séance ", et.prochaine, " · ", SEANCES[et.prochaine - 1].lib.toLowerCase()), /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: ouvrirEd }, "Modifier"))), ed ? /* @__PURE__ */ React.createElement("div", { className: "grille" }, /* @__PURE__ */ React.createElement(Champ, { libelle: "Priorité" }, /* @__PURE__ */ React.createElement(Choix, { valeur: ed.priorite, onChange: (v) => setEd({ ...ed, priorite: v }), options: PRIORITES, vide: "Hors dispositif" })), /* @__PURE__ */ React.createElement("span", null), /* @__PURE__ */ React.createElement(Champ, { libelle: "Objectif 1", classe: "pleine" }, /* @__PURE__ */ React.createElement(Choix, { valeur: ed.obj1, onChange: (v) => setEd({ ...ed, obj1: v }), options: optObj, vide: "Choisir…" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Objectif 2", classe: "pleine" }, /* @__PURE__ */ React.createElement(Choix, { valeur: ed.obj2, onChange: (v) => setEd({ ...ed, obj2: v }), options: optObj, vide: "Choisir…" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Écarts relevés (un par ligne, sans chiffre ni verbatim)", classe: "pleine" }, /* @__PURE__ */ React.createElement(Zone, { valeur: ed.ecarts, onChange: (v) => setEd({ ...ed, ecarts: v }) })), /* @__PURE__ */ React.createElement("div", { className: "actions pleine" }, /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setEd(null) }, "Annuler"), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: enregistrer }, "Enregistrer"))) : /* @__PURE__ */ React.createElement(React.Fragment, null, et.ecarts.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "label", style: { margin: "2px 0 4px" } }, "Écarts relevés"), /* @__PURE__ */ React.createElement("div", { className: "puces", style: { marginBottom: 10 } }, et.ecarts.map((x) => /* @__PURE__ */ React.createElement("span", { key: x, className: "puce-pt" }, x)))), /* @__PURE__ */ React.createElement("div", { className: "deux" }, /* @__PURE__ */ React.createElement(Objectif, { n: 1, o: et.obj1, st: et.st1 }), /* @__PURE__ */ React.createElement(Objectif, { n: 2, o: et.obj2, st: et.st2 })), et.situation === "Suite en accompagnement terrain" && /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 6 } }, "Les 3 séances sont faites : l'objectif encore en cours passe en accompagnement terrain au retour sur site."), et.derniere && et.derniere.engagement && /* @__PURE__ */ React.createElement("p", { style: { marginTop: 6 } }, /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Dernier engagement (", fmtDate(et.derniere.dateRealisee), ") :"), " ", et.derniere.engagement)));
 }
 function VueQualite({ ctx }) {
@@ -2938,7 +2957,7 @@ function VueDispositif({ ctx }) {
   const { conseillers, ok, coachingDe, ae, rTout, ref, enregistrerRef, filtres, ouvrirFiche, creerSuivi, peutEditer, suivisCol } = ctx;
   const [fPrio, setFPrio] = useState("");
   const [ed, setEd] = useState(null);
-  const agents = conseillers.filter((c) => ok(c) && dansDispositif(c));
+  const agents = conseillers.filter((c) => ok({ projet: c.projet, activite: activiteDispositif(c) }) && dansDispositif(c));
   const cle = cleDispositif(filtres.projet, filtres.activite);
   const cfg = (ref.dispositifs || {})[cle] || {};
   const ind = indicateursDispositif({ agents, coachingDe, ecoutes: ae ? ae.ecoutes : [], retours: rTout, cfg });
@@ -2965,7 +2984,7 @@ function VueDispositif({ ctx }) {
   };
   const seance = (c, e) => {
     const prevu = suivisCol.items.find((s) => s.conseillerId === c.id && !suiviFait(s) && (!s.type || s.type === "Coaching de proximité") && norm(s.action || "").startsWith("coaching individuel"));
-    creerSuivi(prevu ? { ...prevu, type: "Coaching de proximité", seance: e.prochaine, date: aujourdhui() } : { type: "Coaching de proximité", conseillerId: c.id, projet: c.projet || "", activite: c.activite || "", seance: e.prochaine });
+    creerSuivi(prevu ? { ...prevu, type: "Coaching de proximité", seance: e.prochaine, date: aujourdhui() } : { type: "Coaching de proximité", conseillerId: c.id, projet: c.projet || "", activite: activiteDispositif(c) || "", seance: e.prochaine });
   };
   const exporter = () => exporterCSV(
     "Dispositif_coaching_GRC",
@@ -4426,7 +4445,7 @@ function feuilleRapport(ctx, x, qui, jr, titre) {
 }
 function feuilleDispositif(ctx, qui) {
   const { conseillers, ok, coachingDe, ae, rTout, ref, filtres, perimetre } = ctx;
-  const agents = conseillers.filter((c) => ok(c) && dansDispositif(c));
+  const agents = conseillers.filter((c) => ok({ projet: c.projet, activite: activiteDispositif(c) }) && dansDispositif(c));
   if (!agents.length) return null;
   const ind = indicateursDispositif({ agents, coachingDe, ecoutes: ae ? ae.ecoutes : [], retours: rTout, cfg: (ref.dispositifs || {})[cleDispositif(filtres.projet, filtres.activite)] || {} });
   const L = [{ section: "Indicateurs du plan" }, { entete: ["Indicateur", "Départ", "À date", "Objectif", "Lecture"] }];
