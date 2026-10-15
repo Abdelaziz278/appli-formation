@@ -770,7 +770,7 @@ async function analyserFichier(fichier) {
     if (h >= 0) return lireSaisie(l, h, fichier.name);
   }
   if (wb.trouver("ecoutes") && wb.trouver("referentiel", "referentiel grc", "referentiel grille")) return await lireGrille(wb, fichier.name);
-  if (wb.trouver("plan d'action") || wb.trouver("suivi individuel")) return await lirePlan(wb, fichier.name);
+  if (wb.trouver("plan d'action") || wb.trouver("suivi individuel") || wb.trouver("agents") && wb.trouver("objectifs", "objectifs de coaching")) return await lirePlan(wb, fichier.name);
   throw new Error("Fichier non reconnu. L'outil lit cinq modèles : analyse des évaluations qualité, analyse des retours clients, grille d'évaluation GRC, suivi du plan d'action, et classeur de suivi GRC avec un onglet « Saisie ».");
 }
 async function lireQualite(wb, lignes, h, nomFichier) {
@@ -969,12 +969,13 @@ async function lirePlan(wb, nomFichier) {
     }
   }
   const nA = wb.trouver("agents");
-  const priorites = {};
+  const priorites = {}, fichesAgents = [];
   if (nA) {
     const a = await wb.feuille(nA);
     const h = ligneEntete(a, ["agent"]);
     if (h >= 0) {
       const cP = colonne(a[h], "Priorité");
+      const cE = colonne(a[h], "Écarts constatés", "Écarts relevés", "Écarts"), c1 = colonne(a[h], "Objectif 1"), c2 = colonne(a[h], "Objectif 2");
       a.slice(h + 1).forEach((l) => {
         const ag = txt(l, 0);
         if (!ag) return;
@@ -983,6 +984,7 @@ async function lirePlan(wb, nomFichier) {
           const m = /([12])/.exec(txt(l, cP));
           if (m) priorites[ag] = PRIORITES[+m[1] - 1];
         }
+        if (c1 >= 0 && txt(l, c1) || c2 >= 0 && txt(l, c2)) fichesAgents.push({ agent: ag, ecarts: cE >= 0 ? txt(l, cE) : "", objectif1: c1 >= 0 ? txt(l, c1) : "", objectif2: c2 >= 0 ? txt(l, c2) : "", dateConstat: "" });
       });
     }
   }
@@ -1000,7 +1002,7 @@ async function lirePlan(wb, nomFichier) {
       });
     }
   }
-  const nPrio = Object.keys(priorites).length, nObj = suivis.filter((x) => x.objectif1 || x.objectif2).length;
+  const nPrio = Object.keys(priorites).length, nObj = new Set([...suivis.filter((x) => x.objectif1 || x.objectif2), ...fichesAgents].map((x) => x.agent)).size;
   return {
     type: "plan",
     titre: "Plan d'action et suivi individuel",
@@ -1009,9 +1011,10 @@ async function lirePlan(wb, nomFichier) {
     suivis,
     priorites,
     objectifs,
+    fichesAgents,
     noms: distincts(noms),
     periode: { du: "", au: "" },
-    resume: [pl(actions.length, "action"), `${suivis.length} suivi${suivis.length > 1 ? "s" : ""} individuel${suivis.length > 1 ? "s" : ""}`, ...nPrio ? [`${nPrio} conseiller${nPrio > 1 ? "s" : ""} prioritaire${nPrio > 1 ? "s" : ""}`] : [], ...nObj ? [`objectifs de coaching pour ${nObj}`] : []]
+    resume: [...actions.length || suivis.length ? [pl(actions.length, "action"), `${suivis.length} suivi${suivis.length > 1 ? "s" : ""} individuel${suivis.length > 1 ? "s" : ""}`] : ["aucune action ni accompagnement créé"], ...nPrio ? [`${nPrio} conseiller${nPrio > 1 ? "s" : ""} prioritaire${nPrio > 1 ? "s" : ""}`] : [], ...nObj ? [`objectifs de coaching pour ${nObj}`] : []]
   };
 }
 const TYPE_SAISIE = { "formation": "Atelier / formation", "atelier": "Atelier / formation", "ecoute": "Évaluation avec débriefing", "accompagnement terrain": "Coaching de proximité", "coaching": "Coaching de proximité", "coaching de proximite": "Coaching de proximité", "double ecoute": "Double écoute" };
@@ -2127,7 +2130,7 @@ function Outil({ user, modeLocalInitial }) {
         return o ? o.code : t;
       };
       const fiches = {};
-      a.suivis.filter((x) => x.objectif1 || x.objectif2 || x.ecarts).forEach((x) => {
+      [...a.suivis.filter((x) => x.objectif1 || x.objectif2 || x.ecarts), ...a.fichesAgents || []].forEach((x) => {
         fiches[x.agent] = x;
       });
       let nP = 0, nO = 0;
@@ -2148,7 +2151,7 @@ function Outil({ user, modeLocalInitial }) {
         }
         if (Object.keys(maj).length) await conseillersCol.modifier(id, maj);
       }
-      return `${pl(nA, "action")} ${nA > 1 ? "ajoutées" : "ajoutée"} au plan de ${ou}${a.actions.length - nA ? ` (${a.actions.length - nA} déjà ${a.actions.length - nA > 1 ? "présentes" : "présente"})` : ""}, ${nS} suivi${nS > 1 ? "s" : ""} individuel${nS > 1 ? "s" : ""} ${nS > 1 ? "ajoutés" : "ajouté"}.${nP ? ` Priorité renseignée pour ${pl(nP, "conseiller")}.` : ""}${nO ? ` Objectifs de coaching posés pour ${pl(nO, "conseiller")}.` : ""}${nouveauxObj.length ? ` ${pl(nouveauxObj.length, "objectif")} ${nouveauxObj.length > 1 ? "ajoutés" : "ajouté"} au référentiel.` : ""}` + suffixe;
+      return `${!a.actions.length && !a.suivis.length ? `${ou} : aucune action ni accompagnement créé.` : `${pl(nA, "action")} ${nA > 1 ? "ajoutées" : "ajoutée"} au plan de ${ou}${a.actions.length - nA ? ` (${a.actions.length - nA} déjà ${a.actions.length - nA > 1 ? "présentes" : "présente"})` : ""}, ${nS} suivi${nS > 1 ? "s" : ""} individuel${nS > 1 ? "s" : ""} ${nS > 1 ? "ajoutés" : "ajouté"}.`}${nP ? ` Priorité renseignée pour ${pl(nP, "conseiller")}.` : ""}${nO ? ` Objectifs de coaching posés pour ${pl(nO, "conseiller")}.` : ""}${nouveauxObj.length ? ` ${pl(nouveauxObj.length, "objectif")} ${nouveauxObj.length > 1 ? "ajoutés" : "ajouté"} au référentiel.` : ""}` + suffixe;
     }
     return "";
   };
