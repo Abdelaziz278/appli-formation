@@ -4449,7 +4449,7 @@ function feuilleRapport(ctx, x, qui, jr, titre) {
 function feuilleDispositif(ctx, qui) {
   const { conseillers, ok, coachingDe, ae, rTout, ref, filtres, perimetre } = ctx;
   const agents = conseillers.filter((c) => ok({ projet: c.projet, activite: activiteDispositif(c) }) && dansDispositif(c));
-  if (!agents.length) return null;
+  if (!agents.length || !agents.some((c) => (coachingDe[c.id] || {}).n)) return null;
   const ind = indicateursDispositif({ agents, coachingDe, ecoutes: ae ? ae.ecoutes : [], retours: rTout, cfg: (ref.dispositifs || {})[cleDispositif(filtres.projet, filtres.activite)] || {} });
   const L = [{ section: "Indicateurs du plan" }, { entete: ["Indicateur", "Départ", "À date", "Objectif", "Lecture"] }];
   ind.lignes.forEach((l) => L.push({ v: [l.lib, valIndic(l, l.depart), l.aDate ? valIndic(l, l.aDate.taux) : "—", cibleIndic(l), l.atteint === null ? l.aDate ? "Objectif à renseigner" : "Pas encore de donnée" : l.atteint ? "Atteint" : "En cours"], formats: ["txt", "txt", "txt", "txt", "ton"] }));
