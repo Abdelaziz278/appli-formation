@@ -1918,25 +1918,60 @@ function Outil({ user, modeLocalInitial }) {
     const ou = `${projet} · ${activite}`;
     const infos = { fichier: a.fichier, importeLe: Date.now(), du: a.periode.du, au: a.periode.au };
     const suffixe = cons.n ? ` ${pl(cons.n, "agent")} ${cons.n > 1 ? "ajoutés" : "ajouté"} à la liste du projet.` : "";
+    const existant = jeux.find((j) => j.type === a.type && j.projet === projet && j.activite === activite);
+    const anciennes = existant ? existant.parts.flatMap((p) => p.rows) : [];
+    const periodeFus = (rows) => {
+      const ds = rows.map((r) => r[0]).filter(Boolean).sort();
+      return { du: ds[0] || "", au: ds[ds.length - 1] || "" };
+    };
+    const fusionner = (anc, nouv, cle) => {
+      const stock = {};
+      anc.forEach((r) => {
+        const k = cle(r);
+        stock[k] = (stock[k] || 0) + 1;
+      });
+      const ajout = [];
+      let deja = 0;
+      nouv.forEach((r) => {
+        const k = cle(r);
+        if (stock[k]) {
+          stock[k]--;
+          deja++;
+        } else ajout.push(r);
+      });
+      return { ajout, deja };
+    };
+    const bilanFus = (lib, libs, ajout, deja, total) => `${ou} : ${ajout} ${ajout > 1 ? libs : lib} ${ajout > 1 ? "ajoutées" : "ajoutée"}${deja ? `, ${deja} déjà ${deja > 1 ? "présentes" : "présente"}` : ""}. Historique : ${total} au total.`;
     if (a.type === "qualite") {
-      await ecrireLot("qualite", projet, activite, a.meta, a.rows, infos);
-      return `${a.rows.length} évaluations qualité enregistrées pour ${ou}.` + suffixe;
+      const ancMeta = existant ? { items: existant.lot.items, modules: existant.lot.modules } : { items: [], modules: {} };
+      const items = [...ancMeta.items];
+      a.meta.items.forEach((it) => {
+        if (!items.some((x) => norm(x.nom) === norm(it.nom))) items.push(it);
+      });
+      const pos = a.meta.items.map((it) => items.findIndex((x) => norm(x.nom) === norm(it.nom)));
+      const etendre = (r, n) => [...r.slice(0, 6), String(r[6] || "").padEnd(n, "-")];
+      const nouv = a.rows.map((r) => {
+        const t = Array(items.length).fill("-");
+        String(r[6] || "").split("").forEach((c, i) => {
+          if (pos[i] >= 0) t[pos[i]] = c;
+        });
+        return [...r.slice(0, 6), t.join("")];
+      });
+      const anc = anciennes.map((r) => etendre(r, items.length));
+      const { ajout, deja } = fusionner(anc, nouv, (r) => [r[0], cleNom(r[1]), r[2], r[3], r[5], r[6]].join("|"));
+      const rows = [...anc, ...ajout];
+      await ecrireLot("qualite", projet, activite, { items, modules: { ...ancMeta.modules, ...a.meta.modules } }, rows, { ...infos, ...periodeFus(rows) });
+      return bilanFus("évaluation qualité", "évaluations qualité", ajout.length, deja, rows.length) + suffixe;
     }
     if (a.type === "retours") {
-      const anciens = {};
-      const cleV = (r) => r[0] + "|" + cleNom(r[1]) + "|" + r[5];
-      ((jeux.find((j) => j.type === "retours" && j.projet === projet && j.activite === activite) || {}).parts || []).forEach((p) => p.rows.forEach((r) => {
-        if (r[6]) anciens[cleV(r)] = r;
-      }));
-      let repris = 0;
-      const rows = a.rows.map((r) => {
-        const o = !r[6] && anciens[cleV(r)];
-        if (!o) return r;
-        repris++;
-        return [...r.slice(0, 6), o[6], o[7], o[8]];
+      const codes = [...existant && existant.lot.codes || []];
+      (a.meta.codes || []).forEach((c) => {
+        if (!codes.some((x) => x.code === c.code)) codes.push(c);
       });
-      await ecrireLot("retours", projet, activite, a.meta, rows, infos);
-      return `${rows.length} réponses clients enregistrées pour ${ou}.` + (repris ? ` ${pl(repris, "classement")} déjà ${repris > 1 ? "faits" : "fait"} dans l'outil ${repris > 1 ? "conservés" : "conservé"}.` : "") + suffixe;
+      const { ajout, deja } = fusionner(anciennes, a.rows, (r) => [r[0], cleNom(r[1]), r[2], r[3], r[4], r[5]].join("|"));
+      const rows = [...anciennes, ...ajout];
+      await ecrireLot("retours", projet, activite, { ...a.meta || {}, codes }, rows, { ...infos, ...periodeFus(rows) });
+      return bilanFus("réponse client", "réponses clients", ajout.length, deja, rows.length) + suffixe;
     }
     if (a.type === "grille") {
       const anc = grilles.find((g) => !g.archive && g.projet === projet && g.activite === activite);
@@ -3313,7 +3348,6 @@ function VueDonnees({ ctx }) {
 La nouvelle grille deviendra la grille en vigueur. L'ancienne sera archivée : les écoutes déjà notées gardent leurs scores et restent le point de départ.
 
 Continuer ?`)) return;
-    if (existe && !confirm(`Des données « ${a.titre} » existent déjà pour ${a.projet} · ${a.activite} (${existe.nb} lignes). Elles seront remplacées par le contenu de ce fichier. Continuer ?`)) return;
     setOccupe(`Enregistrement de ${a.fichier}…`);
     try {
       noter(true, await importer(a, a.projet, a.activite));
@@ -3338,7 +3372,7 @@ Continuer ?`)) return;
   } }, /* @__PURE__ */ React.createElement("b", null, "Déposer des fichiers Excel ici, ou cliquer pour les choisir"), /* @__PURE__ */ React.createElement("span", { className: "t-c2" }, "Modèles reconnus automatiquement : analyse des retours clients (SATCLI), analyse des évaluations qualité, grilles d'évaluation GRC (un onglet par grille), suivi du plan d'action, classeur de suivi GRC (onglet « Saisie »)."), /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".xlsx", multiple: true, hidden: true, onChange: (e) => {
     lire([...e.target.files]);
     e.target.value = "";
-  } })), occupe && /* @__PURE__ */ React.createElement("div", { className: "bandeau info", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("div", null, occupe)), attente.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Fichiers prêts à être enregistrés"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Vérifie le contenu reconnu, choisis le projet et l'activité, puis enregistre."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Contenu reconnu"), /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", null, "Projet"), /* @__PURE__ */ React.createElement("th", null, "Activité"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, attente.map((a) => /* @__PURE__ */ React.createElement("tr", { key: a.fichier }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, a.titre), /* @__PURE__ */ React.createElement("div", { className: "petit" }, a.fichier)), /* @__PURE__ */ React.createElement("td", null, a.resume.join(" · ")), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, a.periode.du ? `${fmtDate(a.periode.du)} → ${fmtDate(a.periode.au)}` : "—"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Choix, { style: { width: 150 }, valeur: a.projet, onChange: (v) => majA(a, { projet: v, activite: activitesDe(v).length === 1 ? activitesDe(v)[0] : "" }), options: projets, vide: "Choisir…" })), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Choix, { style: { width: 170 }, valeur: a.activite, onChange: (v) => majA(a, { activite: v }), options: activitesDe(a.projet), vide: "Choisir…", disabled: !a.projet })), /* @__PURE__ */ React.createElement("td", { className: "num", style: { whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => setAttente((l) => l.filter((x) => x !== a)) }, "Retirer"), " ", /* @__PURE__ */ React.createElement("button", { className: "btn mini primaire", disabled: !!occupe, onClick: () => valider(a) }, "Enregistrer")))))))), journal.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Journal des imports"), /* @__PURE__ */ React.createElement("table", { className: "tab", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("tbody", null, journal.map((j, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, /* @__PURE__ */ React.createElement("td", { style: { width: 60 } }, j.h), /* @__PURE__ */ React.createElement("td", { style: { width: 90 } }, /* @__PURE__ */ React.createElement("span", { className: `badge ${j.ok ? "ok" : "ko"}` }, j.ok ? "Enregistré" : "Erreur")), /* @__PURE__ */ React.createElement("td", null, j.texte)))))), /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Données chargées"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Un nouvel import du même type pour la même activité remplace le précédent : ton fichier Excel reste la source, tu y ajoutes les nouvelles lignes puis tu le réimportes."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Projet · activité"), /* @__PURE__ */ React.createElement("th", null, "Données"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Lignes"), /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Importé le"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, trier(jeux.map((j) => ({ ...j, ou: libPA(j) })), "ou").map((j) => /* @__PURE__ */ React.createElement("tr", { key: j.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, j.ou || "Sans projet")), /* @__PURE__ */ React.createElement("td", null, LIB[j.type] || j.type), /* @__PURE__ */ React.createElement("td", { className: "num" }, j.nb), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, j.du ? `${fmtDate(j.du)} → ${fmtDate(j.au)}` : "—"), /* @__PURE__ */ React.createElement("td", { className: "petit" }, j.fichier), /* @__PURE__ */ React.createElement("td", null, j.importeLe ? new Date(j.importeLe).toLocaleDateString("fr-FR") : "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: async () => {
+  } })), occupe && /* @__PURE__ */ React.createElement("div", { className: "bandeau info", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("div", null, occupe)), attente.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Fichiers prêts à être enregistrés"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Vérifie le contenu reconnu, choisis le projet et l'activité, puis enregistre."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Contenu reconnu"), /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", null, "Projet"), /* @__PURE__ */ React.createElement("th", null, "Activité"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, attente.map((a) => /* @__PURE__ */ React.createElement("tr", { key: a.fichier }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, a.titre), /* @__PURE__ */ React.createElement("div", { className: "petit" }, a.fichier)), /* @__PURE__ */ React.createElement("td", null, a.resume.join(" · ")), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, a.periode.du ? `${fmtDate(a.periode.du)} → ${fmtDate(a.periode.au)}` : "—"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Choix, { style: { width: 150 }, valeur: a.projet, onChange: (v) => majA(a, { projet: v, activite: activitesDe(v).length === 1 ? activitesDe(v)[0] : "" }), options: projets, vide: "Choisir…" })), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Choix, { style: { width: 170 }, valeur: a.activite, onChange: (v) => majA(a, { activite: v }), options: activitesDe(a.projet), vide: "Choisir…", disabled: !a.projet })), /* @__PURE__ */ React.createElement("td", { className: "num", style: { whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => setAttente((l) => l.filter((x) => x !== a)) }, "Retirer"), " ", /* @__PURE__ */ React.createElement("button", { className: "btn mini primaire", disabled: !!occupe, onClick: () => valider(a) }, "Enregistrer")))))))), journal.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Journal des imports"), /* @__PURE__ */ React.createElement("table", { className: "tab", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("tbody", null, journal.map((j, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, /* @__PURE__ */ React.createElement("td", { style: { width: 60 } }, j.h), /* @__PURE__ */ React.createElement("td", { style: { width: 90 } }, /* @__PURE__ */ React.createElement("span", { className: `badge ${j.ok ? "ok" : "ko"}` }, j.ok ? "Enregistré" : "Erreur")), /* @__PURE__ */ React.createElement("td", null, j.texte)))))), /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Données chargées"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Écoutes qualité et satisfaction client : chaque nouvel import s'ajoute à l'historique de l'activité. Tu peux importer seulement le dernier mois, ou réimporter un fichier cumulé : les lignes déjà présentes ne sont pas ajoutées une seconde fois. Pour repartir de zéro, supprime d'abord les données de l'activité."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Projet · activité"), /* @__PURE__ */ React.createElement("th", null, "Données"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Lignes"), /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Importé le"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, trier(jeux.map((j) => ({ ...j, ou: libPA(j) })), "ou").map((j) => /* @__PURE__ */ React.createElement("tr", { key: j.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, j.ou || "Sans projet")), /* @__PURE__ */ React.createElement("td", null, LIB[j.type] || j.type), /* @__PURE__ */ React.createElement("td", { className: "num" }, j.nb), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, j.du ? `${fmtDate(j.du)} → ${fmtDate(j.au)}` : "—"), /* @__PURE__ */ React.createElement("td", { className: "petit" }, j.fichier), /* @__PURE__ */ React.createElement("td", null, j.importeLe ? new Date(j.importeLe).toLocaleDateString("fr-FR") : "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: async () => {
     if (confirm(`Supprimer les données « ${LIB[j.type]} » de ${j.ou} (${j.nb} lignes) ?`)) await supprimerJeu(j);
   } }, "Supprimer")))), grilles.map((g) => {
     const n = ecoutesCol.items.filter((e) => e.projet === g.projet && e.activite === g.activite).length;
