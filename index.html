@@ -757,6 +757,11 @@ async function analyserFichier(fichier) {
     if (h >= 0) ongletsGrille.push({ n, l, h });
   }
   if (ongletsGrille.length) return ongletsGrille.map((o) => lireGrilleObservation(o.n, o.l, o.h, fichier.name));
+  for (const n of wb.noms) {
+    const l = await wb.feuille(n);
+    const h = ligneEntete(l, ["critere", "points d'observation"], 40);
+    if (h >= 0) return await lireGrilleFiche(wb, n, l, h, fichier.name);
+  }
   const nPh = wb.noms.find((n) => norm(n).includes("phrases"));
   if (nPh && !wb.trouver("saisie")) {
     const l = await wb.feuille(nPh);
@@ -1086,6 +1091,101 @@ function lireGrilleObservation(onglet, lignes, h, nomFichier) {
     canal: prefixe === "S" ? "Sortant" : prefixe === "E" ? "Entrant" : "",
     nouvelleGrille: true,
     resume: [`${items.length} critères GRC`, `${blocs.length} blocs`, "notation 2 / 1 / 0, N/O exclu"]
+  };
+}
+async function lireGrilleFiche(wb, onglet, lignes, h, nomFichier) {
+  const e = lignes[h];
+  const c = { crit: colonne(e, "Critère"), ind: colonne(e, "Indicateur observable", "Indicateur"), obs: colonne(e, "Points d'observation") };
+  const items = [];
+  for (const l of lignes.slice(h + 1)) {
+    const crit = txt(l, c.crit);
+    if (!crit) {
+      if (items.length) break;
+      continue;
+    }
+    if (/^exemple/i.test(crit) || !txt(l, c.obs) && !txt(l, c.ind)) break;
+    items.push({
+      code: `G${pad(items.length + 1)}`,
+      item: crit,
+      court: crit,
+      point: crit,
+      pts: 1,
+      ptsPartiel: 0.5,
+      na: true,
+      siOk: false,
+      acquis: [txt(l, c.ind), txt(l, c.obs)].filter(Boolean).join("\n"),
+      partiel: "Comportement présent mais incomplet ou irrégulier",
+      nonAcquis: "Comportement absent ou contraire à l'attendu",
+      casNA: "Non applicable : la situation ne s'est pas présentée dans l'appel (exclu du calcul).",
+      si: ""
+    });
+  }
+  if (!items.length) throw new Error(`Onglet « ${onglet} » : aucun critère trouvé.`);
+  const titre = [txt(lignes[0], 0), ...wb.noms].join(" ");
+  const canal = /sortant|televente|fast track|vente/.test(norm(titre)) ? "Sortant" : /entrant/.test(norm(titre)) ? "Entrant" : "";
+  const noms = [], equipes = {};
+  const nC = wb.trouver("conseillers", "agents");
+  if (nC) {
+    const a = await wb.feuille(nC);
+    const hc = ligneEntete(a, ["conseiller"], 10);
+    if (hc >= 0) {
+      const cm = colonne(a[hc], "Manager");
+      a.slice(hc + 1).forEach((l) => {
+        const ag = txt(l, 0);
+        if (ag) {
+          noms.push(ag);
+          if (cm >= 0 && txt(l, cm)) equipes[ag] = txt(l, cm);
+        }
+      });
+    }
+  }
+  const ecoutes = [];
+  const NOTE = (v) => {
+    const x = norm(v);
+    return x.startsWith("non applicable") || x === "n/a" || x === "na" ? "NA" : x.startsWith("non acquis") ? "N" : x.startsWith("partiel") ? "P" : x.startsWith("acquis") ? "A" : "";
+  };
+  for (const n of wb.noms) {
+    const l = await wb.feuille(n);
+    const hs = ligneEntete(l, ["conseiller", "phase"], 15);
+    if (hs < 0) continue;
+    const es = l[hs];
+    const cc = { n: colonne(es, "N°"), d: colonne(es, "Date"), ph: colonne(es, "Phase"), ag: colonne(es, "Conseiller"), ma: colonne(es, "Manager"), ref: colonne(es, "Réf. appel", "Réf"), sit: colonne(es, "Type de situation"), ev: colonne(es, "Évaluateur"), pf: colonne(es, "Point fort"), axe: colonne(es, "Axe prioritaire"), com: colonne(es, "Commentaires") };
+    const ci = items.map((it) => colonne(es, it.court));
+    l.slice(hs + 1).forEach((r, i) => {
+      const ag = txt(r, cc.ag);
+      if (!ag) return;
+      const notes = {};
+      items.forEach((it, k) => {
+        const v = ci[k] >= 0 ? NOTE(txt(r, ci[k])) : "";
+        if (v) notes[it.code] = v;
+      });
+      if (!Object.keys(notes).length) return;
+      noms.push(ag);
+      if (cc.ma >= 0 && txt(r, cc.ma) && !equipes[ag]) equipes[ag] = txt(r, cc.ma);
+      ecoutes.push({
+        agent: ag,
+        date: dateExcel(cel(r, cc.d)),
+        reference: txt(r, cc.ref) || `Écoute n° ${txt(r, cc.n) || i + 1}`,
+        evaluateur: txt(r, cc.ev),
+        items: notes,
+        observations: [txt(r, cc.ph) && `Phase : ${txt(r, cc.ph)}`, txt(r, cc.sit) && `Situation : ${txt(r, cc.sit)}`, txt(r, cc.pf) && `Point fort : ${txt(r, cc.pf)}`, txt(r, cc.com)].filter(Boolean).join(" · "),
+        action: txt(r, cc.axe)
+      });
+    });
+    break;
+  }
+  return {
+    type: "grille",
+    titre: `Grille GRC · ${txt(lignes[0], 0) || onglet}`,
+    fichier: nomFichier,
+    grille: items,
+    ecoutes,
+    noms: distincts(noms),
+    equipes,
+    periode: periodeDe(ecoutes.map((x) => x.date)),
+    canal,
+    nouvelleGrille: true,
+    resume: [`${items.length} critères GRC`, "notation 1 / 0,5 / 0, N/A exclu", ecoutes.length ? pl(ecoutes.length, "écoute") : "aucune écoute saisie", ...noms.length ? [pl(distincts(noms).length, "conseiller")] : []]
   };
 }
 function lirePhrases(lignes, h, nomFichier) {
@@ -1920,12 +2020,12 @@ function Outil({ user, modeLocalInitial }) {
   const supprimerJeu = async (j) => {
     for (const p of j.parts) await lotsCol.supprimer(p.id);
   };
-  const assurerConseillers = async (noms, projet, activite) => {
+  const assurerConseillers = async (noms, projet, activite, equipes = {}) => {
     const crees = {};
     for (const nom of noms) {
       const k = cleNom(nom);
       if (!k || parCle[projet + "|" + k] || crees[k]) continue;
-      crees[k] = await conseillersCol.ajouter({ nom, projet, activite, equipe: "", site: "", statut: "Actif", commentaire: "" });
+      crees[k] = await conseillersCol.ajouter({ nom, projet, activite, equipe: equipes[nom] || "", site: "", statut: "Actif", commentaire: "" });
     }
     return { n: Object.keys(crees).length, idPour: (nom) => {
       const k = cleNom(nom);
@@ -1933,7 +2033,7 @@ function Outil({ user, modeLocalInitial }) {
     } };
   };
   const importer = async (a, projet, activite) => {
-    const cons = await assurerConseillers(a.noms, projet, activite);
+    const cons = await assurerConseillers(a.noms, projet, activite, a.equipes);
     const ou = `${projet} · ${activite}`;
     const infos = { fichier: a.fichier, importeLe: Date.now(), du: a.periode.du, au: a.periode.au };
     const suffixe = cons.n ? ` ${pl(cons.n, "agent")} ${cons.n > 1 ? "ajoutés" : "ajouté"} à la liste du projet.` : "";
