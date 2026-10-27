@@ -740,8 +740,94 @@ const periodeDe = (dates) => {
   return d.length ? { du: d[0], au: d[d.length - 1] } : { du: "", au: "" };
 };
 const distincts = (t) => [...new Set(t.filter(Boolean))];
+async function lireCsv(fichier) {
+  let t = await fichier.text();
+  if (t.charCodeAt(0) === 65279) t = t.slice(1);
+  const sep = (t.split("\n")[0].match(/;/g) || []).length >= (t.split("\n")[0].match(/,/g) || []).length ? ";" : ",";
+  const lignes = [];
+  let l = [], v = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) {
+      if (c === '"') {
+        if (t[i + 1] === '"') {
+          v += '"';
+          i++;
+        } else q = false;
+      } else v += c;
+      continue;
+    }
+    if (c === '"') q = true;
+    else if (c === sep) {
+      l.push(v);
+      v = "";
+    } else if (c === "\n" || c === "\r") {
+      if (c === "\r" && t[i + 1] === "\n") i++;
+      l.push(v);
+      lignes.push(l);
+      l = [];
+      v = "";
+    } else v += c;
+  }
+  if (v || l.length) {
+    l.push(v);
+    lignes.push(l);
+  }
+  return { noms: ["Données"], feuille: async () => lignes, trouver: (...c) => c.includes("donnees") ? "Données" : void 0 };
+}
+const MARQUEURS_CONSEILLER = ["posture discours cc", "attitude du conseiller", "maitrise du sujet"];
+function lireSondageOrange(lignes, h, nomFichier) {
+  const e = lignes[h];
+  const c = { date: colonne(e, "Date (+00:00 GMT)", "Date"), id: colonne(e, "Capsule"), act: colonne(e, "Activité campagne"), note: colonne(e, "Q1_ETO"), v: colonne(e, "QO1"), ecoute: colonne(e, "Q2_2_SMI"), m1: colonne(e, "Q1_ticket"), m2: colonne(e, "Q2_ticket"), lev: colonne(e, "Q5_ticket"), just: colonne(e, "Q4_ticket"), hors: colonne(e, "Q7_ticket") };
+  const parId = {};
+  let horsFibre = 0;
+  lignes.slice(h + 1).forEach((l) => {
+    const id = txt(l, c.id);
+    if (!id && !txt(l, c.v)) return;
+    if (c.act >= 0 && !/fibre/.test(norm(txt(l, c.act)))) {
+      horsFibre++;
+      return;
+    }
+    const k = id || txt(l, c.date) + txt(l, c.v);
+    const o = parId[k] || (parId[k] = {});
+    [["date", c.date], ["note", c.note], ["v", c.v], ["ecoute", c.ecoute], ["m1", c.m1], ["m2", c.m2], ["lev", c.lev], ["act", c.act]].forEach(([x, i]) => {
+      const val = txt(l, i);
+      if (val && !o[x]) o[x] = val;
+    });
+  });
+  const sat = (x) => {
+    const n = norm(x);
+    return n.startsWith("tres satisf") ? 0 : n.startsWith("satisf") ? 1 : n.startsWith("tres insatisf") ? 3 : n.startsWith("insatisf") ? 2 : -1;
+  };
+  const codes = [];
+  const ajouterCode = (lib, parent) => {
+    if (!lib || codes.some((x) => x.code === lib)) return;
+    const n = norm(parent || lib);
+    codes.push({ code: lib, remarque: lib, famille: MARQUEURS_CONSEILLER.some((m) => n.includes(m) || norm(lib).includes(m)) ? "Conseiller" : /erreur client satisfait/.test(n) ? "Pas de reproche" : /technique|passerelle/.test(n) ? "Technique" : /pas interess|offre|prix/.test(n) ? "Offre et sollicitation" : /mecontent/.test(n) ? "Orange" : "Autre", qui: "", axe: "", module: "" });
+  };
+  const rows = Object.values(parId).map((o) => {
+    ajouterCode(o.m1);
+    if (o.m2) ajouterCode(o.m2, o.m1);
+    return [dateExcel(o.date, true), "", o.act || "Fibre", o.ecoute ? sat(o.ecoute) : 2, null, o.v || "", o.m1 || "", o.m2 || "", norm(o.lev) === "oui" ? "O" : norm(o.lev) === "non" ? "N" : ""];
+  });
+  return {
+    type: "retours",
+    titre: "Satisfaction client Orange (Fibre)",
+    fichier: nomFichier,
+    rows,
+    meta: { codes, source: "orange", sansConseiller: true },
+    noms: [],
+    periode: periodeDe(rows.map((r) => r[0])),
+    resume: [`${rows.length} réponse${rows.length > 1 ? "s" : ""} Fibre`, `${rows.filter((r) => r[5]).length} verbatims`, `${rows.filter((r) => r[6]).length} déjà classés par Orange`, ...horsFibre ? [`${horsFibre} ligne${horsFibre > 1 ? "s" : ""} Mobile / autres écartée${horsFibre > 1 ? "s" : ""}`] : []]
+  };
+}
 async function analyserFichier(fichier) {
-  const wb = await lireXlsx(fichier);
+  const wb = /\.csv$/i.test(fichier.name) ? await lireCsv(fichier) : await lireXlsx(fichier);
+  for (const n of wb.noms) {
+    const l = await wb.feuille(n);
+    const hO = l.slice(0, 10).findIndex((x) => Array.from(x || [], norm).some((v) => v.startsWith("qo1")) && Array.from(x || [], norm).some((v) => v.startsWith("q1_eto")));
+    if (hO >= 0) return lireSondageOrange(l, hO, fichier.name);
+  }
   const nDonnees = wb.trouver("donnees");
   if (nDonnees) {
     const lignes = await wb.feuille(nDonnees);
@@ -1296,7 +1382,7 @@ function analyserQualite(lignes) {
   });
   const maitrise = parItem.filter((i) => i.evalues > n * 0.44).sort((a, b2) => b2.conforme - a.conforme).slice(0, 8);
   const groupes = {};
-  lignes.forEach((l) => {
+  lignes.filter((l) => l.nom).forEach((l) => {
     (groupes[l.k] = groupes[l.k] || []).push(l);
   });
   const parConseiller = Object.entries(groupes).map(([k, ls]) => {
@@ -1416,7 +1502,7 @@ function analyserRetours(lignes) {
   const aClasser = lignes.filter((l) => l.neg && l.v && !l.code);
   const tauxInsat = somme(lignes.map((l) => l.insat ? 1 : 0)) / n;
   const groupes = {};
-  lignes.forEach((l) => {
+  lignes.filter((l) => l.nom).forEach((l) => {
     (groupes[l.k] = groupes[l.k] || []).push(l);
   });
   const parConseiller = Object.entries(groupes).map(([k, ls]) => {
@@ -1913,7 +1999,7 @@ function Outil({ user, modeLocalInitial }) {
         meta = JSON.parse(tete.meta || "{}");
       } catch (e) {
       }
-      const lot = tete.type === "qualite" ? { id, items: meta.items || [], modules: meta.modules || {}, idx: Object.fromEntries((meta.items || []).map((it, i) => [it.nom, i])) } : { id, codes: meta.codes || [] };
+      const lot = tete.type === "qualite" ? { id, items: meta.items || [], modules: meta.modules || {}, idx: Object.fromEntries((meta.items || []).map((it, i) => [it.nom, i])) } : { id, codes: meta.codes || [], source: meta.source || "", sansConseiller: !!meta.sansConseiller };
       return { id, type: tete.type, projet: tete.projet || "", activite: tete.activite || "", fichier: tete.fichier, importeLe: tete.importeLe, du: tete.du, au: tete.au, nb: somme(parts.map((p) => p.rows.length)), lot, parts };
     });
   }, [lots]);
@@ -2087,10 +2173,22 @@ function Outil({ user, modeLocalInitial }) {
       (a.meta.codes || []).forEach((c) => {
         if (!codes.some((x) => x.code === c.code)) codes.push(c);
       });
-      const { ajout, deja } = fusionner(anciennes, a.rows, (r) => [r[0], cleNom(r[1]), r[2], r[3], r[4], r[5]].join("|"));
-      const rows = [...anciennes, ...ajout];
+      const cleR = (r) => [r[0], cleNom(r[1]), r[2], r[3], r[4], r[5]].join("|");
+      const { ajout, deja } = fusionner(anciennes, a.rows, cleR);
+      const nouv = {};
+      a.rows.forEach((r) => {
+        if (r[6]) nouv[cleR(r)] = r;
+      });
+      let completes = 0;
+      const anc2 = anciennes.map((r) => {
+        const x = !r[6] && nouv[cleR(r)];
+        if (!x) return r;
+        completes++;
+        return [...r.slice(0, 6), x[6], x[7], x[8]];
+      });
+      const rows = [...anc2, ...ajout];
       await ecrireLot("retours", projet, activite, { ...a.meta || {}, codes }, rows, { ...infos, ...periodeFus(rows) });
-      return bilanFus("réponse client", "réponses clients", ajout.length, deja, rows.length) + suffixe;
+      return bilanFus("réponse client", "réponses clients", ajout.length, deja, rows.length) + (completes ? ` ${pl(completes, "classement")} ${completes > 1 ? "repris" : "repris"} du fichier.` : "") + suffixe;
     }
     if (a.type === "grille") {
       const anc = grilles.find((g) => !g.archive && g.projet === projet && g.activite === activite);
@@ -3020,6 +3118,8 @@ function VueRetours({ ctx }) {
     return (!filtres.du || m >= filtres.du) && (!filtres.au || m <= filtres.au);
   };
   const lignes = rTout.filter((l) => dansP(l.d));
+  const orange = lignes.some((l) => l.lot.source === "orange");
+  const bandeauOrange = orange && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Export Orange :"), " le fichier ne contient que des clients insatisfaits (tickets) et aucun nom de conseiller. Lis les ", /* @__PURE__ */ React.createElement("b", null, "causes"), " et les ", /* @__PURE__ */ React.createElement("b", null, "verbatims"), " ; le taux de satisfaction affiché n'est pas représentatif de toute l'activité. « Satisfaction conseiller » = réponse à la question sur la qualité d'écoute du conseiller."));
   const negatifs = lignes.filter((l) => l.v && (l.s === 2 || l.s === 3 || l.nps !== null && l.nps <= 6));
   const listeCodes = Object.values(ar.codes);
   const optCodes = listeCodes.map((c) => ({ v: c.code, lib: `${c.code} · ${c.remarque}` }));
@@ -3042,7 +3142,7 @@ function VueRetours({ ctx }) {
   const exporter = () => exporterCSV("Analyse_retours_clients", ["Code", "Remarque client", "Famille", "Qui peut agir", "Retours", "Part des reproches"], ar.reproches.map((r) => [r.code, r.remarque, r.famille, r.qui, r.n, p100(r.part)]));
   const exporterC = () => exporterCSV("Detail_conseillers_satisfaction", ["Rang", "Conseiller", "Groupe", "Réponses", "Satisfaction", "Insatisfaits", "Détracteurs", "Remarques liées au conseiller", "Priorité", "Écart statistique (z)"], tConseillers.map((c) => [c.rang || "–", c.nom, c.groupe, c.n, p100(c.sat), c.insat, c.det, c.lies, c.statut, fr(c.z, 2)]));
   const exporterV = () => exporterCSV("Verbatims_negatifs", ["Date", "Conseiller", "Motif d'appel", "Satisfaction conseiller", "Note NPS", "Verbatim", "Code remarque", "Code secondaire", "Levier conseiller"], vus.map((l) => [fmtDate(l.d), l.nom, l.m, SAT[l.s] || "", l.nps, l.v, l.code, l.code2, l.lev === "O" ? "Oui" : l.lev === "N" ? "Non" : ""]));
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Onglets, { liste: [{ id: "synthese", lib: "Synthèse" }, { id: "remarques", lib: "Remarques des clients" }, { id: "ecarts", lib: "Écarts GRC" }, { id: "conseillers", lib: "Détail par conseiller" }, { id: "verbatims", lib: "Verbatims négatifs", n: ar.aClasser.length }], actif: onglet, onChange: setOnglet }), onglet === "synthese" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Retenir, { points: [
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, bandeauOrange, /* @__PURE__ */ React.createElement(Onglets, { liste: [{ id: "synthese", lib: "Synthèse" }, { id: "remarques", lib: "Remarques des clients" }, { id: "ecarts", lib: "Écarts GRC" }, { id: "conseillers", lib: "Détail par conseiller" }, { id: "verbatims", lib: "Verbatims négatifs", n: ar.aClasser.length }], actif: onglet, onChange: setOnglet }), onglet === "synthese" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Retenir, { points: [
     ar.parMois.length > 1 ? `La satisfaction conseiller passe de ${p100(premier.sat)} en ${libMois(premier.mois).split(" ")[0]} à ${p100(dernier.sat)} en ${libMois(dernier.mois).split(" ")[0]} ; les clients insatisfaits passent de ${premier.insat} à ${dernier.insat} par mois.` : `La satisfaction conseiller est de ${p100(ar.sat)} sur ${ar.n} réponses.`,
     q4.length > 0 && ar.insat > 0 && `Le problème est concentré : les ${q4.length} conseillers du groupe Q4 font ${p100(somme(q4.map((c) => c.n)) / ar.n, 0)} des réponses mais ${p100(somme(q4.map((c) => c.insat)) / ar.insat, 0)} des insatisfaits. ${pl(prio.length, "conseiller")} ${prio.length > 1 ? "sont prioritaires" : "est prioritaire"}.`,
     ar.reproches.length > 0 && `Première cause de reproche : ${ar.reproches[0].remarque.toLowerCase()} (${ar.reproches[0].n} retours, famille « ${ar.reproches[0].famille} »).`,
@@ -3491,7 +3591,7 @@ Continuer ?`)) return;
     e.preventDefault();
     setSurvol(false);
     lire([...e.dataTransfer.files]);
-  } }, /* @__PURE__ */ React.createElement("b", null, "Déposer des fichiers Excel ici, ou cliquer pour les choisir"), /* @__PURE__ */ React.createElement("span", { className: "t-c2" }, "Modèles reconnus automatiquement : analyse des retours clients (SATCLI), analyse des évaluations qualité, grilles d'évaluation GRC (un onglet par grille), suivi du plan d'action, classeur de suivi GRC (onglet « Saisie »)."), /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".xlsx", multiple: true, hidden: true, onChange: (e) => {
+  } }, /* @__PURE__ */ React.createElement("b", null, "Déposer des fichiers Excel ici, ou cliquer pour les choisir"), /* @__PURE__ */ React.createElement("span", { className: "t-c2" }, "Modèles reconnus automatiquement : analyse des retours clients (SATCLI), analyse des évaluations qualité, grilles d'évaluation GRC (un onglet par grille), suivi du plan d'action, classeur de suivi GRC (onglet « Saisie »)."), /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".xlsx,.csv", multiple: true, hidden: true, onChange: (e) => {
     lire([...e.target.files]);
     e.target.value = "";
   } })), occupe && /* @__PURE__ */ React.createElement("div", { className: "bandeau info", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("div", null, occupe)), attente.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Fichiers prêts à être enregistrés"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Vérifie le contenu reconnu, choisis le projet et l'activité, puis enregistre."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Contenu reconnu"), /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", null, "Projet"), /* @__PURE__ */ React.createElement("th", null, "Activité"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, attente.map((a) => /* @__PURE__ */ React.createElement("tr", { key: a.fichier }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, a.titre), /* @__PURE__ */ React.createElement("div", { className: "petit" }, a.fichier)), /* @__PURE__ */ React.createElement("td", null, a.resume.join(" · ")), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, a.periode.du ? `${fmtDate(a.periode.du)} → ${fmtDate(a.periode.au)}` : "—"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Choix, { style: { width: 150 }, valeur: a.projet, onChange: (v) => majA(a, { projet: v, activite: activitesDe(v).length === 1 ? activitesDe(v)[0] : "" }), options: projets, vide: "Choisir…" })), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Choix, { style: { width: 170 }, valeur: a.activite, onChange: (v) => majA(a, { activite: v }), options: activitesDe(a.projet), vide: "Choisir…", disabled: !a.projet })), /* @__PURE__ */ React.createElement("td", { className: "num", style: { whiteSpace: "nowrap" } }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => setAttente((l) => l.filter((x) => x !== a)) }, "Retirer"), " ", /* @__PURE__ */ React.createElement("button", { className: "btn mini primaire", disabled: !!occupe, onClick: () => valider(a) }, "Enregistrer")))))))), journal.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Journal des imports"), /* @__PURE__ */ React.createElement("table", { className: "tab", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("tbody", null, journal.map((j, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, /* @__PURE__ */ React.createElement("td", { style: { width: 60 } }, j.h), /* @__PURE__ */ React.createElement("td", { style: { width: 90 } }, /* @__PURE__ */ React.createElement("span", { className: `badge ${j.ok ? "ok" : "ko"}` }, j.ok ? "Enregistré" : "Erreur")), /* @__PURE__ */ React.createElement("td", null, j.texte)))))), /* @__PURE__ */ React.createElement("div", { className: "carte", style: { marginTop: 18 } }, /* @__PURE__ */ React.createElement("h2", null, "Données chargées"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Écoutes qualité et satisfaction client : chaque nouvel import s'ajoute à l'historique de l'activité. Tu peux importer seulement le dernier mois, ou réimporter un fichier cumulé : les lignes déjà présentes ne sont pas ajoutées une seconde fois. Pour repartir de zéro, supprime d'abord les données de l'activité."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Projet · activité"), /* @__PURE__ */ React.createElement("th", null, "Données"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Lignes"), /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Importé le"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, trier(jeux.map((j) => ({ ...j, ou: libPA(j) })), "ou").map((j) => /* @__PURE__ */ React.createElement("tr", { key: j.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, j.ou || "Sans projet")), /* @__PURE__ */ React.createElement("td", null, LIB[j.type] || j.type), /* @__PURE__ */ React.createElement("td", { className: "num" }, j.nb), /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, j.du ? `${fmtDate(j.du)} → ${fmtDate(j.au)}` : "—"), /* @__PURE__ */ React.createElement("td", { className: "petit" }, j.fichier), /* @__PURE__ */ React.createElement("td", null, j.importeLe ? new Date(j.importeLe).toLocaleDateString("fr-FR") : "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: async () => {
