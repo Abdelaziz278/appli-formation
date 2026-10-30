@@ -782,9 +782,57 @@ async function lireCsv(fichier) {
   return { noms: ["Données"], feuille: async () => lignes, trouver: (...c) => c.includes("donnees") ? "Données" : void 0 };
 }
 const MARQUEURS_CONSEILLER = ["posture discours cc", "attitude du conseiller", "maitrise du sujet"];
+const satOrange = (x) => {
+  const n = norm(x);
+  return !n ? -1 : n.startsWith("tres satisf") ? 0 : n.startsWith("satisf") ? 1 : n.startsWith("tres insatisf") ? 3 : n.startsWith("insatisf") ? 2 : -1;
+};
+const dimOrange = (x) => {
+  const n = norm(x);
+  return !n ? "-" : n.startsWith("indiff") ? "D" : n.includes("insatisf") ? "I" : n.includes("satisf") ? "S" : "-";
+};
+const libMarqueur = (x) => {
+  let s = String(x || "").replace(/[\u2600-\u27BF\uFE0F\u200D]|[\uD83C-\uDBFF][\uDC00-\uDFFF]/g, "").replace(/\s+/g, " ").trim();
+  if (/^client pas interess+e?$/.test(norm(s))) s = "Client pas intéressé";
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+const MOIS_FR = { janv: 1, fevr: 2, mars: 3, avr: 4, mai: 5, juin: 6, juil: 7, aout: 8, sept: 9, oct: 10, nov: 11, dec: 12 };
+const dateOrange = (v) => {
+  const d = dateExcel(v, true);
+  if (d) return d;
+  const m = /^(\d{1,2})\s+([a-zé]+)\.?\s+(\d{4})/i.exec(norm(String(v || "")));
+  if (!m) return "";
+  const mo = MOIS_FR[Object.keys(MOIS_FR).find((k) => m[2].startsWith(k))];
+  return mo ? `${m[3]}-${pad(mo)}-${pad(m[1])}` : "";
+};
+function lignesOrange(objs, nomFichier, horsFibre, titre) {
+  const codes = [];
+  const ajouterCode = (lib, parent) => {
+    if (!lib || codes.some((x) => x.code === lib)) return;
+    const n = norm(parent || lib);
+    codes.push({ code: lib, remarque: lib, famille: MARQUEURS_CONSEILLER.some((m) => n.includes(m) || norm(lib).includes(m)) ? "Conseiller" : /erreur client satisfait/.test(n) ? "Pas de reproche" : /technique|passerelle/.test(n) ? "Technique" : /pas interess|offre|prix/.test(n) ? "Offre et sollicitation" : /mecontent/.test(n) ? "Orange" : "Autre", qui: "", axe: "", module: "" });
+  };
+  const rows = objs.map((o) => {
+    const m1 = libMarqueur(o.m1), m2 = libMarqueur(o.m2);
+    ajouterCode(m1);
+    if (m2) ajouterCode(m2, m1);
+    const note = parseInt(o.note, 10);
+    return [dateOrange(o.date), "", o.act || "Fibre", satOrange(o.ecoute), null, o.v || "", m1, m2, norm(o.lev) === "oui" ? "O" : norm(o.lev) === "non" ? "N" : "", note >= 1 && note <= 5 ? note : null, o.id || "", [o.dispo, o.ecoute, o.conseils, o.interet].map(dimOrange).join("")];
+  });
+  const insat = rows.filter((r) => r[9] !== null && r[9] <= 3).length;
+  return {
+    type: "retours",
+    titre,
+    fichier: nomFichier,
+    rows,
+    meta: { codes, source: "orange", sansConseiller: true },
+    noms: [],
+    periode: periodeDe(rows.map((r) => r[0])),
+    resume: [`${rows.length} réponse${rows.length > 1 ? "s" : ""} Fibre`, `${insat} insatisfait${insat > 1 ? "s" : ""} (note 1 à 3)`, `${rows.filter((r) => r[6]).length} déjà classés par Orange`, ...horsFibre ? [`${horsFibre} ligne${horsFibre > 1 ? "s" : ""} Mobile / autres écartée${horsFibre > 1 ? "s" : ""}`] : []]
+  };
+}
 function lireSondageOrange(lignes, h, nomFichier) {
   const e = lignes[h];
-  const c = { date: colonne(e, "Date (+00:00 GMT)", "Date"), id: colonne(e, "Capsule"), act: colonne(e, "Activité campagne"), note: colonne(e, "Q1_ETO"), v: colonne(e, "QO1"), ecoute: colonne(e, "Q2_2_SMI"), m1: colonne(e, "Q1_ticket"), m2: colonne(e, "Q2_ticket"), lev: colonne(e, "Q5_ticket"), just: colonne(e, "Q4_ticket"), hors: colonne(e, "Q7_ticket") };
+  const c = { date: colonne(e, "Date (+00:00 GMT)", "Date"), id: colonne(e, "Capsule"), act: colonne(e, "Activité campagne"), note: colonne(e, "Q1_ETO"), v: colonne(e, "QO1"), dispo: colonne(e, "Q2_0_SMI"), ecoute: colonne(e, "Q2_2_SMI"), conseils: colonne(e, "Q2_3_SMI"), interet: colonne(e, "Q2_4_SMI"), m1: colonne(e, "Q1_ticket"), m2: colonne(e, "Q2_ticket"), lev: colonne(e, "Q5_ticket") };
   const parId = {};
   let horsFibre = 0;
   lignes.slice(h + 1).forEach((l) => {
@@ -796,36 +844,32 @@ function lireSondageOrange(lignes, h, nomFichier) {
     }
     const k = id || txt(l, c.date) + txt(l, c.v);
     const o = parId[k] || (parId[k] = {});
-    [["date", c.date], ["note", c.note], ["v", c.v], ["ecoute", c.ecoute], ["m1", c.m1], ["m2", c.m2], ["lev", c.lev], ["act", c.act]].forEach(([x, i]) => {
+    Object.entries(c).forEach(([x, i]) => {
       const val = txt(l, i);
       if (val && !o[x]) o[x] = val;
     });
   });
-  const sat = (x) => {
-    const n = norm(x);
-    return n.startsWith("tres satisf") ? 0 : n.startsWith("satisf") ? 1 : n.startsWith("tres insatisf") ? 3 : n.startsWith("insatisf") ? 2 : -1;
-  };
-  const codes = [];
-  const ajouterCode = (lib, parent) => {
-    if (!lib || codes.some((x) => x.code === lib)) return;
-    const n = norm(parent || lib);
-    codes.push({ code: lib, remarque: lib, famille: MARQUEURS_CONSEILLER.some((m) => n.includes(m) || norm(lib).includes(m)) ? "Conseiller" : /erreur client satisfait/.test(n) ? "Pas de reproche" : /technique|passerelle/.test(n) ? "Technique" : /pas interess|offre|prix/.test(n) ? "Offre et sollicitation" : /mecontent/.test(n) ? "Orange" : "Autre", qui: "", axe: "", module: "" });
-  };
-  const rows = Object.values(parId).map((o) => {
-    ajouterCode(o.m1);
-    if (o.m2) ajouterCode(o.m2, o.m1);
-    return [dateExcel(o.date, true), "", o.act || "Fibre", o.ecoute ? sat(o.ecoute) : 2, null, o.v || "", o.m1 || "", o.m2 || "", norm(o.lev) === "oui" ? "O" : norm(o.lev) === "non" ? "N" : ""];
+  return lignesOrange(Object.values(parId), nomFichier, horsFibre, "Satisfaction client Orange (Fibre)");
+}
+function lireQualifCombinee(lignes, h, nomFichier) {
+  const e = lignes[h];
+  const c = { date: colonne(e, "Date"), id: colonne(e, "Capsule"), act: colonne(e, "Activité"), note: colonne(e, "Note globale"), v: colonne(e, "Verbatim"), dispo: colonne(e, "Disponibilité"), ecoute: colonne(e, "Qualité écoute"), conseils: colonne(e, "Satisfaction conseils"), interet: colonne(e, "Intérêt appel"), m1: colonne(e, "Marqueur"), m2: colonne(e, "Sous marqueur"), lev: colonne(e, "Action CC") };
+  const parId = {};
+  let horsFibre = 0;
+  lignes.slice(h + 1).forEach((l) => {
+    const id = txt(l, c.id);
+    if (!id && !txt(l, c.v)) return;
+    if (norm(txt(l, c.act)) !== "fibre") {
+      horsFibre++;
+      return;
+    }
+    const o = parId[id || txt(l, c.date) + txt(l, c.v)] || (parId[id || txt(l, c.date) + txt(l, c.v)] = {});
+    Object.entries(c).forEach(([x, i]) => {
+      const val = txt(l, i);
+      if (val && !o[x]) o[x] = val;
+    });
   });
-  return {
-    type: "retours",
-    titre: "Satisfaction client Orange (Fibre)",
-    fichier: nomFichier,
-    rows,
-    meta: { codes, source: "orange", sansConseiller: true },
-    noms: [],
-    periode: periodeDe(rows.map((r) => r[0])),
-    resume: [`${rows.length} réponse${rows.length > 1 ? "s" : ""} Fibre`, `${rows.filter((r) => r[5]).length} verbatims`, `${rows.filter((r) => r[6]).length} déjà classés par Orange`, ...horsFibre ? [`${horsFibre} ligne${horsFibre > 1 ? "s" : ""} Mobile / autres écartée${horsFibre > 1 ? "s" : ""}`] : []]
-  };
+  return lignesOrange(Object.values(parId), nomFichier, horsFibre, "Qualification combinée SAT + INSAT (Fibre)");
 }
 const lireCommentaireProd = (t) => {
   const n = norm(t);
@@ -862,6 +906,11 @@ async function analyserFichier(fichier) {
     const l = await wb.feuille(n);
     const hP = ligneEntete(l, ["bon", "moyen", "mauvais"], 10);
     if (hP >= 0 && colonne(l[hP], "Agent", "Conseiller") >= 0) return lireAvisProd(l, hP, fichier.name);
+  }
+  for (const n of wb.noms) {
+    const l = await wb.feuille(n);
+    const hC = ligneEntete(l, ["type", "capsule", "note globale"], 10);
+    if (hC >= 0) return lireQualifCombinee(l, hC, fichier.name);
   }
   for (const n of wb.noms) {
     const l = await wb.feuille(n);
@@ -1857,6 +1906,105 @@ function complementGRC(l, etat, nbAcc) {
   const axe = etat && etat.obj1 ? etat.obj1.objectif : l.eAT && l.eAT[0] || (l.principal && l.principal !== "Aucun écart GRC" ? l.principal : "") || l.rRep || (l.avis && l.avis.grc ? "GRC signalée par la production : à préciser en écoute" : "");
   return { observations: obs.join(" · ") || "Pas encore de donnée GRC dans l’outil", axe };
 }
+const jourIso = (d) => String(d || "").slice(0, 10);
+const plusJours = (iso, n) => {
+  const x = /* @__PURE__ */ new Date(iso + "T12:00:00");
+  x.setDate(x.getDate() + n);
+  return isoLocal(x);
+};
+const lundiIso = (d) => {
+  const x = /* @__PURE__ */ new Date(jourIso(d) + "T12:00:00");
+  x.setDate(x.getDate() - (x.getDay() + 6) % 7);
+  return isoLocal(x);
+};
+const DIMS_ORANGE = ["Disponibilité respectée", "Qualité d'écoute du conseiller", "Conseils apportés", "Intérêt de l'appel"];
+function analyserFibre(lignes, dateAction2) {
+  const L = lignes.filter((l) => l.note !== null && l.note !== void 0 && l.d);
+  if (!L.length) return null;
+  const codes = {};
+  const vus = {};
+  L.forEach((l) => {
+    if (vus[l.lot.id]) return;
+    vus[l.lot.id] = 1;
+    (l.lot.codes || []).forEach((c) => {
+      const k = libMarqueur(c.code);
+      if (!codes[k]) codes[k] = c;
+    });
+  });
+  const marq = (c) => c ? libMarqueur(c) : "";
+  const famille = (l) => !l.code ? "Non classé" : (codes[marq(l.code)] || {}).famille || "Autre";
+  const estInsat = (l) => l.note <= 3;
+  const res = (ls) => {
+    const n = ls.length, i = ls.filter(estInsat).length;
+    return { n, insat: i, taux: n ? i / n : null, sat: n ? (n - i) / n : null, tres: n ? ls.filter((l) => l.note === 5).length / n : null, moy: n ? somme(ls.map((l) => l.note)) / n : null };
+  };
+  const grouper = (cle) => {
+    const g = {};
+    L.forEach((l) => {
+      const k = cle(l);
+      (g[k] = g[k] || []).push(l);
+    });
+    return Object.keys(g).sort().map((k) => ({ cle: k, ...res(g[k]) }));
+  };
+  const semaines = grouper((l) => lundiIso(l.d)).map((s) => ({ ...s, fin: plusJours(s.cle, 6) }));
+  const mois = grouper((l) => moisDe(l.d));
+  const I = L.filter(estInsat), S = L.filter((l) => !estInsat(l));
+  const compter = (ls, f, base) => {
+    const c = {};
+    ls.forEach((l) => {
+      const k = f(l);
+      if (k) c[k] = (c[k] || 0) + 1;
+    });
+    return Object.entries(c).map(([lib, n]) => ({ lib, n, part: n / (base || ls.length) })).sort((a, b) => b.n - a.n);
+  };
+  const familles = compter(I, famille);
+  const marqueurs = compter(I, (l) => marq(l.code), I.length);
+  const sousMarqueurs = compter(I, (l) => marq(l.code2), I.length);
+  const tauxDim = (ls, i, v) => {
+    const r = ls.filter((l) => l.dims && l.dims[i] && l.dims[i] !== "-");
+    return r.length ? r.filter((l) => l.dims[i] === v).length / r.length : null;
+  };
+  const comparaison = DIMS_ORANGE.map((lib, i) => {
+    const satS = tauxDim(S, i, "S"), satI = tauxDim(I, i, "S");
+    return { lib, satS, satI, ecart: satS !== null && satI !== null ? satS - satI : null, insI: tauxDim(I, i, "I"), insS: tauxDim(S, i, "I") };
+  });
+  const avecDims = L.some((l) => l.dims && /[SID]/.test(l.dims));
+  const partCons = I.length ? I.filter((l) => norm(famille(l)) === "conseiller").length / I.length : null;
+  const enCause = I.filter((l) => l.code && norm(famille(l)) !== "pas de reproche");
+  const partConsReproche = enCause.length ? enCause.filter((l) => norm(famille(l)) === "conseiller").length / enCause.length : null;
+  const sem = semaines.filter((s) => s.n >= 10);
+  const pic = sem.length ? sem.reduce((a, b) => b.taux > a.taux ? b : a) : null;
+  let avantApres = null;
+  if (dateAction2) {
+    const A = res(L.filter((l) => jourIso(l.d) < dateAction2)), B = res(L.filter((l) => jourIso(l.d) >= dateAction2));
+    let z = null;
+    if (A.n && B.n) {
+      const p = (A.insat + B.insat) / (A.n + B.n);
+      const se = Math.sqrt(p * (1 - p) * (1 / A.n + 1 / B.n));
+      z = se ? (A.taux - B.taux) / se : null;
+    }
+    avantApres = { date: dateAction2, avant: A, apres: B, z, significatif: z !== null && Math.abs(z) >= 1.96 && A.n >= 20 && B.n >= 20 };
+  }
+  const verbatims = I.map((l) => ({ d: l.d, note: l.note, famille: famille(l), marqueur: marq(l.code), sous: marq(l.code2), v: l.v, dims: l.dims })).sort((a, b) => String(b.d).localeCompare(String(a.d)));
+  const periode = { du: jourIso(L.map((l) => l.d).sort()[0]), au: jourIso(L.map((l) => l.d).sort().slice(-1)[0]) };
+  return { global: res(L), semaines, mois, familles, marqueurs, sousMarqueurs, comparaison, avecDims, partCons, partConsReproche, pic, avantApres, verbatims, periode, nI: I.length, nS: S.length };
+}
+function retenirFibre(af) {
+  if (!af) return [];
+  const g = af.global;
+  const t = [];
+  t.push(`${p100(g.taux)} de clients insatisfaits (note 1 à 3 sur 5) : ${g.insat} sur ${g.n} réponses Fibre, du ${fmtDate(af.periode.du)} au ${fmtDate(af.periode.au)}.`);
+  if (af.pic && af.semaines.length > 1) t.push(`Semaine la plus haute : du ${fmtDate(af.pic.cle)} au ${fmtDate(af.pic.fin)}, ${p100(af.pic.taux)} d'insatisfaits (${af.pic.insat} sur ${af.pic.n}).`);
+  const f = af.familles.filter((x) => x.lib !== "Non classé");
+  if (f.length) t.push(`Causes des insatisfaits : ${f.slice(0, 3).map((x) => `${x.lib.toLowerCase()} ${x.n}`).join(", ")}${af.familles.some((x) => x.lib === "Non classé") ? `, non classés ${af.familles.find((x) => x.lib === "Non classé").n}` : ""}.`);
+  if (af.avantApres && af.avantApres.avant.n && af.avantApres.apres.n) {
+    const a = af.avantApres;
+    t.push(`Avant le ${fmtDate(a.date)} : ${p100(a.avant.taux)} d'insatisfaits ; depuis : ${p100(a.apres.taux)} (${a.apres.n} réponses). ${a.significatif ? "Écart significatif." : "Écart non significatif à ce stade (trop peu de réponses pour conclure)."}`);
+  }
+  const d = af.comparaison.filter((x) => x.ecart !== null).sort((a, b) => b.ecart - a.ecart)[0];
+  if (af.avecDims && d) t.push(`Ce qui sépare le plus insatisfaits et satisfaits : « ${d.lib} » (${p100(d.satI, 0)} de satisfaits chez les insatisfaits contre ${p100(d.satS, 0)} chez les satisfaits).`);
+  return t;
+}
 function useCollection(nom, surErreur) {
   const [items, setItems] = useState([]);
   const local = useRef(false);
@@ -2114,7 +2262,7 @@ function Outil({ user, modeLocalInitial }) {
     };
   }, [parCle]);
   const qTout = useMemo(() => jeux.filter((j) => j.type === "qualite" && ok(j)).flatMap((j) => j.parts.flatMap((p) => p.rows.map((r) => ({ d: r[0], ...qui(j.projet, r[1]), ev: r[2], tg: r[3], ty: r[4], n: r[5], st: r[6], lot: j.lot })))), [jeux, qui, filtres.projet, filtres.activite]);
-  const rTout = useMemo(() => jeux.filter((j) => j.type === "retours" && ok(j)).flatMap((j) => j.parts.flatMap((p) => p.rows.map((r, i) => ({ d: r[0], ...qui(j.projet, r[1]), m: r[2], s: r[3], nps: r[4], v: r[5], code: r[6], code2: r[7], lev: r[8], lot: j.lot, _doc: p.id, _i: i })))), [jeux, qui, filtres.projet, filtres.activite]);
+  const rTout = useMemo(() => jeux.filter((j) => j.type === "retours" && ok(j)).flatMap((j) => j.parts.flatMap((p) => p.rows.map((r, i) => ({ d: r[0], ...qui(j.projet, r[1]), m: r[2], s: r[3], nps: r[4], v: r[5], code: r[6], code2: r[7], lev: r[8], note: r[9] === void 0 ? null : r[9], cap: r[10] || "", dims: r[11] || "", lot: j.lot, _doc: p.id, _i: i })))), [jeux, qui, filtres.projet, filtres.activite]);
   const aq = useMemo(() => analyserQualite(qTout.filter((l) => dansPeriode(l.d))), [qTout, filtres.du, filtres.au]);
   const ar = useMemo(() => analyserRetours(rTout.filter((l) => dansPeriode(l.d))), [rTout, filtres.du, filtres.au]);
   const ecoutes = useMemo(() => ecoutesCol.items.filter((e) => ok(e) && (!e.date || dansPeriode(e.date)) && (parId[e.conseillerId] || {}).statut !== "Sorti"), [ecoutesCol.items, filtres, parId]);
@@ -2269,19 +2417,37 @@ function Outil({ user, modeLocalInitial }) {
         if (!codes.some((x) => x.code === c.code)) codes.push(c);
       });
       const cleR = (r) => [r[0], cleNom(r[1]), r[2], r[3], r[4], r[5]].join("|");
-      const { ajout, deja } = fusionner(anciennes, a.rows, cleR);
-      const nouv = {};
-      a.rows.forEach((r) => {
-        if (r[6]) nouv[cleR(r)] = r;
+      const rows = anciennes.map((r) => [...r]);
+      const parCap = {}, parCle2 = {};
+      rows.forEach((r, i) => {
+        if (r[10]) parCap[r[10]] = i;
+        else (parCle2[cleR(r)] = parCle2[cleR(r)] || []).push(i);
       });
-      let completes = 0;
-      const anc2 = anciennes.map((r) => {
-        const x = !r[6] && nouv[cleR(r)];
-        if (!x) return r;
-        completes++;
-        return [...r.slice(0, 6), x[6], x[7], x[8]];
+      const ajout = [];
+      let deja = 0, completes = 0;
+      a.rows.forEach((n) => {
+        let i = n[10] && parCap[n[10]] !== void 0 ? parCap[n[10]] : void 0;
+        if (i === void 0) {
+          const l = parCle2[cleR(n)];
+          if (l && l.length) i = l.shift();
+        }
+        if (i === void 0) {
+          rows.push(n);
+          ajout.push(n);
+          if (n[10]) parCap[n[10]] = rows.length - 1;
+          return;
+        }
+        deja++;
+        const r = rows[i];
+        if (!r[6] && n[6]) {
+          r[6] = n[6];
+          r[7] = n[7];
+          r[8] = n[8];
+          completes++;
+        }
+        for (let k = 9; k < n.length; k++) if ((r[k] === void 0 || r[k] === null || r[k] === "" || k === 11 && /^-+$/.test(r[k])) && n[k] !== void 0 && n[k] !== null && n[k] !== "") r[k] = n[k];
+        if (n[10]) parCap[n[10]] = i;
       });
-      const rows = [...anc2, ...ajout];
       await ecrireLot("retours", projet, activite, { ...a.meta || {}, codes }, rows, { ...infos, ...periodeFus(rows) });
       return bilanFus("réponse client", "réponses clients", ajout.length, deja, rows.length) + (completes ? ` ${pl(completes, "classement")} ${completes > 1 ? "repris" : "repris"} du fichier.` : "") + suffixe;
     }
@@ -3272,7 +3438,7 @@ function VueQualite({ ctx }) {
 }
 function VueRetours({ ctx }) {
   const { ar, rTout, filtres, peutEditer, classerVerbatim, ouvrirFiche } = ctx;
-  const [onglet, setOnglet] = useState("synthese");
+  const [ongletChoisi, setOnglet] = useState("");
   const [detail, setDetail] = useState(null);
   const [fv, setFv] = useState({ quoi: "aclasser", code: "", k: "", page: 0 });
   const [tConseillers, ThC] = useTri(ar ? ar.parConseiller : [], "rang", false);
@@ -3283,7 +3449,10 @@ function VueRetours({ ctx }) {
   };
   const lignes = rTout.filter((l) => dansP(l.d));
   const orange = lignes.some((l) => l.lot.source === "orange");
-  const bandeauOrange = orange && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Export Orange :"), " le fichier ne contient que des clients insatisfaits (tickets) et aucun nom de conseiller. Lis les ", /* @__PURE__ */ React.createElement("b", null, "causes"), " et les ", /* @__PURE__ */ React.createElement("b", null, "verbatims"), " ; le taux de satisfaction affiché n'est pas représentatif de toute l'activité. « Satisfaction conseiller » = réponse à la question sur la qualité d'écoute du conseiller."));
+  const avecNote = lignes.some((l) => l.note !== null && l.note !== void 0);
+  const queInsat = avecNote ? lignes.every((l) => l.note === null || l.note === void 0 || l.note <= 3) : true;
+  const onglet = ongletChoisi || (avecNote ? "fibre" : "synthese");
+  const bandeauOrange = orange && (queInsat ? /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Export Orange :"), " le fichier ne contient que des clients insatisfaits (tickets) et aucun nom de conseiller. Lis les ", /* @__PURE__ */ React.createElement("b", null, "causes"), " et les ", /* @__PURE__ */ React.createElement("b", null, "verbatims"), " ; le taux de satisfaction affiché n'est pas représentatif de toute l'activité. Importe l'export SAT complet pour avoir le taux d'insatisfaction.")) : /* @__PURE__ */ React.createElement("div", { className: "bandeau info" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Réponses Orange :"), " satisfaits et insatisfaits, sans nom de conseiller. L'onglet ", /* @__PURE__ */ React.createElement("b", null, "Analyse Fibre"), " mesure l'insatisfaction sur la note globale (1 à 3 sur 5). Les autres onglets mesurent la « satisfaction conseiller », c'est-à-dire la réponse à la question sur la qualité d'écoute du conseiller.")));
   const negatifs = lignes.filter((l) => l.v && (l.s === 2 || l.s === 3 || l.nps !== null && l.nps <= 6));
   const listeCodes = Object.values(ar.codes);
   const optCodes = listeCodes.map((c) => ({ v: c.code, lib: `${c.code} · ${c.remarque}` }));
@@ -3306,7 +3475,7 @@ function VueRetours({ ctx }) {
   const exporter = () => exporterCSV("Analyse_retours_clients", ["Code", "Remarque client", "Famille", "Qui peut agir", "Retours", "Part des reproches"], ar.reproches.map((r) => [r.code, r.remarque, r.famille, r.qui, r.n, p100(r.part)]));
   const exporterC = () => exporterCSV("Detail_conseillers_satisfaction", ["Rang", "Conseiller", "Groupe", "Réponses", "Satisfaction", "Insatisfaits", "Détracteurs", "Remarques liées au conseiller", "Priorité", "Écart statistique (z)"], tConseillers.map((c) => [c.rang || "–", c.nom, c.groupe, c.n, p100(c.sat), c.insat, c.det, c.lies, c.statut, fr(c.z, 2)]));
   const exporterV = () => exporterCSV("Verbatims_negatifs", ["Date", "Conseiller", "Motif d'appel", "Satisfaction conseiller", "Note NPS", "Verbatim", "Code remarque", "Code secondaire", "Levier conseiller"], vus.map((l) => [fmtDate(l.d), l.nom, l.m, SAT[l.s] || "", l.nps, l.v, l.code, l.code2, l.lev === "O" ? "Oui" : l.lev === "N" ? "Non" : ""]));
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, bandeauOrange, /* @__PURE__ */ React.createElement(Onglets, { liste: [{ id: "synthese", lib: "Synthèse" }, { id: "remarques", lib: "Remarques des clients" }, { id: "ecarts", lib: "Écarts GRC" }, { id: "conseillers", lib: "Détail par conseiller" }, { id: "verbatims", lib: "Verbatims négatifs", n: ar.aClasser.length }], actif: onglet, onChange: setOnglet }), onglet === "synthese" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Retenir, { points: [
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, bandeauOrange, /* @__PURE__ */ React.createElement(Onglets, { liste: [avecNote && { id: "fibre", lib: "Analyse Fibre" }, { id: "synthese", lib: "Synthèse" }, { id: "remarques", lib: "Remarques des clients" }, { id: "ecarts", lib: "Écarts GRC" }, { id: "conseillers", lib: "Détail par conseiller" }, { id: "verbatims", lib: "Verbatims négatifs", n: ar.aClasser.length }].filter(Boolean), actif: onglet, onChange: setOnglet }), onglet === "fibre" && /* @__PURE__ */ React.createElement(VueFibre, { ctx, lignes }), onglet === "synthese" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Retenir, { points: [
     ar.parMois.length > 1 ? `La satisfaction conseiller passe de ${p100(premier.sat)} en ${libMois(premier.mois).split(" ")[0]} à ${p100(dernier.sat)} en ${libMois(dernier.mois).split(" ")[0]} ; les clients insatisfaits passent de ${premier.insat} à ${dernier.insat} par mois.` : `La satisfaction conseiller est de ${p100(ar.sat)} sur ${ar.n} réponses.`,
     q4.length > 0 && ar.insat > 0 && `Le problème est concentré : les ${q4.length} conseillers du groupe Q4 font ${p100(somme(q4.map((c) => c.n)) / ar.n, 0)} des réponses mais ${p100(somme(q4.map((c) => c.insat)) / ar.insat, 0)} des insatisfaits. ${pl(prio.length, "conseiller")} ${prio.length > 1 ? "sont prioritaires" : "est prioritaire"}.`,
     ar.reproches.length > 0 && `Première cause de reproche : ${ar.reproches[0].remarque.toLowerCase()} (${ar.reproches[0].n} retours, famille « ${ar.reproches[0].famille} »).`,
@@ -3319,6 +3488,127 @@ function VueRetours({ ctx }) {
     const ls = negatifs.filter((l) => l.code === detail.code || detail.secondaire && l.code2 === detail.code).sort((a, b) => String(b.d).localeCompare(String(a.d)));
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginBottom: 10 } }, pl(ls.length, "verbatim"), " · ", detail.famille), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap", style: { maxHeight: "60vh", overflowY: "auto" } }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("tbody", null, ls.map((l, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, /* @__PURE__ */ React.createElement("td", { style: { width: 90, whiteSpace: "nowrap" } }, fmtDate(l.d)), /* @__PURE__ */ React.createElement("td", { style: { width: 170 } }, l.nom), /* @__PURE__ */ React.createElement("td", { className: "verbatim", style: { maxWidth: "none" } }, "« ", l.v, " »")))))));
   })(), /* @__PURE__ */ React.createElement("div", { className: "modal-pied" }, /* @__PURE__ */ React.createElement("span", null), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setDetail(null) }, "Fermer"))));
+}
+function VueFibre({ ctx, lignes }) {
+  const { ref, enregistrerRef, peutEditer } = ctx;
+  const cle = (lignes.find((l) => l.note !== null) || { lot: { id: "" } }).lot.id;
+  const dateRef = (ref.datesAction || {})[cle] || "";
+  const [dateAction2, setDateAction] = useState(dateRef);
+  useEffect(() => {
+    setDateAction(dateRef);
+  }, [dateRef]);
+  const af = useMemo(() => analyserFibre(lignes, dateAction2), [lignes, dateAction2]);
+  const [vPage, setVPage] = useState(0);
+  if (!af) return /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement(Vide, null, "Aucune note globale dans les réponses importées. Importe l'export Orange (SAT) ou le fichier « Qualification combinée » pour obtenir l'analyse Fibre."));
+  const g = af.global;
+  const memoriser = async () => {
+    try {
+      await enregistrerRef({ ...ref, datesAction: { ...ref.datesAction || {}, [cle]: dateAction2 } });
+      avertir("Date de l’action enregistrée.");
+    } catch (e) {
+      avertir("Enregistrement impossible : " + e.message);
+    }
+  };
+  const maxF = Math.max(1, ...af.familles.map((f) => f.n));
+  const maxM = Math.max(1, ...af.marqueurs.map((f) => f.n));
+  const sems = af.semaines;
+  const lib = (s) => `${fmtDate(s.cle).slice(0, 5)}`;
+  const exporter = () => {
+    try {
+      const r = (v, f) => ({ v, formats: f });
+      const synthese = {
+        nom: "Synthèse",
+        titre: "Analyse de l’insatisfaction Fibre",
+        sous: `Du ${fmtDate(af.periode.du)} au ${fmtDate(af.periode.au)} · ${g.n} réponses · insatisfait = note globale de 1 à 3 sur 5`,
+        sansEntete: true,
+        colonnes: [{ lib: "", l: 46 }, { lib: "", l: 14 }, { lib: "", l: 14 }, { lib: "", l: 14 }, { lib: "", l: 14 }],
+        lignes: [
+          { section: "À retenir" },
+          ...retenirFibre(af).map((t) => ({ texte: "• " + t })),
+          { section: "Chiffres clés" },
+          { entete: ["Indicateur", "Valeur"] },
+          r(["Réponses Fibre", g.n], ["", "int"]),
+          r(["Clients insatisfaits (note 1 à 3)", g.insat], ["", "int"]),
+          r(["Taux d’insatisfaction", g.taux], ["", "pct"]),
+          r(["Clients satisfaits (note 4 ou 5)", g.sat], ["", "pct"]),
+          r(["Très satisfaits (note 5)", g.tres], ["", "pct"]),
+          r(["Note moyenne sur 5", g.moy], ["", "dec"]),
+          ...af.partConsReproche !== null ? [r(["Part du conseiller dans les reproches classés", af.partConsReproche], ["", "pct"])] : [],
+          ...af.avantApres ? [
+            { section: `Avant / après le ${fmtDate(af.avantApres.date)}` },
+            { entete: ["Période", "Réponses", "Insatisfaits", "Taux d’insatisfaction", "Note moyenne"] },
+            r([`Avant le ${fmtDate(af.avantApres.date)}`, af.avantApres.avant.n, af.avantApres.avant.insat, af.avantApres.avant.taux, af.avantApres.avant.moy], ["", "int", "int", "pct", "dec"]),
+            r([`Depuis le ${fmtDate(af.avantApres.date)}`, af.avantApres.apres.n, af.avantApres.apres.insat, af.avantApres.apres.taux, af.avantApres.apres.moy], ["", "int", "int", "pct", "dec"]),
+            { texte: af.avantApres.significatif ? "Écart significatif (test de comparaison de proportions, seuil 5 %)." : "Écart non significatif à ce stade : trop peu de réponses pour conclure.", discret: true }
+          ] : []
+        ]
+      };
+      const evol = {
+        nom: "Évolution",
+        titre: "Évolution de l’insatisfaction Fibre",
+        sous: "Par semaine (du lundi au dimanche) puis par mois",
+        sansEntete: true,
+        colonnes: [{ lib: "", l: 26 }, { lib: "", l: 12 }, { lib: "", l: 12 }, { lib: "", l: 14 }, { lib: "", l: 12 }],
+        lignes: [
+          { section: "Par semaine" },
+          { entete: ["Semaine", "Réponses", "Insatisfaits", "Taux d’insatisfaction", "Note moyenne"] },
+          ...sems.map((s) => r([`Du ${fmtDate(s.cle)} au ${fmtDate(s.fin)}`, s.n, s.insat, s.taux, s.moy], ["", "int", "int", "pct", "dec"])),
+          { section: "Par mois" },
+          { entete: ["Mois", "Réponses", "Insatisfaits", "Taux d’insatisfaction", "Note moyenne"] },
+          ...af.mois.map((s) => r([libMois(s.cle), s.n, s.insat, s.taux, s.moy], ["", "int", "int", "pct", "dec"])),
+          { texte: "Une semaine de moins de 10 réponses se lit avec prudence.", discret: true }
+        ]
+      };
+      const causes = {
+        nom: "Causes",
+        titre: "Causes de l’insatisfaction Fibre",
+        sous: `${af.nI} clients insatisfaits · classement Orange (marqueur et sous-marqueur)`,
+        sansEntete: true,
+        colonnes: [{ lib: "", l: 40 }, { lib: "", l: 12 }, { lib: "", l: 14 }],
+        lignes: [
+          { section: "Par famille" },
+          { entete: ["Famille", "Clients", "Part des insatisfaits"] },
+          ...af.familles.map((f) => r([f.lib, f.n, f.part], ["", "int", "pct"])),
+          { section: "Par marqueur" },
+          { entete: ["Marqueur", "Clients", "Part des insatisfaits"] },
+          ...af.marqueurs.map((f) => r([f.lib, f.n, f.part], ["", "int", "pct"])),
+          ...af.sousMarqueurs.length ? [{ section: "Par sous-marqueur" }, { entete: ["Sous-marqueur", "Clients", "Part des insatisfaits"] }, ...af.sousMarqueurs.map((f) => r([f.lib, f.n, f.part], ["", "int", "pct"]))] : []
+        ]
+      };
+      const comp = {
+        nom: "Satisfaits vs insatisfaits",
+        titre: "Ce qui distingue les insatisfaits des satisfaits",
+        sous: `${af.nI} insatisfaits (note 1 à 3) · ${af.nS} satisfaits (note 4 ou 5) · part de réponses « Satisfait(e) » à chaque question`,
+        sansEntete: true,
+        colonnes: [{ lib: "", l: 34 }, { lib: "", l: 16 }, { lib: "", l: 16 }, { lib: "", l: 14 }],
+        lignes: [{ entete: ["Question", "Chez les insatisfaits", "Chez les satisfaits", "Écart"] }, ...af.comparaison.map((c) => r([c.lib, c.satI, c.satS, c.ecart], ["", "pct", "pct", "pct"]))]
+      };
+      const verb = {
+        nom: "Verbatims insatisfaits",
+        titre: "Verbatims des clients insatisfaits",
+        sous: `${af.verbatims.length} clients · du plus récent au plus ancien`,
+        colonnes: [{ lib: "Date", l: 11, f: "date" }, { lib: "Note", l: 6, f: "int" }, { lib: "Famille", l: 20 }, { lib: "Marqueur", l: 24 }, { lib: "Sous-marqueur", l: 24 }, { lib: "Verbatim", l: 80 }],
+        lignes: af.verbatims.map((v) => [jourIso(v.d), v.note, v.famille, v.marqueur, v.sous, v.v])
+      };
+      const blob = creerXlsx([synthese, evol, causes, ...af.avecDims ? [comp] : [], verb]);
+      const nom = `Analyse_insatisfaction_Fibre_${aujourdhui()}.xlsx`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nom;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1e3);
+      avertir(`Analyse téléchargée : ${nom}`);
+    } catch (e) {
+      avertir("Export impossible : " + e.message);
+    }
+  };
+  const PAGE = 15;
+  const pages = Math.max(1, Math.ceil(af.verbatims.length / PAGE));
+  const page = Math.min(vPage, pages - 1);
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Retenir, { points: retenirFibre(af) }), /* @__PURE__ */ React.createElement("div", { className: "kpis" }, /* @__PURE__ */ React.createElement(Kpi, { lib: "Réponses Fibre", val: g.n, det: `Du ${fmtDate(af.periode.du)} au ${fmtDate(af.periode.au)}` }), /* @__PURE__ */ React.createElement(Kpi, { lib: "Taux d'insatisfaction", val: fr(g.taux * 100, 1), unite: "%", det: `${g.insat} clients notent 1 à 3 sur 5` }), /* @__PURE__ */ React.createElement(Kpi, { lib: "Clients satisfaits", val: fr(g.sat * 100, 1), unite: "%", det: `Note 4 ou 5 · ${p100(g.tres, 0)} donnent 5`, jauge: g.sat * 100 }), /* @__PURE__ */ React.createElement(Kpi, { lib: "Note moyenne", val: fr(g.moy, 2), unite: "/ 5", det: af.partConsReproche !== null ? `Conseiller en cause : ${p100(af.partConsReproche, 0)} des reproches classés` : "Sur la note globale" })), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 14, alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { className: "label" }, "Date de l'action menée"), /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", style: { width: 170 }, value: dateAction2, onChange: (e) => setDateAction(e.target.value), "aria-label": "Date de l'action menée" }), peutEditer && dateAction2 !== dateRef && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: memoriser }, "Garder cette date"), /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Compare l'insatisfaction avant et depuis cette date."), /* @__PURE__ */ React.createElement("span", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: exporter }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Analyse Fibre (Excel)")), af.avantApres && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Avant / après le ", fmtDate(af.avantApres.date)), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Période"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Réponses"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Insatisfaits"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Taux d'insatisfaction"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Note moyenne"))), /* @__PURE__ */ React.createElement("tbody", null, [["Avant", af.avantApres.avant], ["Depuis", af.avantApres.apres]].map(([l, x]) => /* @__PURE__ */ React.createElement("tr", { key: l }, /* @__PURE__ */ React.createElement("td", null, l, " le ", fmtDate(af.avantApres.date)), /* @__PURE__ */ React.createElement("td", { className: "num" }, x.n), /* @__PURE__ */ React.createElement("td", { className: "num" }, x.insat), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, p100(x.taux))), /* @__PURE__ */ React.createElement("td", { className: "num" }, x.moy !== null ? fr(x.moy, 2) : "—"))))), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 8 } }, af.avantApres.significatif ? "Écart significatif (test de comparaison de proportions, seuil 5 %)." : "Écart non significatif à ce stade : trop peu de réponses pour conclure. À confirmer sur les prochaines semaines.")), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Évolution de l'insatisfaction par semaine"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Part des clients qui notent 1 à 3 sur 5. Semaine du lundi au dimanche ; une semaine de moins de 10 réponses se lit avec prudence."), /* @__PURE__ */ React.createElement(Courbe, { hauteur: 190, categories: sems.map(lib), series: [{ nom: "Taux d'insatisfaction", valeurs: sems.map((s) => s.taux) }] }), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab", style: { marginTop: 10 } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Semaine"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Réponses"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Insatisfaits"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Taux"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Note moyenne"))), /* @__PURE__ */ React.createElement("tbody", null, sems.map((s) => /* @__PURE__ */ React.createElement("tr", { key: s.cle }, /* @__PURE__ */ React.createElement("td", null, "Du ", fmtDate(s.cle), " au ", fmtDate(s.fin), s.n < 10 && /* @__PURE__ */ React.createElement("span", { className: "petit" }, " · peu de réponses")), /* @__PURE__ */ React.createElement("td", { className: "num" }, s.n), /* @__PURE__ */ React.createElement("td", { className: "num" }, s.insat), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, p100(s.taux))), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(s.moy, 2)))), af.mois.length > 1 && af.mois.map((m) => /* @__PURE__ */ React.createElement("tr", { key: m.cle, className: "total" }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, libMois(m.cle))), /* @__PURE__ */ React.createElement("td", { className: "num" }, m.n), /* @__PURE__ */ React.createElement("td", { className: "num" }, m.insat), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, p100(m.taux))), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(m.moy, 2)))))))), /* @__PURE__ */ React.createElement("div", { className: "grille", style: { gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", alignItems: "start" } }, /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Causes des insatisfaits"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, af.nI, " clients notent 1 à 3 · classement Orange (marqueur)."), af.familles.map((f) => /* @__PURE__ */ React.createElement("div", { key: f.lib, style: { marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { className: "petit" }, /* @__PURE__ */ React.createElement("b", null, f.lib)), /* @__PURE__ */ React.createElement(Barre, { v: f.n, max: maxF, texte: `${f.n} · ${p100(f.part, 0)}` }))), af.marqueurs.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Détail par marqueur"), af.marqueurs.map((f) => /* @__PURE__ */ React.createElement("div", { key: f.lib, style: { marginBottom: 6 } }, /* @__PURE__ */ React.createElement("div", { className: "petit" }, f.lib), /* @__PURE__ */ React.createElement(Barre, { v: f.n, max: maxM, texte: `${f.n}` })))), af.sousMarqueurs.length > 0 && /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 8 } }, "Sous-marqueurs : ", af.sousMarqueurs.map((f) => `${f.lib} (${f.n})`).join(" · "))), af.avecDims && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Satisfaits contre insatisfaits"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Part de réponses « Satisfait(e) » à chaque question du questionnaire. Plus l'écart est grand, plus la question pèse dans l'insatisfaction."), /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Question"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Insatisfaits"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Satisfaits"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Écart"))), /* @__PURE__ */ React.createElement("tbody", null, [...af.comparaison].sort((a, b) => (b.ecart ?? -1) - (a.ecart ?? -1)).map((c) => /* @__PURE__ */ React.createElement("tr", { key: c.lib }, /* @__PURE__ */ React.createElement("td", null, c.lib), /* @__PURE__ */ React.createElement("td", { className: "num" }, p100(c.satI, 0)), /* @__PURE__ */ React.createElement("td", { className: "num" }, p100(c.satS, 0)), /* @__PURE__ */ React.createElement("td", { className: "num" }, /* @__PURE__ */ React.createElement("b", null, c.ecart !== null ? `${fr(c.ecart * 100, 0)} pts` : "—")))))), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 8 } }, "Lecture : chez les clients insatisfaits, la part de « Satisfait(e) » à la question ; même chose chez les satisfaits."))), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Verbatims des clients insatisfaits"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, af.verbatims.length, " clients · du plus récent au plus ancien."), /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Date"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Note"), /* @__PURE__ */ React.createElement("th", null, "Cause"), /* @__PURE__ */ React.createElement("th", null, "Verbatim"))), /* @__PURE__ */ React.createElement("tbody", null, af.verbatims.slice(page * PAGE, page * PAGE + PAGE).map((v, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, /* @__PURE__ */ React.createElement("td", { style: { whiteSpace: "nowrap" } }, fmtDate(v.d)), /* @__PURE__ */ React.createElement("td", { className: "num" }, v.note), /* @__PURE__ */ React.createElement("td", { style: { minWidth: 160 } }, v.marqueur || /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Non classé"), v.sous && /* @__PURE__ */ React.createElement("div", { className: "petit" }, v.sous), /* @__PURE__ */ React.createElement("div", { className: "petit" }, v.famille)), /* @__PURE__ */ React.createElement("td", null, v.v || /* @__PURE__ */ React.createElement("span", { className: "petit" }, "—"))))))), pages > 1 && /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 10, alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", disabled: page === 0, onClick: () => setVPage(page - 1) }, "Précédent"), /* @__PURE__ */ React.createElement("span", { className: "petit" }, "Page ", page + 1, " / ", pages), /* @__PURE__ */ React.createElement("button", { className: "btn mini", disabled: page >= pages - 1, onClick: () => setVPage(page + 1) }, "Suivant"))));
 }
 function VueDispositif({ ctx }) {
   const { conseillers, ok, coachingDe, ae, rTout, ref, enregistrerRef, filtres, ouvrirFiche, creerSuivi, peutEditer, suivisCol } = ctx;
