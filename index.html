@@ -850,7 +850,10 @@ const lotsOrange = (lignes, h, c, nomFichier, titre) => {
     });
   });
   const lus = groupes.filter((g) => Object.keys(g.parId).length);
-  if (!lus.length) throw new Error("aucune réponse Fibre ni Mobile dans ce fichier.");
+  if (!lus.length) {
+    const vues = [...new Set(lignes.slice(h + 1).map((l) => txt(l, c.act)).filter(Boolean))];
+    throw new Error(`ce fichier ne contient que l'activité ${vues.join(", ") || "inconnue"}. Seules les réponses Fibre et Mobile (Cross) sont reprises dans l'outil.`);
+  }
   const hors = total - lignes.slice(h + 1).filter((l) => {
     const id = txt(l, c.id);
     return (id || txt(l, c.v)) && ACTS_ORANGE.some((a) => a.test(norm(txt(l, c.act))));
@@ -1985,6 +1988,10 @@ function analyserFibre(lignes, dateAction2) {
   const periode = { du: jourIso(L.map((l) => l.d).sort()[0]), au: jourIso(L.map((l) => l.d).sort().slice(-1)[0]) };
   return { global: res(L), semaines, mois, familles, marqueurs, sousMarqueurs, comparaison, avecDims, partCons, partConsReproche, pic, avantApres, verbatims, periode, nI: I.length, nS: S.length };
 }
+const activiteOrangeDe = (act) => {
+  const n = norm(act);
+  return /cross|mobile/.test(n) ? "Mobile" : /fibre/.test(n) ? "Fibre" : "";
+};
 function retenirFibre(af, nom = "Fibre") {
   if (!af) return [];
   const g = af.global;
@@ -3455,6 +3462,9 @@ function VueRetoursActivite({ ctx }) {
   const avecNote = lignes.some((l) => l.note !== null && l.note !== void 0);
   const queInsat = avecNote ? lignes.every((l) => l.note === null || l.note === void 0 || l.note <= 3) : true;
   const onglet = ongletChoisi || (avecNote ? "fibre" : "synthese");
+  const attendu = orange ? activiteOrangeDe(ctx.filtres.activite) : "";
+  const horsAct = attendu ? lignes.filter((l) => l.note !== null && l.note !== void 0 && l.m && l.m !== attendu) : [];
+  const autresActs = [...new Set(horsAct.map((l) => l.m))];
   const bandeauOrange = orange && (queInsat ? /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Export Orange :"), " le fichier ne contient que des clients insatisfaits (tickets) et aucun nom de conseiller. Lis les ", /* @__PURE__ */ React.createElement("b", null, "causes"), " et les ", /* @__PURE__ */ React.createElement("b", null, "verbatims"), " ; le taux de satisfaction affiché n'est pas représentatif de toute l'activité. Importe l'export SAT complet pour avoir le taux d'insatisfaction.")) : /* @__PURE__ */ React.createElement("div", { className: "bandeau info" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Réponses Orange :"), " satisfaits et insatisfaits, sans nom de conseiller. L'onglet ", /* @__PURE__ */ React.createElement("b", null, "Analyse insatisfaction"), " mesure l'insatisfaction de cette activité sur la note globale (1 à 3 sur 5). Les autres onglets mesurent la « satisfaction conseiller », c'est-à-dire la réponse à la question sur la qualité d'écoute du conseiller.")));
   const negatifs = lignes.filter((l) => l.v && (l.s === 2 || l.s === 3 || l.nps !== null && l.nps <= 6));
   const listeCodes = Object.values(ar.codes);
@@ -3478,7 +3488,7 @@ function VueRetoursActivite({ ctx }) {
   const exporter = () => exporterCSV("Analyse_retours_clients", ["Code", "Remarque client", "Famille", "Qui peut agir", "Retours", "Part des reproches"], ar.reproches.map((r) => [r.code, r.remarque, r.famille, r.qui, r.n, p100(r.part)]));
   const exporterC = () => exporterCSV("Detail_conseillers_satisfaction", ["Rang", "Conseiller", "Groupe", "Réponses", "Satisfaction", "Insatisfaits", "Détracteurs", "Remarques liées au conseiller", "Priorité", "Écart statistique (z)"], tConseillers.map((c) => [c.rang || "–", c.nom, c.groupe, c.n, p100(c.sat), c.insat, c.det, c.lies, c.statut, fr(c.z, 2)]));
   const exporterV = () => exporterCSV("Verbatims_negatifs", ["Date", "Conseiller", "Motif d'appel", "Satisfaction conseiller", "Note NPS", "Verbatim", "Code remarque", "Code secondaire", "Levier conseiller"], vus.map((l) => [fmtDate(l.d), l.nom, l.m, SAT[l.s] || "", l.nps, l.v, l.code, l.code2, l.lev === "O" ? "Oui" : l.lev === "N" ? "Non" : ""]));
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, bandeauOrange, /* @__PURE__ */ React.createElement(Onglets, { liste: [avecNote && { id: "fibre", lib: "Analyse insatisfaction" }, { id: "synthese", lib: "Synthèse" }, { id: "remarques", lib: "Remarques des clients" }, { id: "ecarts", lib: "Écarts GRC" }, { id: "conseillers", lib: "Détail par conseiller" }, { id: "verbatims", lib: "Verbatims négatifs", n: ar.aClasser.length }].filter(Boolean), actif: onglet, onChange: setOnglet }), onglet === "fibre" && /* @__PURE__ */ React.createElement(VueFibre, { ctx, lignes }), onglet === "synthese" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Retenir, { points: [
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, horsAct.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Attention : ", fr(horsAct.length, 0), " réponse", horsAct.length > 1 ? "s" : "", " ", autresActs.join(", "), " ", horsAct.length > 1 ? "sont rangées" : "est rangée", " dans ", ctx.filtres.projet, " · ", ctx.filtres.activite), ", qui doit contenir uniquement les réponses ", attendu, ". Elles ont été importées dans la mauvaise activité. Va dans Import / export, supprime la satisfaction client de ", ctx.filtres.projet, " · ", ctx.filtres.activite, ", puis réimporte tes fichiers : l'outil range lui-même les réponses Fibre et Mobile.")), bandeauOrange, /* @__PURE__ */ React.createElement(Onglets, { liste: [avecNote && { id: "fibre", lib: "Analyse insatisfaction" }, { id: "synthese", lib: "Synthèse" }, { id: "remarques", lib: "Remarques des clients" }, { id: "ecarts", lib: "Écarts GRC" }, { id: "conseillers", lib: "Détail par conseiller" }, { id: "verbatims", lib: "Verbatims négatifs", n: ar.aClasser.length }].filter(Boolean), actif: onglet, onChange: setOnglet }), onglet === "fibre" && /* @__PURE__ */ React.createElement(VueFibre, { ctx, lignes }), onglet === "synthese" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Retenir, { points: [
     ar.parMois.length > 1 ? `La satisfaction conseiller passe de ${p100(premier.sat)} en ${libMois(premier.mois).split(" ")[0]} à ${p100(dernier.sat)} en ${libMois(dernier.mois).split(" ")[0]} ; les clients insatisfaits passent de ${premier.insat} à ${dernier.insat} par mois.` : `La satisfaction conseiller est de ${p100(ar.sat)} sur ${ar.n} réponses.`,
     q4.length > 0 && ar.insat > 0 && `Le problème est concentré : les ${q4.length} conseillers du groupe Q4 font ${p100(somme(q4.map((c) => c.n)) / ar.n, 0)} des réponses mais ${p100(somme(q4.map((c) => c.insat)) / ar.insat, 0)} des insatisfaits. ${pl(prio.length, "conseiller")} ${prio.length > 1 ? "sont prioritaires" : "est prioritaire"}.`,
     ar.reproches.length > 0 && `Première cause de reproche : ${ar.reproches[0].remarque.toLowerCase()} (${ar.reproches[0].n} retours, famille « ${ar.reproches[0].famille} »).`,
@@ -4031,6 +4041,12 @@ function VueDonnees({ ctx }) {
   };
   const valider = async (a) => {
     if (!a.projet || !a.activite) return avertir("Choisis le projet et l'activité concernés par ce fichier.");
+    if (a.activiteOrange) {
+      const attendu = activiteOrangeDe(a.activite);
+      if (attendu && attendu !== a.activiteOrange && !confirm(`Ces réponses sont des réponses ${a.activiteOrange}, et tu les enregistres dans ${a.projet} · ${a.activite}, qui reçoit normalement les réponses ${attendu}.
+
+Enregistrer quand même ?`)) return;
+    }
     const existe = jeux.find((j) => j.type === a.type && j.projet === a.projet && j.activite === a.activite);
     const grAct = a.type === "grille" && a.nouvelleGrille ? grilles.find((g) => !g.archive && g.projet === a.projet && g.activite === a.activite) : null;
     if (grAct && !a.grille.some((it) => grAct.tousItems.some((x) => x.code === it.code)) && !confirm(`${a.projet} · ${a.activite} a déjà une grille (${grAct.items.length} critères, ${ecoutesCol.items.filter((e) => e.projet === a.projet && e.activite === a.activite).length} écoutes).
