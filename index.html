@@ -3769,13 +3769,13 @@ function VueEcoutes({ ctx }) {
   const lignes = useMemo(() => memeActivite.flatMap((x) => x.ecoutes.map((e) => ({ ...e, nom: nomDe(e.conseillerId), grilleId: e.grilleId || x.grille.id, ancienne: !!x.grille.archive }))), [aeTout, g, parId]);
   const autres = memeActivite.filter((x) => x.grille.id !== g.id);
   const [triees, Th] = useTri(lignes.filter((e) => !agent || e.conseillerId === agent), "date", true);
+  const [comOuverts, setComOuverts] = useState([]);
   if (!g) return /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Aucune grille d'évaluation sur ce périmètre"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Les écoutes GRC s'appuient sur une grille d'évaluation (items, points, repères), propre à chaque activité. Importe le fichier « Grille d'évaluation agents GRC » en choisissant son projet et son activité : la grille et les écoutes déjà saisies seront reprises."), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => setVue("donnees") }, /* @__PURE__ */ React.createElement(Icone, { nom: "importer", taille: 15 }), " Importer une grille"));
   const vide = { conseillerId: agent || "", projet: g.projet, activite: g.activite, date: aujourdhui(), reference: "", evaluateur: ref.formateurs[0] || "", mode: MODES_ECOUTE[0], items: {}, observations: "", action: "" };
   const agents = trier((ae ? ae.parAgent : []).map((a) => ({ ...a, nom: nomDe(a.id) })), "nom");
   const gE = edition ? grilles.find((x) => x.id === edition.grilleId) || g : g;
   const sc = edition ? scoreEcoute(edition, gE.items) : null;
   const noter = (code, v) => setEdition({ ...edition, items: { ...edition.items, [code]: edition.items[code] === v ? void 0 : v } });
-  const [comOuverts, setComOuverts] = useState([]);
   const commenter = (code, t) => setEdition({ ...edition, commentaires: { ...edition.commentaires || {}, [code]: t } });
   const enregistrer = async (debrief) => {
     const items = {};
