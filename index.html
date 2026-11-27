@@ -392,6 +392,38 @@ tr.a-faire td { background: #fcfcfe; color: var(--encre-2); }
 .etapes { margin: 4px 0 8px; padding-left: 18px; font-size: 13px; }
 .etapes li { margin-bottom: 4px; }
 @media print { body.imprime-bilan .onglets, body.imprime-bilan .barre-haut, body.imprime-bilan .entete { display: none !important; } }
+/* ---------- Mes projets ---------- */
+.projets-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.projet-carte { text-align: left; cursor: pointer; font: inherit; color: inherit; border: 1px solid var(--bord); width: 100%; }
+.projet-carte:hover { border-color: var(--violet); box-shadow: 0 6px 18px rgba(42,15,61,.08); }
+.projet-nom { font-size: 16px; color: var(--violet); }
+.meteo { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #e7f6ec; color: #17803d; }
+.meteo.m1 { background: #fff7e6; color: var(--alerte); }
+.meteo.m2 { background: #fde8e8; color: var(--critique); }
+.section-p { border: 2px dashed transparent; }
+.section-p.survol { border-color: var(--violet); }
+.ajout-p { margin-top: 8px; border-style: dashed; background: transparent; }
+.ptache { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--carte); }
+.ptache[draggable="true"], .taches > div[draggable="true"] { cursor: grab; }
+.ptache.retard { border-left: 3px solid var(--critique); }
+.ptache.faite { opacity: .6; }
+.ptache.faite .tache-titre { text-decoration: line-through; }
+.ptache input[type=checkbox] { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--violet); }
+.jalon { color: var(--accent, #E4007C); }
+.kanban { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 10px; overflow-x: auto; }
+.kol { background: var(--fond); border-radius: 12px; padding: 8px; min-height: 260px; display: flex; flex-direction: column; gap: 6px; border: 2px dashed transparent; }
+.kol.survol { border-color: var(--violet); }
+.sous-taches { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.sous-taches label { display: flex; gap: 8px; align-items: center; }
+.sous-taches label.faite span { text-decoration: line-through; opacity: .6; }
+.sous-taches label .btn { margin-left: auto; }
+@media (max-width: 760px) { .kanban { grid-template-columns: repeat(4, 240px); } }
+.equipe { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.equipe .etiq { font-size: 12px; padding: 3px 9px; }
+.equipe .etiq button { border: 0; background: none; cursor: pointer; margin-left: 4px; color: var(--encre-3); font-size: 13px; }
+.resp-sel { font: inherit; font-size: 11px; border: 1px solid var(--bord); border-radius: 999px; padding: 1px 6px; background: var(--fond); color: var(--encre-2); cursor: pointer; max-width: 200px; }
+.resp-sel:hover { border-color: var(--violet); }
+.lien-btn { border: 0; background: none; padding: 0; color: var(--violet); text-decoration: underline; cursor: pointer; font: inherit; }
 </style>
 </head>
 <body>
@@ -399,7 +431,7 @@ tr.a-faire td { background: #fcfcfe; color: var(--encre-2); }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 const { useState, useMemo, useEffect, useRef } = React;
 const firebaseConfig = {
   apiKey: "AIzaSyC8lXHB5eg9j86C7wpEK7i9e05xM9zLyG8",
@@ -573,6 +605,7 @@ const Icone = ({ nom, taille = 18 }) => {
     etoile: "M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2-6.2 3.2L7 14.2l-5-4.9 6.9-1z",
     bulle: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
     grille: "M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18",
+    dossier: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z",
     coche: "M20 6L9 17l-5-5",
     menu: "M3 6h18M3 12h18M3 18h18",
     loupe: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35",
@@ -2218,10 +2251,7 @@ function Outil({ user, modeLocalInitial }) {
   const [ref, enregistrerRef] = useDocument("parametres", "referentiels", REF_DEFAUT, surErreur);
   const [securite, enregistrerSecurite] = useDocument("parametres", "securite", { reglesOk: false }, surErreur);
   const [taches, enregistrerTaches] = useDocument("parametres", "taches", TACHES_DEFAUT, surErreur);
-  const [journalSauv, setJournalSauv] = useState(GS_JOURNAL_DEFAUT);
-  useEffect(() => onSnapshot(refDoc("parametres", "sauvegardes"), (s) => setJournalSauv(s.exists() ? { ...GS_JOURNAL_DEFAUT, ...s.data() } : GS_JOURNAL_DEFAUT), () => {
-    try { setJournalSauv(JSON.parse(localStorage.getItem(GS_CLE_JOURNAL_LOCAL) || "null") || GS_JOURNAL_DEFAUT); } catch (e) { }
-  }), []);
+  const [suiviProjets, enregistrerSuiviProjets] = useDocument("parametres", "suiviProjets", SUIVI_PROJETS_DEFAUT, surErreur);
   const conseillersCol = useCollection("conseillers", surErreur);
   const sessionsCol = useCollection("sessions", surErreur);
   const lotsCol = useCollection("lots", surErreur);
@@ -2236,6 +2266,7 @@ function Outil({ user, modeLocalInitial }) {
   const [nouvelleEcoute, setNouvelleEcoute] = useState(null);
   const [nouvelleAction, setNouvelleAction] = useState(null);
   const [menuOuvert, setMenuOuvert] = useState(false);
+  const [projetOuvert, setProjetOuvert] = useState(null);
   const aller = (v) => {
     setVue(v);
     setMenuOuvert(false);
@@ -2376,13 +2407,12 @@ function Outil({ user, modeLocalInitial }) {
     if (conflits.size) t.push({ date: "", texte: `${conflits.size} sessions se chevauchent pour un même formateur`, vue: "planning" });
     let ds = "";
     try {
-      ds = journalSauv && journalSauv.derniereSauvegarde || localStorage.getItem("tersea_derniere_sauvegarde") || "";
-      if (gsRepriseSignalee()) t.push({ date: "", texte: "Restauration interrompue : reprends-la ou reviens à l'état d'avant", vue: "sauvegardes" });
+      ds = localStorage.getItem("tersea_derniere_sauvegarde") || "";
     } catch (e) {
     }
-    if (conseillers.length && (!ds || Date.now() - new Date(ds).getTime() > 7 * 864e5)) t.push({ date: "", texte: ds ? `Dernière sauvegarde le ${fmtDate(ds)} : pense à en refaire une` : "Aucune sauvegarde enregistrée : pense à en faire une", vue: "sauvegardes" });
+    if (conseillers.length && (!ds || Date.now() - new Date(ds).getTime() > 7 * 864e5)) t.push({ date: "", texte: ds ? `Dernière sauvegarde le ${fmtDate(ds)} : pense à en refaire une` : "Aucune sauvegarde téléchargée depuis ce navigateur", vue: "sauvegardes" });
     return t.sort((a, b) => String(a.date || "9").localeCompare(String(b.date || "9")));
-  }, [actions, suivis, fSessions, ae, ar, conflits, parId, vue, journalSauv]);
+  }, [actions, suivis, fSessions, ae, ar, conflits, parId, vue]);
   const ecrireLot = async (type, projet, activite, meta, rows, infos) => {
     const base = `${type}__${slug(projet)}__${slug(activite)}`;
     const morceaux = [];
@@ -2724,7 +2754,7 @@ function Outil({ user, modeLocalInitial }) {
       if (ajout.length) await lotsCol.modifier(tete.id, { meta: JSON.stringify({ ...meta, codes: [...meta.codes || [], ...ajout] }) });
     }
   };
-  const donneesSauvegarde = () => ({ version: 3, date: (/* @__PURE__ */ new Date()).toISOString(), ref, grilles: grillesCol.items, conseillers, sessions, lots, ecoutes: ecoutesCol.items, actions: actionsCol.items, suivis: suivisCol.items, taches });
+  const donneesSauvegarde = () => ({ version: 3, date: (/* @__PURE__ */ new Date()).toISOString(), ref, grilles: grillesCol.items, conseillers, sessions, lots, ecoutes: ecoutesCol.items, actions: actionsCol.items, suivis: suivisCol.items, taches, suiviProjets });
   const telechargerSauvegarde = (prefixe) => {
     const h = /* @__PURE__ */ new Date();
     const nom = `${prefixe}_${aujourdhui()}_${pad(h.getHours())}h${pad(h.getMinutes())}.json`;
@@ -2745,6 +2775,10 @@ function Outil({ user, modeLocalInitial }) {
       progres("Mes tâches…");
       await enregistrerTaches({ ...TACHES_DEFAUT, ...d.taches });
     }
+    if (d.suiviProjets) {
+      progres("Mes projets…");
+      await enregistrerSuiviProjets({ ...SUIVI_PROJETS_DEFAUT, ...d.suiviProjets });
+    }
     const etapes = [[conseillersCol, d.conseillers, "Agents"], [sessionsCol, d.sessions || [], "Formations"], [lotsCol, d.lots, "Données importées"], [grillesCol, d.grilles || [], "Grilles"], [ecoutesCol, d.ecoutes || [], "Écoutes"], [actionsCol, d.actions || [], "Plan d'action"], [suivisCol, d.suivis || [], "Accompagnements"]];
     for (const [col, liste, lib] of etapes) {
       progres(`Restauration en cours : ${lib}… ne ferme pas cette page.`);
@@ -2753,7 +2787,6 @@ function Outil({ user, modeLocalInitial }) {
   };
   const perimetre = filtres.projet ? libPA(filtres) : "Tous les projets";
   const ctx = {
-    journalSauv,
     ref,
     enregistrerRef,
     peutEditer,
@@ -2828,13 +2861,23 @@ function Outil({ user, modeLocalInitial }) {
     telechargerSauvegarde,
     appliquerRestauration,
     taches,
-    enregistrerTaches
+    enregistrerTaches,
+    suiviProjets,
+    enregistrerSuiviProjets,
+    projetOuvert,
+    setProjetOuvert,
+    ouvrirProjet: (id, tacheId) => {
+      setFiche(null);
+      setProjetOuvert({ id, tacheId });
+      aller("mesprojets");
+    }
   };
-  ctx.mesTaches = useMemo(() => toutesLesTaches(ctx, taches), [taches, suivisCol.items, actionsCol.items, sessions, conseillers, ref, aTraiter, ae]);
+  ctx.mesTaches = useMemo(() => toutesLesTaches(ctx, taches), [taches, suiviProjets, suivisCol.items, actionsCol.items, sessions, conseillers, ref, aTraiter, ae]);
   const nbTachesJour = ctx.mesTaches.filter((x) => !x.masquee && !x.fait && x.echeance && x.echeance <= aujourdhui()).length;
   const TITRES = {
     accueil: ["Tableau de bord", "Ce que je dois faire, ce que j'ai fait, et ce que ça donne"],
     taches: ["Mon activité", "Ma to-do du jour et de la semaine, et mon bilan mensuel prêt à partager"],
+    mesprojets: ["Mes projets", "Mes projets de pilotage : étapes, tâches, échéances, indicateurs et points d'avancement"],
     diagnostic: ["Diagnostic et priorités", "Compétences maîtrisées, écarts récurrents, agents prioritaires : sur quoi agir"],
     plan: ["Plans d'action", "Les actions GRC, leur avancement et ce que le terrain en dit"],
     suivi: ["Accompagnements", "Tous les accompagnements : coachings, doubles écoutes, débriefs, ateliers"],
@@ -2857,13 +2900,17 @@ function Outil({ user, modeLocalInitial }) {
     donnees: ["Import / export", "Importer les fichiers Excel et gérer les données chargées"],
     sauvegardes: ["Sauvegardes", "Sauvegarder, restaurer, revenir en arrière"]
   };
+  const retardsProjets = (suiviProjets.projets || []).filter((p) => p.statut === "Actif").reduce((n, p) => n + (p.taches || []).filter(enRetardP).length, 0);
   const retardsPlan = actions.filter(actionEnRetard).length, retardsSuivi = suivis.filter(suiviEnRetard).length;
-  const Nav = ({ id, icone, libelle, pastille }) => /* @__PURE__ */ React.createElement("button", { className: `nav-btn ${vue === id ? "actif" : ""}`, "aria-current": vue === id ? "page" : void 0, onClick: () => aller(id) }, /* @__PURE__ */ React.createElement(Icone, { nom: icone }), " ", /* @__PURE__ */ React.createElement("span", null, libelle), pastille ? /* @__PURE__ */ React.createElement("span", { className: "pastille" }, pastille) : null);
-  const sansFiltre = ["donnees", "projets", "referentiels", "conseillers", "parametres", "sauvegardes", "grilles"].includes(vue);
+  const Nav = ({ id, icone, libelle, pastille }) => /* @__PURE__ */ React.createElement("button", { className: `nav-btn ${vue === id ? "actif" : ""}`, "aria-current": vue === id ? "page" : void 0, onClick: () => {
+    if (id === "mesprojets") setProjetOuvert(null);
+    aller(id);
+  } }, /* @__PURE__ */ React.createElement(Icone, { nom: icone }), " ", /* @__PURE__ */ React.createElement("span", null, libelle), pastille ? /* @__PURE__ */ React.createElement("span", { className: "pastille" }, pastille) : null);
+  const sansFiltre = ["mesprojets", "donnees", "projets", "referentiels", "conseillers", "parametres", "sauvegardes", "grilles"].includes(vue);
   return /* @__PURE__ */ React.createElement("div", { className: "app" }, /* @__PURE__ */ React.createElement(Messages, null), /* @__PURE__ */ React.createElement("button", { className: "burger no-print", onClick: () => setMenuOuvert(!menuOuvert), "aria-expanded": menuOuvert, "aria-label": "Ouvrir ou fermer le menu" }, /* @__PURE__ */ React.createElement(Icone, { nom: "menu" }), " Menu"), /* @__PURE__ */ React.createElement("aside", { className: `side ${menuOuvert ? "ouvert" : ""}` }, /* @__PURE__ */ React.createElement("div", { className: "marque" }, /* @__PURE__ */ React.createElement("div", { className: "marque-logo" }, /* @__PURE__ */ React.createElement("img", { src: "logo.png", alt: "", onError: (e) => {
     e.target.style.display = "none";
     e.target.parentNode.textContent = "T";
-  } })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "marque-titre" }, "GRC Pilot"), /* @__PURE__ */ React.createElement("div", { className: "marque-sous" }, "Tersea · V7"))), /* @__PURE__ */ React.createElement("nav", { "aria-label": "Navigation principale" }, /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Pilotage"), /* @__PURE__ */ React.createElement(Nav, { id: "accueil", icone: "accueil", libelle: "Tableau de bord", pastille: aTraiter.length || null }), /* @__PURE__ */ React.createElement(Nav, { id: "taches", icone: "coche", libelle: "Mon activité", pastille: nbTachesJour || null }), /* @__PURE__ */ React.createElement(Nav, { id: "diagnostic", icone: "loupe", libelle: "Diagnostic et priorités" }), /* @__PURE__ */ React.createElement(Nav, { id: "plan", icone: "liste", libelle: "Plans d'action", pastille: retardsPlan || null }), /* @__PURE__ */ React.createElement(Nav, { id: "suivi", icone: "utilisateurs", libelle: "Accompagnements", pastille: retardsSuivi || null }), /* @__PURE__ */ React.createElement(Nav, { id: "rapport", icone: "telecharger", libelle: "Reporting" }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Évaluation et analyse"), /* @__PURE__ */ React.createElement(Nav, { id: "conseillers", icone: "grille", libelle: "Agents" }), /* @__PURE__ */ React.createElement(Nav, { id: "grilles", icone: "reglages", libelle: "Grilles GRC" }), /* @__PURE__ */ React.createElement(Nav, { id: "ecoutes", icone: "casque", libelle: "Évaluations" }), /* @__PURE__ */ React.createElement(Nav, { id: "qualite", icone: "etoile", libelle: "Écoutes qualité" }), /* @__PURE__ */ React.createElement(Nav, { id: "retours", icone: "bulle", libelle: "SATCLI", pastille: ar && ar.aClasser.length ? ar.aClasser.length : null }), /* @__PURE__ */ React.createElement(Nav, { id: "carto", icone: "cible", libelle: "Cartographies" }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Développement des compétences"), /* @__PURE__ */ React.createElement(Nav, { id: "coaching", icone: "utilisateurs", libelle: "Coaching" }), /* @__PURE__ */ React.createElement(Nav, { id: "dispositif", icone: "cible", libelle: "Dispositif coaching" }), /* @__PURE__ */ React.createElement(Nav, { id: "doubles", icone: "deux", libelle: "Doubles écoutes" }), /* @__PURE__ */ React.createElement(Nav, { id: "formations", icone: "livre", libelle: "Formations et ateliers" }), /* @__PURE__ */ React.createElement(Nav, { id: "efficacite", icone: "tendance", libelle: "Suivi post-intervention" }), /* @__PURE__ */ React.createElement(Nav, { id: "planning", icone: "calendrier", libelle: "Planning", pastille: conflits.size || null }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Administration"), /* @__PURE__ */ React.createElement(Nav, { id: "projets", icone: "accueil", libelle: "Projets et activités" }), /* @__PURE__ */ React.createElement(Nav, { id: "referentiels", icone: "liste", libelle: "Référentiels" }), /* @__PURE__ */ React.createElement(Nav, { id: "parametres", icone: "bouclier", libelle: "Paramètres" }), /* @__PURE__ */ React.createElement(Nav, { id: "donnees", icone: "importer", libelle: "Import / export" }), /* @__PURE__ */ React.createElement(Nav, { id: "sauvegardes", icone: "base", libelle: "Sauvegardes" })), /* @__PURE__ */ React.createElement("div", { className: "side-bas" }, /* @__PURE__ */ React.createElement("div", { className: "qui" }, /* @__PURE__ */ React.createElement("b", null, modeLocal ? "Mode local" : "Mon outil"), user.email), /* @__PURE__ */ React.createElement("button", { className: "btn sombre", onClick: () => signOut(auth) }, /* @__PURE__ */ React.createElement(Icone, { nom: "sortie", taille: 15 }), " Déconnexion"))), /* @__PURE__ */ React.createElement("main", { className: "main" }, modeLocal && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Mode local."), " La base en ligne refuse l'accès : les données sont enregistrées uniquement dans ce navigateur. Vérifie que les règles de sécurité Firebase ont bien été publiées (fichier « regles-firestore.txt »).")), /* @__PURE__ */ React.createElement("div", { className: "entete" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h1", null, TITRES[vue][0]), /* @__PURE__ */ React.createElement("p", null, TITRES[vue][1]))), !sansFiltre && /* @__PURE__ */ React.createElement("div", { className: "barre-haut" }, /* @__PURE__ */ React.createElement(Champ, { libelle: "Projet" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.projet, onChange: (v) => setFiltres({ ...filtres, projet: v, activite: "" }), options: projets, vide: "Tous les projets" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Activité" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.activite, onChange: (v) => setFiltres({ ...filtres, activite: v }), options: activitesDe(filtres.projet), vide: filtres.projet ? "Toutes les activités" : "Choisir un projet", disabled: !filtres.projet })), vue !== "planning" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Champ, { libelle: "Du mois" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.du, onChange: (v) => setFiltres({ ...filtres, du: v, au: filtres.au && v && filtres.au < v ? v : filtres.au }), options: moisDispo.map((m) => ({ v: m, lib: libMois(m) })), vide: "Début" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Au mois" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.au, onChange: (v) => setFiltres({ ...filtres, au: v, du: filtres.du && v && filtres.du > v ? v : filtres.du }), options: moisDispo.map((m) => ({ v: m, lib: libMois(m) })), vide: "Fin" }))), (filtres.projet || filtres.du || filtres.au) && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFiltres({ projet: "", activite: "", du: "", au: "" }) }, "Réinitialiser")), vue === "accueil" && /* @__PURE__ */ React.createElement(VueTableauBord, { ctx }), vue === "taches" && /* @__PURE__ */ React.createElement(VueTaches, { ctx }), vue === "diagnostic" && /* @__PURE__ */ React.createElement(VueDiagnostic, { ctx }), vue === "grilles" && /* @__PURE__ */ React.createElement(VueGrilles, { ctx }), vue === "coaching" && /* @__PURE__ */ React.createElement(VueSuivi, { key: "coaching", ctx, typeFixe: "Coaching de proximité" }), vue === "dispositif" && /* @__PURE__ */ React.createElement(VueDispositif, { ctx }), vue === "doubles" && /* @__PURE__ */ React.createElement(VueSuivi, { key: "doubles", ctx, typeFixe: "Double écoute" }), vue === "referentiels" && /* @__PURE__ */ React.createElement(VueProjets, { key: "referentiels", ctx, partie: "referentiels" }), vue === "parametres" && /* @__PURE__ */ React.createElement(VueParametres, { ctx }), vue === "sauvegardes" && /* @__PURE__ */ React.createElement(VueSauvegardes, { ctx }), vue === "plan" && /* @__PURE__ */ React.createElement(VuePlan, { ctx }), vue === "suivi" && /* @__PURE__ */ React.createElement(VueSuivi, { key: "tous", ctx }), vue === "efficacite" && /* @__PURE__ */ React.createElement(VueEfficacite, { ctx }), vue === "rapport" && /* @__PURE__ */ React.createElement(VueRapport, { ctx }), vue === "carto" && /* @__PURE__ */ React.createElement(VueCarto, { ctx }), vue === "qualite" && /* @__PURE__ */ React.createElement(VueQualite, { ctx }), vue === "retours" && /* @__PURE__ */ React.createElement(VueRetours, { ctx }), vue === "ecoutes" && /* @__PURE__ */ React.createElement(VueEcoutes, { ctx }), vue === "formations" && /* @__PURE__ */ React.createElement(VueFormations, { ctx }), vue === "planning" && /* @__PURE__ */ React.createElement(VuePlanning, { ctx }), vue === "projets" && /* @__PURE__ */ React.createElement(VueProjets, { key: "projets", ctx, partie: "projets" }), vue === "conseillers" && /* @__PURE__ */ React.createElement(VueConseillers, { ctx }), vue === "donnees" && /* @__PURE__ */ React.createElement(VueDonnees, { ctx }), fiche && /* @__PURE__ */ React.createElement(FicheConseiller, { id: fiche, ctx, onFermer: () => setFiche(null) })));
+  } })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "marque-titre" }, "GRC Pilot"), /* @__PURE__ */ React.createElement("div", { className: "marque-sous" }, "Tersea · V7"))), /* @__PURE__ */ React.createElement("nav", { "aria-label": "Navigation principale" }, /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Pilotage"), /* @__PURE__ */ React.createElement(Nav, { id: "accueil", icone: "accueil", libelle: "Tableau de bord", pastille: aTraiter.length || null }), /* @__PURE__ */ React.createElement(Nav, { id: "taches", icone: "coche", libelle: "Mon activité", pastille: nbTachesJour || null }), /* @__PURE__ */ React.createElement(Nav, { id: "mesprojets", icone: "dossier", libelle: "Mes projets", pastille: retardsProjets || null }), /* @__PURE__ */ React.createElement(Nav, { id: "diagnostic", icone: "loupe", libelle: "Diagnostic et priorités" }), /* @__PURE__ */ React.createElement(Nav, { id: "plan", icone: "liste", libelle: "Plans d'action", pastille: retardsPlan || null }), /* @__PURE__ */ React.createElement(Nav, { id: "suivi", icone: "utilisateurs", libelle: "Accompagnements", pastille: retardsSuivi || null }), /* @__PURE__ */ React.createElement(Nav, { id: "rapport", icone: "telecharger", libelle: "Reporting" }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Évaluation et analyse"), /* @__PURE__ */ React.createElement(Nav, { id: "conseillers", icone: "grille", libelle: "Agents" }), /* @__PURE__ */ React.createElement(Nav, { id: "grilles", icone: "reglages", libelle: "Grilles GRC" }), /* @__PURE__ */ React.createElement(Nav, { id: "ecoutes", icone: "casque", libelle: "Évaluations" }), /* @__PURE__ */ React.createElement(Nav, { id: "qualite", icone: "etoile", libelle: "Écoutes qualité" }), /* @__PURE__ */ React.createElement(Nav, { id: "retours", icone: "bulle", libelle: "SATCLI", pastille: ar && ar.aClasser.length ? ar.aClasser.length : null }), /* @__PURE__ */ React.createElement(Nav, { id: "carto", icone: "cible", libelle: "Cartographies" }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Développement des compétences"), /* @__PURE__ */ React.createElement(Nav, { id: "coaching", icone: "utilisateurs", libelle: "Coaching" }), /* @__PURE__ */ React.createElement(Nav, { id: "dispositif", icone: "cible", libelle: "Dispositif coaching" }), /* @__PURE__ */ React.createElement(Nav, { id: "doubles", icone: "deux", libelle: "Doubles écoutes" }), /* @__PURE__ */ React.createElement(Nav, { id: "formations", icone: "livre", libelle: "Formations et ateliers" }), /* @__PURE__ */ React.createElement(Nav, { id: "efficacite", icone: "tendance", libelle: "Suivi post-intervention" }), /* @__PURE__ */ React.createElement(Nav, { id: "planning", icone: "calendrier", libelle: "Planning", pastille: conflits.size || null }), /* @__PURE__ */ React.createElement("div", { className: "nav-titre" }, "Administration"), /* @__PURE__ */ React.createElement(Nav, { id: "projets", icone: "accueil", libelle: "Projets et activités" }), /* @__PURE__ */ React.createElement(Nav, { id: "referentiels", icone: "liste", libelle: "Référentiels" }), /* @__PURE__ */ React.createElement(Nav, { id: "parametres", icone: "bouclier", libelle: "Paramètres" }), /* @__PURE__ */ React.createElement(Nav, { id: "donnees", icone: "importer", libelle: "Import / export" }), /* @__PURE__ */ React.createElement(Nav, { id: "sauvegardes", icone: "base", libelle: "Sauvegardes" })), /* @__PURE__ */ React.createElement("div", { className: "side-bas" }, /* @__PURE__ */ React.createElement("div", { className: "qui" }, /* @__PURE__ */ React.createElement("b", null, modeLocal ? "Mode local" : "Mon outil"), user.email), /* @__PURE__ */ React.createElement("button", { className: "btn sombre", onClick: () => signOut(auth) }, /* @__PURE__ */ React.createElement(Icone, { nom: "sortie", taille: 15 }), " Déconnexion"))), /* @__PURE__ */ React.createElement("main", { className: "main" }, modeLocal && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Mode local."), " La base en ligne refuse l'accès : les données sont enregistrées uniquement dans ce navigateur. Vérifie que les règles de sécurité Firebase ont bien été publiées (fichier « regles-firestore.txt »).")), /* @__PURE__ */ React.createElement("div", { className: "entete" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h1", null, TITRES[vue][0]), /* @__PURE__ */ React.createElement("p", null, TITRES[vue][1]))), !sansFiltre && /* @__PURE__ */ React.createElement("div", { className: "barre-haut" }, /* @__PURE__ */ React.createElement(Champ, { libelle: "Projet" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.projet, onChange: (v) => setFiltres({ ...filtres, projet: v, activite: "" }), options: projets, vide: "Tous les projets" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Activité" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.activite, onChange: (v) => setFiltres({ ...filtres, activite: v }), options: activitesDe(filtres.projet), vide: filtres.projet ? "Toutes les activités" : "Choisir un projet", disabled: !filtres.projet })), vue !== "planning" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Champ, { libelle: "Du mois" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.du, onChange: (v) => setFiltres({ ...filtres, du: v, au: filtres.au && v && filtres.au < v ? v : filtres.au }), options: moisDispo.map((m) => ({ v: m, lib: libMois(m) })), vide: "Début" })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Au mois" }, /* @__PURE__ */ React.createElement(Choix, { valeur: filtres.au, onChange: (v) => setFiltres({ ...filtres, au: v, du: filtres.du && v && filtres.du > v ? v : filtres.du }), options: moisDispo.map((m) => ({ v: m, lib: libMois(m) })), vide: "Fin" }))), (filtres.projet || filtres.du || filtres.au) && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFiltres({ projet: "", activite: "", du: "", au: "" }) }, "Réinitialiser")), vue === "accueil" && /* @__PURE__ */ React.createElement(VueTableauBord, { ctx }), vue === "taches" && /* @__PURE__ */ React.createElement(VueTaches, { ctx }), vue === "mesprojets" && /* @__PURE__ */ React.createElement(VueMesProjets, { ctx }), vue === "diagnostic" && /* @__PURE__ */ React.createElement(VueDiagnostic, { ctx }), vue === "grilles" && /* @__PURE__ */ React.createElement(VueGrilles, { ctx }), vue === "coaching" && /* @__PURE__ */ React.createElement(VueSuivi, { key: "coaching", ctx, typeFixe: "Coaching de proximité" }), vue === "dispositif" && /* @__PURE__ */ React.createElement(VueDispositif, { ctx }), vue === "doubles" && /* @__PURE__ */ React.createElement(VueSuivi, { key: "doubles", ctx, typeFixe: "Double écoute" }), vue === "referentiels" && /* @__PURE__ */ React.createElement(VueProjets, { key: "referentiels", ctx, partie: "referentiels" }), vue === "parametres" && /* @__PURE__ */ React.createElement(VueParametres, { ctx }), vue === "sauvegardes" && /* @__PURE__ */ React.createElement(VueSauvegardes, { ctx }), vue === "plan" && /* @__PURE__ */ React.createElement(VuePlan, { ctx }), vue === "suivi" && /* @__PURE__ */ React.createElement(VueSuivi, { key: "tous", ctx }), vue === "efficacite" && /* @__PURE__ */ React.createElement(VueEfficacite, { ctx }), vue === "rapport" && /* @__PURE__ */ React.createElement(VueRapport, { ctx }), vue === "carto" && /* @__PURE__ */ React.createElement(VueCarto, { ctx }), vue === "qualite" && /* @__PURE__ */ React.createElement(VueQualite, { ctx }), vue === "retours" && /* @__PURE__ */ React.createElement(VueRetours, { ctx }), vue === "ecoutes" && /* @__PURE__ */ React.createElement(VueEcoutes, { ctx }), vue === "formations" && /* @__PURE__ */ React.createElement(VueFormations, { ctx }), vue === "planning" && /* @__PURE__ */ React.createElement(VuePlanning, { ctx }), vue === "projets" && /* @__PURE__ */ React.createElement(VueProjets, { key: "projets", ctx, partie: "projets" }), vue === "conseillers" && /* @__PURE__ */ React.createElement(VueConseillers, { ctx }), vue === "donnees" && /* @__PURE__ */ React.createElement(VueDonnees, { ctx }), fiche && /* @__PURE__ */ React.createElement(FicheConseiller, { id: fiche, ctx, onFermer: () => setFiche(null) })));
 }
 function VueTableauBord({ ctx }) {
   const { aq, ar, ae, actions, suivis, fSessions, aTraiter, setVue, qTout, ouvrirFiche, filtres, ref, conseillers, jeux, perimetre, creerSuivi, creerEcoute, ecoutesCol, ok, peutEditer, grilles } = ctx;
@@ -3206,206 +3253,6 @@ function VueGrilles({ ctx }) {
     return /* @__PURE__ */ React.createElement("div", { className: "carte", key: g.id }, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("h2", null, g.ou, g.archive ? /* @__PURE__ */ React.createElement("span", { className: "badge", style: { marginLeft: 8 } }, "Ancienne grille · jusqu'au ", fmtDate(g.jusquau)) : g.depuis ? /* @__PURE__ */ React.createElement("span", { className: "badge ok", style: { marginLeft: 8 } }, "En vigueur depuis le ", fmtDate(g.depuis)) : null), /* @__PURE__ */ React.createElement("p", { className: "sous", style: { marginBottom: 0 } }, pl(g.items.length, "critère"), " évalué", g.items.length > 1 ? "s" : "", " en GRC", g.tousItems.length > g.items.length ? ` (${g.tousItems.length - g.items.length} hors GRC)` : "", " · ", fr(max), " points au maximum · ", pl(g.points.length, "point travaillé"), " · ", pl(n, "écoute"), " enregistrée", n > 1 ? "s" : "", g.fichier ? ` · importée depuis « ${g.fichier} »` : "")), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setOuverte(ouverte2 === g.id ? null : g.id), "aria-expanded": ouverte2 === g.id }, ouverte2 === g.id ? "Masquer les critères" : "Voir les critères")), ouverte2 === g.id && /* @__PURE__ */ React.createElement("div", { className: "tab-wrap", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Code"), /* @__PURE__ */ React.createElement("th", null, "Critère"), /* @__PURE__ */ React.createElement("th", null, "Point travaillé"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Acquis"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Partiel"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "N/A possible"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "SI"), /* @__PURE__ */ React.createElement("th", { className: "centre" }, "Évalué en GRC"))), /* @__PURE__ */ React.createElement("tbody", null, g.tousItems.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.code, style: i.horsGRC ? { opacity: 0.55 } : null }, /* @__PURE__ */ React.createElement("td", null, i.code), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, i.court), i.item && i.item !== i.court && /* @__PURE__ */ React.createElement("div", { className: "petit" }, i.item)), /* @__PURE__ */ React.createElement("td", null, i.point || "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.pts)), /* @__PURE__ */ React.createElement("td", { className: "num" }, fr(i.ptsPartiel)), /* @__PURE__ */ React.createElement("td", { className: "centre" }, i.na ? "Oui" : "—"), /* @__PURE__ */ React.createElement("td", { className: "centre" }, i.siOk ? "Oui" : "—"), /* @__PURE__ */ React.createElement("td", { className: "centre" }, /* @__PURE__ */ React.createElement("label", { className: "coche" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: !i.horsGRC, disabled: !peutEditer, onChange: () => basculerGRC(g, i.code), "aria-label": `${i.court} évalué en GRC` }), " ", i.horsGRC ? "Hors GRC" : "Oui"))))))));
   }));
 }
-// =====================================================================
-// SAUVEGARDE & RESTAURATION — GRC Pilot (Tersea) · format « grc-pilot-sauvegarde » v4
-// ---------------------------------------------------------------------
-// Complète le module existant (sauvegarde v3) sans le remplacer :
-// - enveloppe identifiée (application, projet, espace), empreinte SHA-256 ;
-// - chiffrement par mot de passe (AES-GCM 256 / PBKDF2-SHA256), activé par défaut ;
-// - refus des fichiers d'une autre application (CRM DI'ALLO notamment) ;
-// - historique partagé dans parametres/sauvegardes (dates et compteurs, aucune donnée) ;
-// - restauration vérifiée étape par étape, avec point de reprise (IndexedDB) :
-//   reprendre, ou revenir à l'état d'avant après une interruption ;
-// - les sauvegardes v3 existantes restent lisibles.
-// Ne parle qu'au projet Firebase et à l'espace de GRC Pilot (APP_ID).
-// =====================================================================
-const GS_APP = "grc-pilot";
-const GS_FORMAT = "grc-pilot-sauvegarde";
-const GS_VERSION = 4;
-const GS_ITERATIONS = 310000;
-const GS_MDP_MIN = 8;
-const GS_JOURNAL_MAX = 30;
-const GS_CLE_REPRISE = "tersea_restauration_en_cours";
-const GS_CLE_JOURNAL_LOCAL = "tersea_parametres_sauvegardes";
-const GS_COLLECTIONS = [["conseillers", "Agents"], ["sessions", "Formations"], ["lots", "Données importées"], ["grilles", "Grilles"], ["ecoutes", "Écoutes"], ["actions", "Plan d'action"], ["suivis", "Accompagnements"]];
-const GS_JOURNAL_DEFAUT = { entrees: [], derniereSauvegarde: null };
-
-const gsEstObjet = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-const gsCanonique = (v) => {
-  if (Array.isArray(v)) return "[" + v.map(gsCanonique).join(",") + "]";
-  if (gsEstObjet(v)) return "{" + Object.keys(v).sort().filter((k) => v[k] !== void 0).map((k) => JSON.stringify(k) + ":" + gsCanonique(v[k])).join(",") + "}";
-  return JSON.stringify(v === void 0 ? null : v);
-};
-const gsEnc = new TextEncoder(), gsDec = new TextDecoder();
-const gsVersB64 = (buf) => { const o = new Uint8Array(buf); let s = ""; for (let i = 0; i < o.length; i += 32768) s += String.fromCharCode.apply(null, o.subarray(i, i + 32768)); return btoa(s); };
-const gsDepuisB64 = (b) => { const s = atob(b), o = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) o[i] = s.charCodeAt(i); return o; };
-const gsSha256 = async (texte) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", gsEnc.encode(texte)))).map((b) => b.toString(16).padStart(2, "0")).join("");
-const gsEmpreinte = (donnees) => gsSha256(gsCanonique(donnees));
-const gsCle = async (mdp, sel, it) => crypto.subtle.deriveKey({ name: "PBKDF2", salt: sel, iterations: it, hash: "SHA-256" }, await crypto.subtle.importKey("raw", gsEnc.encode(mdp), "PBKDF2", false, ["deriveKey"]), { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-const gsErreur = (message, code) => Object.assign(new Error(message), { code });
-
-const gsCompteurs = (d) => {
-  const c = {};
-  GS_COLLECTIONS.forEach(([k]) => { c[k] = Array.isArray(d[k]) ? d[k].length : 0; });
-  return c;
-};
-const gsNomFichier = (prefixe) => { const h = new Date(); return `${prefixe}_${aujourdhui()}_${pad(h.getHours())}h${pad(h.getMinutes())}.json`; };
-
-// Construit l'enveloppe v4 autour des données v3 (inchangées).
-async function gsConstruireFichier(donnees, type, mdp) {
-  const u = auth.currentUser;
-  const base = { format: GS_FORMAT, version: GS_VERSION, application: GS_APP, type, projet: firebaseConfig.projectId, espace: APP_ID, date: new Date().toISOString(), compte: (u && u.email) || "", compteurs: gsCompteurs(donnees) };
-  base.empreinte = await gsEmpreinte(donnees);
-  if (!mdp) return { ...base, chiffrement: null, donnees };
-  if (String(mdp).length < GS_MDP_MIN) throw new Error(`Mot de passe trop court (${GS_MDP_MIN} caractères minimum).`);
-  const sel = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
-  const contenu = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await gsCle(mdp, sel, GS_ITERATIONS), gsEnc.encode(JSON.stringify(donnees)));
-  return { ...base, chiffrement: { algo: "AES-GCM-256", derivation: "PBKDF2-SHA256", iterations: GS_ITERATIONS, sel: gsVersB64(sel), iv: gsVersB64(iv) }, contenu: gsVersB64(contenu) };
-}
-
-// genre : 'v4' | 'v3' | 'autre-application' | 'illisible'
-function gsAnalyserTexte(texte) {
-  let o;
-  try { o = JSON.parse(String(texte || "").replace(/^﻿/, "")); } catch (e) { return { genre: "illisible", message: "Ce fichier n'est pas un fichier de sauvegarde lisible (JSON attendu)." }; }
-  if (!gsEstObjet(o)) return { genre: "illisible", message: "Ce fichier n'est pas une sauvegarde de l'outil." };
-  if (o.format === "diallo-crm-sauvegarde" || o.application === "crm-diallo" || o.workspace || (o.catalog !== void 0 && o.clients !== void 0)) {
-    return { genre: "autre-application", message: "Ce fichier est une sauvegarde du CRM DI'ALLO Conciergerie : il ne peut pas être restauré dans GRC Pilot." };
-  }
-  if (o.format === GS_FORMAT) {
-    if (o.application !== GS_APP) return { genre: "autre-application", message: `Ce fichier provient d'une autre application (« ${o.application} »).` };
-    return { genre: "v4", fichier: o };
-  }
-  if (o.application && o.application !== GS_APP) return { genre: "autre-application", message: `Ce fichier provient d'une autre application (« ${o.application} »).` };
-  return { genre: "v3", donnees: o };
-}
-
-async function gsOuvrirFichier(f, mdp) {
-  let donnees;
-  if (f.chiffrement) {
-    if (!mdp) throw gsErreur("Ce fichier est protégé : saisis son mot de passe.", "MOT_DE_PASSE_REQUIS");
-    try {
-      const c = f.chiffrement;
-      const clair = await crypto.subtle.decrypt({ name: "AES-GCM", iv: gsDepuisB64(c.iv) }, await gsCle(mdp, gsDepuisB64(c.sel), c.iterations || GS_ITERATIONS), gsDepuisB64(f.contenu));
-      donnees = JSON.parse(gsDec.decode(clair));
-    } catch (e) { throw gsErreur("Mot de passe incorrect, ou fichier abîmé.", "MOT_DE_PASSE"); }
-  } else donnees = f.donnees;
-  if (!gsEstObjet(donnees)) throw gsErreur("Contenu de sauvegarde absent.", "CONTENU");
-  if (await gsEmpreinte(donnees) !== f.empreinte) throw gsErreur("Le fichier a été modifié ou abîmé depuis la sauvegarde (empreinte différente).", "EMPREINTE");
-  return donnees;
-}
-
-// ---------- Journal (historique partagé) ----------
-const gsAjouterEntree = (j, e) => {
-  const entrees = [e, ...((j && j.entrees) || [])].slice(0, GS_JOURNAL_MAX);
-  return { entrees, derniereSauvegarde: e.type === "sauvegarde" ? e.date : (j && j.derniereSauvegarde) || null };
-};
-function gsConservation(entrees) {
-  const s = (entrees || []).filter((e) => e && e.type === "sauvegarde" && e.fichier).slice().sort((a, b) => a.date < b.date ? 1 : -1);
-  const g = {};
-  s.slice(0, 4).forEach((e) => { g[e.fichier] = "hebdomadaire"; });
-  const parMois = {};
-  s.forEach((e) => { parMois[String(e.date).slice(0, 7)] = e; });
-  Object.keys(parMois).sort().reverse().slice(0, 6).forEach((m) => { const f = parMois[m].fichier; g[f] = g[f] ? g[f] + " + mensuelle" : "mensuelle"; });
-  return g;
-}
-const gsEntree = (type, nom, f) => ({ date: new Date().toISOString(), type, fichier: nom, compteurs: f.compteurs, empreinte: f.empreinte || "", chiffre: !!f.chiffrement, compte: (auth.currentUser && auth.currentUser.email) || "" });
-async function gsNoterJournal(entree, modeLocal) {
-  let j = GS_JOURNAL_DEFAUT;
-  if (!modeLocal) {
-    try { const s = await getDoc(refDoc("parametres", "sauvegardes")); if (s.exists()) j = s.data(); } catch (e) { modeLocal = true; }
-  }
-  if (modeLocal) { try { j = JSON.parse(localStorage.getItem(GS_CLE_JOURNAL_LOCAL) || "null") || GS_JOURNAL_DEFAUT; } catch (e) { } }
-  const suiv = gsAjouterEntree(j, entree);
-  try { localStorage.setItem(GS_CLE_JOURNAL_LOCAL, JSON.stringify(suiv)); } catch (e) { }
-  if (modeLocal) return false;
-  try { await setDoc(refDoc("parametres", "sauvegardes"), suiv); return true; } catch (e) { return false; }
-}
-
-// ---------- Point de reprise (IndexedDB de ce navigateur) ----------
-const gsIdb = () => new Promise((ok, ko) => { const r = indexedDB.open("grc-pilot-sauvegarde", 1); r.onupgradeneeded = () => r.result.createObjectStore("reprise"); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); });
-const gsIdbFaire = async (mode, action) => {
-  const db = await gsIdb();
-  return new Promise((ok, ko) => {
-    const tx = db.transaction("reprise", mode), r = action(tx.objectStore("reprise")); let res;
-    if (r) r.onsuccess = () => { res = r.result; };
-    tx.oncomplete = () => { db.close(); ok(res); };
-    tx.onerror = tx.onabort = () => { db.close(); ko(tx.error || new Error("Point de reprise inaccessible.")); };
-  });
-};
-const gsLireReprise = () => gsIdbFaire("readonly", (st) => st.get("en-cours"));
-const gsEcrireReprise = (r) => { try { localStorage.setItem(GS_CLE_REPRISE, JSON.stringify({ date: r.date, fichier: r.fichier, mode: r.mode })); } catch (e) { } return gsIdbFaire("readwrite", (st) => st.put(r, "en-cours")); };
-const gsEffacerReprise = () => { try { localStorage.removeItem(GS_CLE_REPRISE); } catch (e) { } return gsIdbFaire("readwrite", (st) => st.delete("en-cours")); };
-const gsRepriseSignalee = () => { try { return JSON.parse(localStorage.getItem(GS_CLE_REPRISE) || "null"); } catch (e) { return null; } };
-
-// ---------- Restauration vérifiée (base en ligne) ----------
-const gsPlan = (d) => [...(d.ref ? ["doc:referentiels"] : []), ...(d.taches ? ["doc:taches"] : []), ...GS_COLLECTIONS.map(([c]) => "col:" + c)];
-const gsLibelle = (e) => e === "doc:referentiels" ? "Projets et référentiels" : e === "doc:taches" ? "Mes tâches" : (GS_COLLECTIONS.find(([c]) => "col:" + c === e) || [, e])[1];
-const gsSansId = (x) => { const { id, ...r } = x; return r; };
-async function gsEtape(etape, d) {
-  if (etape.startsWith("doc:")) {
-    const id = etape.slice(4), val = id === "referentiels" ? { ...REF_DEFAUT, ...d.ref } : { ...TACHES_DEFAUT, ...d.taches };
-    await setDoc(refDoc("parametres", id), val);
-    const s = await getDoc(refDoc("parametres", id));
-    if (!s.exists() || gsCanonique(s.data()) !== gsCanonique(val)) throw new Error("vérification échouée après écriture");
-    return;
-  }
-  const c = etape.slice(4), liste = (Array.isArray(d[c]) ? d[c] : []).map((x, i) => ({ ...x, id: x.id || `r${i}` }));
-  const cibles = new Map(liste.map((x) => [x.id, gsCanonique(gsSansId(x))]));
-  const avant = await getDocs(refCol(c));
-  const existants = new Map(avant.docs.map((x) => [x.id, gsCanonique(x.data())]));
-  for (const id of existants.keys()) if (!cibles.has(id)) await deleteDoc(refDoc(c, id));
-  for (const x of liste) if (existants.get(x.id) !== cibles.get(x.id)) await setDoc(refDoc(c, x.id), gsSansId(x));
-  const apres = await getDocs(refCol(c));
-  if (apres.docs.length !== liste.length || apres.docs.some((x) => cibles.get(x.id) !== gsCanonique(x.data()))) throw new Error("vérification échouée après écriture");
-}
-async function gsExecuter(r, d, progres) {
-  const total = r.etapes.length;
-  for (const e of r.etapes) {
-    if (r.faites.includes(e)) continue;
-    if (!navigator.onLine) throw new Error("connexion internet perdue");
-    progres && progres({ faites: r.faites.length, total, texte: `Restauration en cours : ${gsLibelle(e)}… ne ferme pas cette page.` });
-    try { await gsEtape(e, d); } catch (err) { throw new Error(`Arrêt à l'étape « ${gsLibelle(e)} » : ${err.message}`); }
-    r.faites.push(e);
-    await gsEcrireReprise(r);
-  }
-  progres && progres({ faites: total, total, texte: "Vérification terminée." });
-}
-// Lance une restauration : copie de sécurité téléchargée, point de reprise enregistré, puis écritures vérifiées.
-async function gsRestaurer({ donnees, nomFichier, etatActuel, mdp, progres }) {
-  if (!auth.currentUser) throw new Error("Session expirée : reconnecte-toi.");
-  if (!navigator.onLine) throw new Error("Pas de connexion internet : restauration non lancée.");
-  await getDoc(refDoc("parametres", "referentiels"));
-  const copie = await gsConstruireFichier(etatActuel, "avant-restauration", mdp);
-  const copieNom = gsNomFichier("Avant_restauration_Pilotage_GRC");
-  telecharger(copieNom, JSON.stringify(copie), "application/json");
-  const source = await gsConstruireFichier(donnees, "source-restauration", mdp);
-  const r = { date: new Date().toISOString(), mode: "restauration", fichier: nomFichier, copieNom, source, copie, etapes: gsPlan(donnees), faites: [] };
-  await gsEcrireReprise(r);
-  await gsNoterJournal(gsEntree("copie avant restauration", copieNom, copie));
-  await gsExecuter(r, donnees, progres);
-  await gsNoterJournal(gsEntree("restauration", nomFichier, source));
-  await gsEffacerReprise();
-  return copieNom;
-}
-async function gsReprendre(mdp, progres) {
-  const r = await gsLireReprise();
-  if (!r) throw new Error("Aucune restauration interrompue.");
-  const d = await gsOuvrirFichier(r.source, mdp);
-  await gsExecuter(r, d, progres);
-  await gsNoterJournal(gsEntree(r.mode === "retour-arriere" ? "retour à l'état d'avant" : "restauration (reprise)", r.fichier, r.source));
-  await gsEffacerReprise();
-}
-async function gsRevenirEnArriere(mdp, progres) {
-  const r = await gsLireReprise();
-  if (!r) throw new Error("Aucune restauration interrompue.");
-  const d = await gsOuvrirFichier(r.copie, mdp);
-  const retour = { date: new Date().toISOString(), mode: "retour-arriere", fichier: r.copieNom, copieNom: r.copieNom, source: r.copie, copie: r.copie, etapes: gsPlan(d), faites: [] };
-  await gsEcrireReprise(retour);
-  await gsExecuter(retour, d, progres);
-  await gsNoterJournal(gsEntree("retour à l'état d'avant", r.copieNom, r.copie));
-  await gsEffacerReprise();
-}
-
 const COLLECTIONS_SAUV = [["conseillers", "Agents"], ["lots", "Données importées (qualité, SATCLI)"], ["grilles", "Grilles GRC"], ["ecoutes", "Écoutes GRC"], ["actions", "Actions du plan"], ["suivis", "Accompagnements"], ["sessions", "Formations et ateliers"]];
 const empreinte = (x) => {
   const { id, ...r } = x;
@@ -3459,70 +3306,24 @@ function controlerSauvegarde(d, actuel) {
   });
   return { bloquants, alertes, lignes };
 }
-function ChampMdp({ value, onChange, placeholder, autoFocus }) {
-  const [voir, setVoir] = useState(false);
-  return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, /* @__PURE__ */ React.createElement("input", { className: "input", type: voir ? "text" : "password", value, onChange: (e) => onChange(e.target.value), placeholder, autoFocus, autoComplete: "new-password", style: { flex: 1 } }), /* @__PURE__ */ React.createElement("button", { type: "button", className: "btn", onClick: () => setVoir(!voir), title: voir ? "Masquer" : "Afficher" }, voir ? "Masquer" : "Afficher"));
-}
 function VueSauvegardes({ ctx }) {
-  const { donneesSauvegarde, appliquerRestauration, modeLocal, journalSauv } = ctx;
-  const journal = journalSauv || GS_JOURNAL_DEFAUT;
-  const [chiffrer, setChiffrer] = useState(true);
-  const [mdp, setMdp] = useState("");
-  const [mdp2, setMdp2] = useState("");
+  const { donneesSauvegarde, telechargerSauvegarde, appliquerRestauration, modeLocal } = ctx;
   const [fichier, setFichier] = useState(null);
-  const [mdpOuverture, setMdpOuverture] = useState("");
-  const [chiffrerCopie, setChiffrerCopie] = useState(true);
-  const [mdpCopie, setMdpCopie] = useState("");
   const [compris, setCompris] = useState(false);
   const [etat, setEtat] = useState(null);
-  const [reprise, setReprise] = useState(null);
-  const [mdpReprise, setMdpReprise] = useState("");
-  const [occupe, setOccupe] = useState(false);
-  const rafraichirReprise = () => gsLireReprise().then((r) => setReprise(r || null), () => setReprise(null));
-  useEffect(() => {
-    rafraichirReprise();
-  }, []);
+  const [derniere, setDerniere] = useState(() => {
+    try {
+      return localStorage.getItem("tersea_derniere_sauvegarde") || "";
+    } catch (e) {
+      return "";
+    }
+  });
   const actuel = donneesSauvegarde();
   const total = somme(COLLECTIONS_SAUV.map(([c]) => (actuel[c] || []).length));
-  let derniere = journal.derniereSauvegarde || "";
-  if (!derniere) {
-    try {
-      derniere = localStorage.getItem("tersea_derniere_sauvegarde") || "";
-    } catch (e) {
-    }
-  }
-  const garder = gsConservation(journal.entrees || []);
-  const mdpOk = !chiffrer || mdp.length >= GS_MDP_MIN && mdp === mdp2;
-  const fmt = (iso) => new Date(iso).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" });
-  const sauver = async () => {
-    if (!mdpOk) return;
-    setOccupe(true);
-    try {
-      const f = await gsConstruireFichier(actuel, "sauvegarde", chiffrer ? mdp : null);
-      const nom = gsNomFichier("Sauvegarde_Pilotage_GRC");
-      telecharger(nom, JSON.stringify(f), "application/json");
-      try {
-        localStorage.setItem("tersea_derniere_sauvegarde", f.date);
-      } catch (e) {
-      }
-      const cloud = await gsNoterJournal(gsEntree("sauvegarde", nom, f), modeLocal);
-      setMdp("");
-      setMdp2("");
-      avertir(`Sauvegarde t\xE9l\xE9charg\xE9e : ${nom}. Garde ce fichier sur ton ordinateur, pas sur GitHub.${cloud ? "" : " Historique enregistr\xE9 sur ce navigateur seulement."}`);
-    } catch (e) {
-      avertir(`Sauvegarde impossible : ${e.message}`, "erreur");
-    }
-    setOccupe(false);
-  };
-  const ouvrir = async (base, motDePasse) => {
-    try {
-      const d = base.analyse.genre === "v4" ? await gsOuvrirFichier(base.analyse.fichier, motDePasse) : base.analyse.donnees;
-      if (motDePasse) setMdpCopie(motDePasse);
-      setFichier({ ...base, phase: "controle", d, controle: controlerSauvegarde(d, actuel) });
-    } catch (e) {
-      if (e.code === "MOT_DE_PASSE") return setFichier({ ...base, phase: "mot-de-passe", erreur: e.message });
-      setFichier({ ...base, phase: "controle", d: null, controle: { bloquants: [e.message], alertes: [], lignes: [] } });
-    }
+  const sauver = () => {
+    const nom = telechargerSauvegarde("Sauvegarde_Pilotage_GRC");
+    setDerniere((/* @__PURE__ */ new Date()).toISOString());
+    avertir(`Sauvegarde téléchargée : ${nom}. Garde ce fichier sur ton ordinateur, pas sur GitHub.`);
   };
   const choisir = (e) => {
     const f = e.target.files[0];
@@ -3530,61 +3331,34 @@ function VueSauvegardes({ ctx }) {
     if (!f) return;
     setCompris(false);
     setEtat(null);
-    setMdpOuverture("");
-    setMdpCopie("");
     const lecteur = new FileReader();
-    lecteur.onerror = () => setFichier({ nom: f.name, phase: "controle", d: null, controle: { bloquants: ["Lecture du fichier impossible."], alertes: [], lignes: [] } });
+    lecteur.onerror = () => setFichier({ nom: f.name, d: null, controle: { bloquants: ["Lecture du fichier impossible."], alertes: [], lignes: [] } });
     lecteur.onload = () => {
-      const a = gsAnalyserTexte(lecteur.result);
-      if (a.genre === "illisible" || a.genre === "autre-application") return setFichier({ nom: f.name, phase: "controle", d: null, controle: { bloquants: [a.message], alertes: [], lignes: [] } });
-      if (a.genre === "v4" && a.fichier.chiffrement) return setFichier({ nom: f.name, analyse: a, phase: "mot-de-passe" });
-      ouvrir({ nom: f.name, analyse: a }, "");
+      let d = null;
+      try {
+        d = JSON.parse(lecteur.result);
+      } catch (err) {
+      }
+      setFichier({ nom: f.name, d, controle: d ? controlerSauvegarde(d, actuel) : { bloquants: ["Ce fichier n'est pas un fichier de sauvegarde lisible (JSON attendu)."], alertes: [], lignes: [] } });
     };
     lecteur.readAsText(f);
   };
   const restaurer = async () => {
     if (!fichier || !fichier.d || fichier.controle.bloquants.length || !compris) return;
-    if (chiffrerCopie && mdpCopie.length < GS_MDP_MIN) return;
-    const motDePasse = chiffrerCopie ? mdpCopie : null;
-    setEtat({ phase: "cours", texte: "Copie de s\xE9curit\xE9 de l'\xE9tat actuel\u2026" });
+    const filet = total ? telechargerSauvegarde("Avant_restauration_Pilotage_GRC") : "";
+    setEtat({ phase: "cours", texte: "Restauration en cours… ne ferme pas cette page.", filet });
     try {
-      let filet;
-      if (modeLocal) {
-        filet = gsNomFichier("Avant_restauration_Pilotage_GRC");
-        telecharger(filet, JSON.stringify(await gsConstruireFichier(actuel, "avant-restauration", motDePasse)), "application/json");
-        await appliquerRestauration(fichier.d, (texte) => setEtat({ phase: "cours", texte, filet }));
-      } else {
-        filet = await gsRestaurer({ donnees: fichier.d, nomFichier: fichier.nom, etatActuel: actuel, mdp: motDePasse, progres: (p) => setEtat({ phase: "cours", texte: p.texte, p }) });
-      }
-      setEtat({ phase: "ok", texte: "Sauvegarde restaur\xE9e et v\xE9rifi\xE9e.", filet });
+      await appliquerRestauration(fichier.d, (texte) => setEtat({ phase: "cours", texte, filet }));
+      setEtat({ phase: "ok", texte: "Sauvegarde restaurée.", filet });
       setFichier(null);
-      avertir("Sauvegarde restaur\xE9e.");
+      avertir("Sauvegarde restaurée.");
     } catch (err) {
-      setEtat({ phase: "erreur", texte: `La restauration s'est arr\xEAt\xE9e. ${err.message}` });
+      setEtat({ phase: "erreur", texte: `La restauration s'est interrompue : ${err.message}. Une partie seulement des données a pu être remplacée.`, filet });
     }
-    rafraichirReprise();
-  };
-  const agirReprise = async (genre) => {
-    setEtat({ phase: "cours", texte: genre === "reprendre" ? "Reprise de la restauration\u2026" : "Retour \xE0 l'\xE9tat d'avant\u2026" });
-    try {
-      if (genre === "reprendre") await gsReprendre(mdpReprise, (p) => setEtat({ phase: "cours", texte: p.texte, p }));
-      else await gsRevenirEnArriere(mdpReprise, (p) => setEtat({ phase: "cours", texte: p.texte, p }));
-      setEtat({ phase: "ok", texte: genre === "reprendre" ? "Restauration termin\xE9e et v\xE9rifi\xE9e." : "L'outil est revenu \xE0 l'\xE9tat d'avant la restauration." });
-      setMdpReprise("");
-    } catch (err) {
-      setEtat({ phase: "erreur", texte: err.code === "MOT_DE_PASSE" ? "Mot de passe incorrect." : err.message });
-    }
-    rafraichirReprise();
-  };
-  const abandonner = async () => {
-    if (!window.confirm("Abandonner la restauration interrompue ?\n\nL'outil reste dans son \xE9tat actuel (partiellement restaur\xE9). La copie de s\xE9curit\xE9 t\xE9l\xE9charg\xE9e reste utilisable ici.")) return;
-    await gsEffacerReprise();
-    rafraichirReprise();
   };
   const k = fichier && fichier.controle;
   const rien = k && k.lignes.length > 0 && k.lignes.every((l) => !l.ajoutes && !l.modifies && !l.supprimes);
-  const enCours = etat && etat.phase === "cours";
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, reprise && /* @__PURE__ */ React.createElement("div", { className: "bandeau erreur" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("b", null, "Restauration interrompue"), " : ", reprise.mode === "retour-arriere" ? "retour \xE0 l'\xE9tat d'avant" : `fichier \xAB ${reprise.fichier} \xBB`, ", lanc\xE9e le ", fmt(reprise.date), " \u2014 ", reprise.faites.length, " \xE9tape(s) sur ", reprise.etapes.length, " termin\xE9e(s). Copie de s\xE9curit\xE9 prise avant : \xAB ", reprise.copieNom, " \xBB.", /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, maxWidth: 460 } }, /* @__PURE__ */ React.createElement(ChampMdp, { value: mdpReprise, onChange: setMdpReprise, placeholder: "Mot de passe de la copie (vide si non prot\xE9g\xE9e)" })), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 10 } }, /* @__PURE__ */ React.createElement("button", { className: "btn primaire", disabled: enCours, onClick: () => agirReprise("reprendre") }, "Reprendre la restauration"), /* @__PURE__ */ React.createElement("button", { className: "btn", disabled: enCours, onClick: () => agirReprise("retour") }, "Revenir \xE0 l'\xE9tat d'avant"), /* @__PURE__ */ React.createElement("button", { className: "btn", disabled: enCours, onClick: abandonner }, "Abandonner")))), /* @__PURE__ */ React.createElement("div", { className: "deux" }, /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Sauvegarder"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Un fichier contenant toutes les donn\xE9es de l'outil : agents, imports, grilles, \xE9coutes, plan d'action, accompagnements, formations, r\xE9f\xE9rentiels et t\xE2ches."), /* @__PURE__ */ React.createElement("p", { style: { marginBottom: 12 } }, total ? /* @__PURE__ */ React.createElement(React.Fragment, null, pl(total, "enregistrement"), " dans l'outil.") : "L'outil est vide pour le moment.", " Derni\xE8re sauvegarde : ", /* @__PURE__ */ React.createElement("b", null, derniere ? fmt(derniere) : "aucune"), "."), /* @__PURE__ */ React.createElement("label", { className: "coche" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: chiffrer, onChange: (e) => setChiffrer(e.target.checked) }), " Prot\xE9ger par mot de passe (recommand\xE9 : donn\xE9es nominatives Tersea)"), chiffrer ? /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gap: 8, margin: "10px 0" } }, /* @__PURE__ */ React.createElement(ChampMdp, { value: mdp, onChange: setMdp, placeholder: "Mot de passe" }), /* @__PURE__ */ React.createElement(ChampMdp, { value: mdp2, onChange: setMdp2, placeholder: "Confirmer le mot de passe" }), /* @__PURE__ */ React.createElement("p", { className: "petit" }, mdp && mdp2 && mdp !== mdp2 ? /* @__PURE__ */ React.createElement("b", { style: { color: "var(--critique)" } }, "Les deux mots de passe sont diff\xE9rents.") : `${GS_MDP_MIN} caract\xE8res minimum. Sans ce mot de passe, la sauvegarde est illisible, y compris pour toi : note-le dans un endroit s\xFBr.`)) : /* @__PURE__ */ React.createElement("p", { className: "petit", style: { color: "var(--critique)", margin: "8px 0" } }, /* @__PURE__ */ React.createElement("b", null, "Fichier non prot\xE9g\xE9 :"), " toute personne qui le r\xE9cup\xE8re peut lire les noms d'agents et les verbatims."), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: sauver, disabled: !total || !mdpOk || occupe }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " ", occupe ? "Sauvegarde en cours\u2026" : "T\xE9l\xE9charger une sauvegarde compl\xE8te"), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 10 } }, "Range ce fichier sur ton ordinateur ou un espace autoris\xE9 par Tersea. Jamais sur GitHub, ni sur le Drive DI'ALLO.")), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Restaurer"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Remplace le contenu de l'outil par celui d'un fichier de sauvegarde. Rien n'est modifi\xE9 tant que tu n'as pas confirm\xE9."), /* @__PURE__ */ React.createElement("label", { className: "btn", style: { cursor: "pointer" } }, /* @__PURE__ */ React.createElement(Icone, { nom: "importer", taille: 15 }), " Choisir un fichier de sauvegarde", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json,application/json", hidden: true, onChange: choisir })), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 10 } }, "L'outil contr\xF4le le fichier (origine, mot de passe, int\xE9grit\xE9, contenu), montre ce qui va changer, t\xE9l\xE9charge d'abord l'\xE9tat actuel, puis remplace en v\xE9rifiant chaque \xE9tape. Les anciennes sauvegardes restent accept\xE9es. Le compte propri\xE9taire et les r\xE8gles de s\xE9curit\xE9 ne sont jamais touch\xE9s."))), etat && /* @__PURE__ */ React.createElement("div", { className: `bandeau ${etat.phase === "erreur" ? "erreur" : etat.phase === "ok" ? "info" : "alerte"}` }, /* @__PURE__ */ React.createElement(Icone, { nom: etat.phase === "ok" ? "coche" : "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, etat.texte), etat.p && etat.phase === "cours" && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 4 } }, etat.p.faites, " / ", etat.p.total, " \xE9tapes"), etat.filet && etat.phase !== "cours" && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 4 } }, "Copie de l'\xE9tat d'avant t\xE9l\xE9charg\xE9e : \xAB ", etat.filet, " \xBB."), etat.phase === "erreur" && !modeLocal && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 4 } }, "Rien n'est perdu : utilise le bandeau \xAB Restauration interrompue \xBB pour reprendre ou revenir \xE0 l'\xE9tat d'avant."))), fichier && fichier.phase === "mot-de-passe" && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, /* @__PURE__ */ React.createElement(Icone, { nom: "cadenas", taille: 16 }), " \xAB ", fichier.nom, " \xBB est prot\xE9g\xE9"), /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 460 } }, /* @__PURE__ */ React.createElement(ChampMdp, { value: mdpOuverture, onChange: setMdpOuverture, placeholder: "Mot de passe de la sauvegarde", autoFocus: true })), fichier.erreur && /* @__PURE__ */ React.createElement("p", { style: { color: "var(--critique)", marginTop: 8 } }, /* @__PURE__ */ React.createElement("b", null, fichier.erreur)), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("button", { className: "btn primaire", disabled: !mdpOuverture, onClick: () => ouvrir({ nom: fichier.nom, analyse: fichier.analyse }, mdpOuverture) }, "Ouvrir et contr\xF4ler"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFichier(null) }, "Annuler"))), fichier && fichier.phase === "controle" && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Contr\xF4le de \xAB ", fichier.nom, " \xBB"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, fichier.d && fichier.d.date ? `Sauvegarde du ${fmt(fichier.d.date)}.` : "Date de sauvegarde inconnue.", fichier.analyse && fichier.analyse.genre === "v3" ? " Ancienne sauvegarde (non prot\xE9g\xE9e)." : ""), k.bloquants.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bandeau erreur" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Restauration impossible avec ce fichier."), " Rien n'a \xE9t\xE9 modifi\xE9.", /* @__PURE__ */ React.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, k.bloquants.map((b, i) => /* @__PURE__ */ React.createElement("li", { key: i }, b))))), k.alertes.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Incoh\xE9rences d\xE9tect\xE9es dans le fichier"), " (elles n'emp\xEAchent pas la restauration) :", /* @__PURE__ */ React.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, k.alertes.map((b, i) => /* @__PURE__ */ React.createElement("li", { key: i }, b))))), k.lignes.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Donn\xE9es"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Dans l'outil"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Dans le fichier"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Ajout\xE9s"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Modifi\xE9s"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Supprim\xE9s de l'outil"))), /* @__PURE__ */ React.createElement("tbody", null, k.lignes.map((l) => /* @__PURE__ */ React.createElement("tr", { key: l.c }, /* @__PURE__ */ React.createElement("td", null, l.lib), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.avant), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.apres), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.ajoutes || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.modifies || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.supprimes ? /* @__PURE__ */ React.createElement("b", { style: { color: "var(--critique)" } }, l.supprimes) : "\u2014")))))), rien ? /* @__PURE__ */ React.createElement("p", { style: { marginTop: 12 } }, "Ce fichier est identique au contenu actuel de l'outil : il n'y a rien \xE0 restaurer.") : !k.bloquants.length && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("b", null, "Copie de s\xE9curit\xE9 de l'\xE9tat actuel"), /* @__PURE__ */ React.createElement("p", { className: "petit" }, "T\xE9l\xE9charg\xE9e avant toute \xE9criture : elle permet de revenir en arri\xE8re, y compris apr\xE8s une coupure."), /* @__PURE__ */ React.createElement("label", { className: "coche" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: chiffrerCopie, onChange: (e) => setChiffrerCopie(e.target.checked) }), " Prot\xE9ger la copie par mot de passe"), chiffrerCopie && /* @__PURE__ */ React.createElement("div", { style: { maxWidth: 460, marginTop: 8 } }, /* @__PURE__ */ React.createElement(ChampMdp, { value: mdpCopie, onChange: setMdpCopie, placeholder: `Mot de passe de la copie (${GS_MDP_MIN} caract\xE8res minimum)` }))), /* @__PURE__ */ React.createElement("label", { className: "coche", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: compris, onChange: (e) => setCompris(e.target.checked) }), " J'ai lu ce tableau : le contenu actuel de l'outil sera remplac\xE9 par celui de ce fichier", k.lignes.some((l) => l.supprimes) ? `, et ${somme(k.lignes.map((l) => l.supprimes))} enregistrement(s) pr\xE9sents aujourd'hui seront supprim\xE9s` : "", "."), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("button", { className: "btn danger", disabled: !compris || enCours || chiffrerCopie && mdpCopie.length < GS_MDP_MIN, onClick: restaurer }, "Sauvegarder l'\xE9tat actuel puis restaurer"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFichier(null) }, "Annuler")))), (k.bloquants.length > 0 || rien) && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFichier(null) }, "Fermer")), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Historique"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Conservation conseill\xE9e : les 4 derni\xE8res sauvegardes et une par mois sur 6 mois. Les fichiers sans \xE9tiquette peuvent \xEAtre supprim\xE9s de ton ordinateur."), (journal.entrees || []).length === 0 ? /* @__PURE__ */ React.createElement("p", { className: "petit" }, "Aucune op\xE9ration enregistr\xE9e.") : /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Date"), /* @__PURE__ */ React.createElement("th", null, "Op\xE9ration"), /* @__PURE__ */ React.createElement("th", null, "Fichier"), /* @__PURE__ */ React.createElement("th", null, "Conserver"))), /* @__PURE__ */ React.createElement("tbody", null, journal.entrees.slice(0, 12).map((e, i) => /* @__PURE__ */ React.createElement("tr", { key: i }, /* @__PURE__ */ React.createElement("td", null, fmt(e.date)), /* @__PURE__ */ React.createElement("td", null, e.type, e.chiffre ? /* @__PURE__ */ React.createElement(React.Fragment, null, " ", /* @__PURE__ */ React.createElement(Icone, { nom: "cadenas", taille: 12 })) : null, /* @__PURE__ */ React.createElement("div", { className: "petit" }, e.compteurs ? `${e.compteurs.conseillers || 0} agents \xB7 ${e.compteurs.ecoutes || 0} \xE9coutes \xB7 ${e.compteurs.suivis || 0} accompagnements` : "")), /* @__PURE__ */ React.createElement("td", { className: "petit" }, e.fichier), /* @__PURE__ */ React.createElement("td", null, e.type === "sauvegarde" && garder[e.fichier] ? /* @__PURE__ */ React.createElement("b", null, garder[e.fichier]) : ""))))))), modeLocal && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, "Mode local : les sauvegardes et restaurations portent sur les donn\xE9es de ce navigateur, pas sur la base en ligne.")));
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "deux" }, /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Sauvegarder"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Un fichier contenant toutes les données de l'outil : agents, imports, grilles, écoutes, plan d'action, accompagnements, formations."), /* @__PURE__ */ React.createElement("p", { style: { marginBottom: 12 } }, total ? /* @__PURE__ */ React.createElement(React.Fragment, null, pl(total, "enregistrement"), " dans l'outil.") : "L'outil est vide pour le moment.", " Dernière sauvegarde depuis ce navigateur : ", /* @__PURE__ */ React.createElement("b", null, derniere ? new Date(derniere).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" }) : "aucune"), "."), /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: sauver, disabled: !total }, /* @__PURE__ */ React.createElement(Icone, { nom: "telecharger", taille: 15 }), " Télécharger une sauvegarde complète"), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 10 } }, "Ce fichier contient des noms d'agents et des verbatims de clients : garde-le sur ton ordinateur, ne le dépose pas sur GitHub.")), /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Restaurer"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Remplace le contenu de l'outil par celui d'un fichier de sauvegarde. Rien n'est modifié tant que tu n'as pas confirmé."), /* @__PURE__ */ React.createElement("label", { className: "btn", style: { cursor: "pointer" } }, /* @__PURE__ */ React.createElement(Icone, { nom: "importer", taille: 15 }), " Choisir un fichier de sauvegarde", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json,application/json", hidden: true, onChange: choisir })), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { marginTop: 10 } }, "L'outil contrôle le fichier, montre ce qui va changer, télécharge d'abord l'état actuel, puis seulement remplace. Le compte propriétaire et les règles de sécurité ne sont jamais touchés."))), etat && /* @__PURE__ */ React.createElement("div", { className: `bandeau ${etat.phase === "erreur" ? "erreur" : etat.phase === "ok" ? "info" : "alerte"}` }, /* @__PURE__ */ React.createElement(Icone, { nom: etat.phase === "ok" ? "coche" : "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, etat.texte), etat.filet && etat.phase !== "cours" && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 4 } }, "Retour arrière : l'état d'avant a été téléchargé sous le nom « ", etat.filet, " ». Pour revenir en arrière, restaure ce fichier ici."))), fichier && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Contrôle de « ", fichier.nom, " »"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, fichier.d && fichier.d.date ? `Sauvegarde du ${new Date(fichier.d.date).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" })}.` : "Date de sauvegarde inconnue."), k.bloquants.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bandeau erreur" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Restauration impossible avec ce fichier."), /* @__PURE__ */ React.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, k.bloquants.map((b, i) => /* @__PURE__ */ React.createElement("li", { key: i }, b))))), k.alertes.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("b", null, "Incohérences détectées dans le fichier"), " (elles n'empêchent pas la restauration) :", /* @__PURE__ */ React.createElement("ul", { style: { margin: "6px 0 0", paddingLeft: 18 } }, k.alertes.map((b, i) => /* @__PURE__ */ React.createElement("li", { key: i }, b))))), k.lignes.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "tab-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Données"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Dans l'outil"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Dans le fichier"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Ajoutés"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Modifiés"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Supprimés de l'outil"))), /* @__PURE__ */ React.createElement("tbody", null, k.lignes.map((l) => /* @__PURE__ */ React.createElement("tr", { key: l.c }, /* @__PURE__ */ React.createElement("td", null, l.lib), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.avant), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.apres), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.ajoutes || "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.modifies || "—"), /* @__PURE__ */ React.createElement("td", { className: "num" }, l.supprimes ? /* @__PURE__ */ React.createElement("b", { style: { color: "var(--critique)" } }, l.supprimes) : "—")))))), rien ? /* @__PURE__ */ React.createElement("p", { style: { marginTop: 12 } }, "Ce fichier est identique au contenu actuel de l'outil : il n'y a rien à restaurer.") : !k.bloquants.length && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "coche", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: compris, onChange: (e) => setCompris(e.target.checked) }), " J'ai lu ce tableau : le contenu actuel de l'outil sera remplacé par celui de ce fichier", k.lignes.some((l) => l.supprimes) ? `, et ${somme(k.lignes.map((l) => l.supprimes))} enregistrement(s) présents aujourd'hui seront supprimés` : "", "."), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("button", { className: "btn danger", disabled: !compris || etat && etat.phase === "cours", onClick: restaurer }, "Sauvegarder l'état actuel puis restaurer"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFichier(null) }, "Annuler")))), k.bloquants.length > 0 && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => setFichier(null) }, "Fermer")), modeLocal && /* @__PURE__ */ React.createElement("div", { className: "bandeau alerte" }, /* @__PURE__ */ React.createElement(Icone, { nom: "alerte" }), /* @__PURE__ */ React.createElement("div", null, "Mode local : les sauvegardes et restaurations portent sur les données de ce navigateur, pas sur la base en ligne.")));
 }
 async function testerProtection() {
   const base = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/artifacts/${APP_ID}/public/data/`;
@@ -5874,7 +5648,11 @@ function tachesAutomatiques(ctx) {
     categorie: "Administratif",
     ouvrir: () => ctx.setVue(x.vue)
   }));
-  return t.map((x) => ({ ...x, auto: true, demandeur: "", priorite: "Normale", jourPrevu: "", statut: x.fait ? "Terminé" : "À faire", dateReelle: x.faitLe || "" }));
+  try {
+    t.push(...tachesDeProjets(ctx));
+  } catch (e) {
+  }
+  return t.map((x) => ({ ...x, auto: true, demandeur: "", priorite: x.prioriteProjet || "Normale", jourPrevu: "", statut: x.fait ? "Terminé" : "À faire", dateReelle: x.faitLe || "" }));
 }
 function toutesLesTaches(ctx, doc2) {
   const prefs = doc2.auto || {};
@@ -5973,7 +5751,8 @@ function calculerBilan(ctx, doc2, mois) {
   const tousConseillers = /* @__PURE__ */ new Set([...ecs.map((e) => e.conseillerId), ...sv.map((s) => s.conseillerId), ...presents]);
   const projets = [.../* @__PURE__ */ new Set([...ecs.map(projetDe), ...sv.map(projetDe), ...ses.map((s) => s.projet || "Sans projet")])].sort();
   const L = (doc2.liste || []).map(normaliserTache);
-  const terminees = L.filter((t) => t.statut === "Terminé" && dansMois(t.dateReelle)).sort((a, b) => a.dateReelle.localeCompare(b.dateReelle));
+  const rp = realisationsProjets(ctx, debut, fin);
+  const terminees = [...L.filter((t) => t.statut === "Terminé" && dansMois(t.dateReelle)), ...rp.terminees].sort((a, b) => a.dateReelle.localeCompare(b.dateReelle));
   const etapes = L.filter((t) => !(t.statut === "Terminé" && dansMois(t.dateReelle))).flatMap((t) => (t.etapes || []).filter((s) => dansMois(s.date)).map((s) => ({ ...s, tache: t })));
   const tacheProjet = (t) => libProjet(t) || "Sans projet";
   const projetTache = (t) => t.projet || "Sans projet";
@@ -5990,7 +5769,7 @@ function calculerBilan(ctx, doc2, mois) {
     taches: terminees.filter((t) => projetTache(t) === p).length + new Set(etapes.filter((s) => projetTache(s.tache) === p).map((s) => s.tache.id)).size
   }));
   const livrables = terminees.filter((t) => t.lien || t.resultat);
-  const enCours = L.filter((t) => ["En cours", "En attente"].includes(t.statut));
+  const enCours = [...L.filter((t) => ["En cours", "En attente"].includes(t.statut)), ...rp.enCours];
   const auj = aujourdhui();
   const apres = auj;
   const priorites = ctx.mesTaches.filter((x) => ouverte(x) && !x.masquee && x.source !== "À traiter" && (jourDe(x) && jourDe(x) >= auj || x.priorite === "Haute")).sort((a, b) => rangPrio(a) - rangPrio(b) || String(jourDe(a)).localeCompare(String(jourDe(b)))).slice(0, 10);
@@ -6192,6 +5971,466 @@ function EncartMaJournee({ ctx }) {
   const retard = L.filter(enRetard), jour = trierTaches(L.filter((x) => jourDe(x) === aujourdhui() && !enRetard(x)));
   const apercu = [...jour, ...retard].slice(0, 5);
   return /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Ma journée"), /* @__PURE__ */ React.createElement("p", { className: "sous" }, jour.length, " ", jour.length > 1 ? "tâches" : "tâche", " aujourd'hui · ", retard.length ? /* @__PURE__ */ React.createElement("b", { className: "t-retard" }, retard.length, " en retard") : "rien en retard"), apercu.length ? /* @__PURE__ */ React.createElement("ul", { className: "ma-journee" }, apercu.map((x) => /* @__PURE__ */ React.createElement("li", { key: x.id || x.cle }, /* @__PURE__ */ React.createElement("span", { className: enRetard(x) ? "t-retard" : "" }, enRetard(x) ? fmtDate(jourDe(x)) : "Aujourd'hui"), " ", x.priorite === "Haute" && /* @__PURE__ */ React.createElement("b", null, "· priorité · "), x.titre))) : /* @__PURE__ */ React.createElement(Vide, null, "Rien de prévu aujourd'hui."), /* @__PURE__ */ React.createElement("button", { className: "btn", style: { marginTop: 8 }, onClick: () => ctx.setVue("taches") }, "Ouvrir Mon activité"));
+}
+const SUIVI_PROJETS_DEFAUT = { projets: [] };
+const STATUTS_PROJET = ["Actif", "En pause", "Terminé", "Annulé"];
+const STATUTS_TACHE_PROJET = ["À faire", "En cours", "En attente", "Terminé"];
+const METEO_PROJET = ["Dans les temps", "À surveiller", "En difficulté"];
+const idP = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const estMoi = (r) => !r || /^moi$/i.test(String(r).trim());
+const tacheOuverteP = (t) => t.statut !== "Terminé";
+const enRetardP = (t) => tacheOuverteP(t) && t.echeance && t.echeance < aujourdhui();
+const nbFr = (v) => v === "" || v === void 0 || v === null ? "" : String(Math.round(+v * 10) / 10).replace(".", ",");
+const EQUIPE_QMA = ["Moi", "Responsable qualité", "Production", "Manager", "IT", "Éditeur QMA"];
+const equipeDe = (p) => [.../* @__PURE__ */ new Set(["Moi", ...p.equipe || EQUIPE_QMA, ...(p.taches || []).map((t) => t.responsable).filter(Boolean)])];
+const demanderPersonne = () => {
+  const n = prompt("Nom ou rôle de la personne responsable (ex. Responsable qualité Orange, Karim de l'IT) :");
+  return n && n.trim() ? n.trim() : "";
+};
+const perimetreProjet = (p) => p.projet ? [p.projet, p.activite].filter(Boolean).join(" · ") : TRANSV;
+function avancementProjet(p) {
+  const L = p.taches || [];
+  const fait = L.filter((t) => t.statut === "Terminé").length;
+  return {
+    n: L.length,
+    fait,
+    taux: L.length ? fait / L.length : 0,
+    retard: L.filter(enRetardP).length,
+    prochaine: L.filter((t) => tacheOuverteP(t) && t.echeance).sort((a, b) => a.echeance.localeCompare(b.echeance))[0] || null,
+    jalons: L.filter((t) => t.jalon),
+    jalonsFaits: L.filter((t) => t.jalon && t.statut === "Terminé").length
+  };
+}
+const MODELE_QMA = {
+  lib: "Déploiement d'un outil qualité (QMA)",
+  description: "Mise en place de l'outil d'évaluation automatique des appels : intégration des grilles, calibrage des évaluations de l'outil face aux évaluations humaines, fiabilité des évaluations et des données fournies.",
+  objectif: "Des évaluations QMA fiables, alignées sur les évaluations humaines, et des données exploitables pour le pilotage qualité.",
+  sections: [
+    { nom: "Cadrage", taches: [
+      ["Définir le périmètre (activités, volumes, utilisateurs)", 3],
+      ["Identifier les parties prenantes : prod, qualité, client, IT", 3],
+      ["Fixer les objectifs et les critères de réussite (seuil d’accord, fiabilité)", 5],
+      ["Réunion de lancement", 7, true]
+    ] },
+    { nom: "Intégration des grilles", taches: [
+      ["Recenser les grilles en vigueur par activité", 10],
+      ["Traduire chaque critère en règle évaluable par l’outil", 17],
+      ["Paramétrer les grilles dans QMA", 21],
+      ["Tester les grilles sur un échantillon d’appels", 24],
+      ["Valider les grilles avec la qualité et le client", 28, true]
+    ] },
+    { nom: "Calibrage des évaluations", taches: [
+      ["Constituer l’échantillon de calibrage (appels évalués par l’outil et par un évaluateur)", 31],
+      ["Évaluer l’échantillon en double : QMA / évaluateur", 38],
+      ["Mesurer les écarts critère par critère", 40],
+      ["Séance de calibrage avec la qualité, les formateurs et les managers", 42],
+      ["Ajuster les règles des critères en écart", 47],
+      ["Second tour de calibrage", 54],
+      ["Seuil d’accord atteint", 56, true]
+    ] },
+    { nom: "Fiabilité des évaluations et des données", taches: [
+      ["Contrôler l’exhaustivité des données (appels, agents, dates, activités)", 35],
+      ["Rapprocher les données QMA du reporting", 42],
+      ["Mettre en place un contrôle aléatoire hebdomadaire", 49],
+      ["Tenir le registre des anomalies et des corrections", 56],
+      ["Fiabilité des données validée", 63, true]
+    ] },
+    { nom: "Déploiement et formation", taches: [
+      ["Rédiger le mode d’emploi utilisateurs", 60],
+      ["Former les formateurs et les managers", 65],
+      ["Démarrage en production", 70, true],
+      ["Suivi à 1 mois du démarrage", 100]
+    ] },
+    { nom: "Bilan", taches: [["Bilan de l’action et recommandations", 105], ["Restitution aux parties prenantes", 110, true]] }
+  ],
+  indicateurs: [
+    { nom: "Taux d'accord QMA / évaluateur", unite: "%", cible: 85, sens: "haut" },
+    { nom: "Écart moyen de note QMA / évaluateur", unite: "pts", cible: 5, sens: "bas" },
+    { nom: "Anomalies dans les données", unite: "%", cible: 2, sens: "bas" }
+  ]
+};
+const MODELES_PROJET = { vierge: { lib: "Projet vierge", sections: [{ nom: "À faire", taches: [] }], indicateurs: [], equipe: ["Moi"] }, qma: { ...MODELE_QMA, equipe: EQUIPE_QMA } };
+function creerDepuisModele(cle, base) {
+  const m = MODELES_PROJET[cle] || MODELES_PROJET.vierge;
+  const debut = base.debut || aujourdhui();
+  const sections = m.sections.map((s) => ({ id: idP("s"), nom: s.nom, taches: s.taches }));
+  const taches = sections.flatMap((s) => s.taches.map(([titre, j, jalon]) => ({ id: idP("t"), titre, sectionId: s.id, responsable: "Moi", echeance: ajoutJours(debut, j), priorite: "Normale", statut: "À faire", jalon: !!jalon, description: "", sousTaches: [], commentaires: [], lien: "", dateReelle: "" })));
+  const fin = base.fin || (taches.length ? taches.map((t) => t.echeance).sort().pop() : "");
+  return {
+    id: idP("p"),
+    nom: base.nom,
+    description: base.description || m.description || "",
+    objectif: base.objectif || m.objectif || "",
+    projet: base.projet || "",
+    activite: base.activite || "",
+    commanditaire: base.commanditaire || "",
+    debut,
+    fin,
+    statut: "Actif",
+    meteo: "Dans les temps",
+    creeLe: aujourdhui(),
+    sections: sections.map(({ id, nom }) => ({ id, nom })),
+    taches,
+    equipe: base.equipe && base.equipe.length ? [.../* @__PURE__ */ new Set(["Moi", ...base.equipe])] : m.equipe || ["Moi"],
+    indicateurs: (m.indicateurs || []).map((i) => ({ ...i, id: idP("i"), mesures: [] })),
+    points: []
+  };
+}
+function tachesDeProjets(ctx) {
+  const doc2 = ctx.suiviProjets || SUIVI_PROJETS_DEFAUT;
+  return (doc2.projets || []).filter((p) => ["Actif", "En pause"].includes(p.statut)).flatMap((p) => (p.taches || []).filter((t) => estMoi(t.responsable) && (t.echeance || t.statut === "Terminé")).map((t) => ({
+    cle: `projet:${p.id}:${t.id}`,
+    titre: t.titre,
+    detail: `Projet ${p.nom}${(p.sections.find((s) => s.id === t.sectionId) || {}).nom ? " · " + p.sections.find((s) => s.id === t.sectionId).nom : ""}`,
+    echeance: t.echeance || "",
+    projet: p.projet || TRANSV,
+    activite: p.activite || "",
+    fait: t.statut === "Terminé",
+    faitLe: t.dateReelle || "",
+    source: "Projet",
+    categorie: "Autre",
+    ouvrir: () => ctx.ouvrirProjet(p.id, t.id),
+    prioriteProjet: t.priorite
+  })));
+}
+function realisationsProjets(ctx, debut, fin) {
+  const doc2 = ctx.suiviProjets || SUIVI_PROJETS_DEFAUT;
+  const dans = (d) => d && d >= debut && d <= fin;
+  const terminees = [], enCours = [];
+  (doc2.projets || []).forEach((p) => (p.taches || []).forEach((t) => {
+    const x = { ...normaliserTache({ titre: `${t.titre} (projet ${p.nom})`, projet: p.projet || TRANSV, activite: p.activite || "", categorie: t.jalon ? "Jalon" : "", statut: t.statut, dateReelle: t.dateReelle || "", resultat: t.resultat || "", lien: t.lien || "", echeance: t.echeance || "" }), id: "pj" + t.id };
+    if (t.statut === "Terminé" && dans(t.dateReelle)) terminees.push(x);
+    else if (["En cours", "En attente"].includes(t.statut) && p.statut === "Actif") enCours.push(x);
+  }));
+  return { terminees, enCours };
+}
+function texteAvancement(p) {
+  const a = avancementProjet(p);
+  const l = [];
+  l.push(`Objet : Point d'avancement · ${p.nom}`, "", "Bonjour,", "", `Voici le point d'avancement du projet « ${p.nom} » au ${fmtDate(aujourdhui())}.`, "");
+  l.push(`Météo : ${p.meteo || "Dans les temps"} · avancement ${Math.round(a.taux * 100)} % (${a.fait}/${a.n} tâches)${a.jalons.length ? ` · jalons ${a.jalonsFaits}/${a.jalons.length}` : ""}`);
+  if (p.objectif) l.push(`Objectif : ${p.objectif}`);
+  l.push("", "AVANCEMENT PAR ÉTAPE");
+  p.sections.forEach((s) => {
+    const L = p.taches.filter((t) => t.sectionId === s.id);
+    if (!L.length) return;
+    const f = L.filter((t) => t.statut === "Terminé").length;
+    l.push(`- ${s.nom} : ${f === L.length ? "terminé" : f ? `${f}/${L.length} tâches faites` : "à démarrer"}`);
+  });
+  const ind = (p.indicateurs || []).filter((i) => (i.mesures || []).length);
+  if (ind.length) {
+    l.push("", "INDICATEURS");
+    ind.forEach((i) => {
+      const m = [...i.mesures].sort((x, y) => x.date.localeCompare(y.date));
+      const d = m[m.length - 1];
+      l.push(`- ${i.nom} : ${nbFr(d.valeur)} ${i.unite || ""} au ${fmtDate(d.date)} (cible ${i.sens === "bas" ? "≤" : "≥"} ${nbFr(i.cible)} ${i.unite || ""})${m.length > 1 ? `, précédente mesure ${nbFr(m[m.length - 2].valeur)} ${i.unite || ""}` : ""}`);
+    });
+  }
+  const faites = p.taches.filter((t) => t.statut === "Terminé" && t.dateReelle && t.dateReelle >= ajoutJours(aujourdhui(), -14)).sort((x, y) => x.dateReelle.localeCompare(y.dateReelle));
+  if (faites.length) {
+    l.push("", "RÉALISÉ CES 15 DERNIERS JOURS");
+    faites.forEach((t) => l.push(`- ${t.titre}${t.resultat ? ` : ${t.resultat}` : ""}`));
+  }
+  const retard = p.taches.filter(enRetardP);
+  if (retard.length) {
+    l.push("", "EN RETARD");
+    retard.forEach((t) => l.push(`- ${t.titre} (prévu le ${fmtDate(t.echeance)})${t.responsable && !estMoi(t.responsable) ? ` · ${t.responsable}` : ""}`));
+  }
+  const suite = p.taches.filter((t) => tacheOuverteP(t) && t.echeance && t.echeance >= aujourdhui()).sort((x, y) => x.echeance.localeCompare(y.echeance)).slice(0, 6);
+  if (suite.length) {
+    l.push("", "PROCHAINES ÉTAPES");
+    suite.forEach((t) => l.push(`- ${t.titre} · ${fmtDate(t.echeance)}${t.responsable && !estMoi(t.responsable) ? ` · ${t.responsable}` : ""}`));
+  }
+  const pt = [...p.points || []].sort((x, y) => y.date.localeCompare(x.date))[0];
+  if (pt) l.push("", "POINT DE VIGILANCE / DÉCISION", `- ${pt.texte}`);
+  l.push("", "Bonne journée,");
+  return l.join("\n");
+}
+function FormProjet({ ctx, projet, onFermer, onEnregistrer }) {
+  const neuf = !projet.id;
+  const [eq, setEq] = useState("");
+  const [e, setE] = useState({ nom: "", description: "", objectif: "", projet: "", activite: "", commanditaire: "", debut: aujourdhui(), fin: "", statut: "Actif", meteo: "Dans les temps", modele: "qma", ...projet, equipe: projet.equipe || EQUIPE_QMA });
+  const m = (k, v) => setE((x) => ({ ...x, [k]: v }));
+  const perimetres = [...ctx.projets.flatMap((p) => [`${p}|`, ...ctx.activitesDe(p).map((a) => `${p}|${a}`)])];
+  const valider = () => {
+    if (!e.nom.trim()) return avertir("Donne un nom au projet.");
+    if (eq.trim() && !e.equipe.includes(eq.trim())) e.equipe = [...e.equipe, eq.trim()];
+    if (e.fin && e.debut && e.fin < e.debut) return avertir("La fin est avant le début.");
+    onEnregistrer({ ...e, nom: e.nom.trim() });
+  };
+  return /* @__PURE__ */ React.createElement(Modal, { titre: neuf ? "Nouveau projet" : "Modifier le projet", onFermer, large: true }, /* @__PURE__ */ React.createElement("div", { className: "grille" }, /* @__PURE__ */ React.createElement(Champ, { libelle: "Nom du projet", classe: "pleine" }, /* @__PURE__ */ React.createElement("input", { className: "input", autoFocus: true, placeholder: "Déploiement QMA · Orange", value: e.nom, onChange: (x) => m("nom", x.target.value) })), neuf && /* @__PURE__ */ React.createElement(Champ, { libelle: "Partir d'un modèle", classe: "pleine" }, /* @__PURE__ */ React.createElement("select", { className: "input", value: e.modele, onChange: (x) => m("modele", x.target.value) }, Object.entries(MODELES_PROJET).map(([k, v]) => /* @__PURE__ */ React.createElement("option", { key: k, value: k }, v.lib)))), /* @__PURE__ */ React.createElement(Champ, { libelle: "Projet / activité concernés" }, /* @__PURE__ */ React.createElement("select", { className: "input", value: e.projet ? `${e.projet}|${e.activite || ""}` : "", onChange: (x) => {
+    const [p, a] = x.target.value.split("|");
+    setE((y) => ({ ...y, projet: p || "", activite: a || "" }));
+  } }, /* @__PURE__ */ React.createElement("option", { value: "" }, TRANSV), perimetres.map((v) => {
+    const [p, a] = v.split("|");
+    return /* @__PURE__ */ React.createElement("option", { key: v, value: v }, a ? `${p} · ${a}` : `${p} · toutes activités`);
+  }))), /* @__PURE__ */ React.createElement(Champ, { libelle: "Commanditaire" }, /* @__PURE__ */ React.createElement("input", { className: "input", placeholder: "Direction qualité, client…", value: e.commanditaire, onChange: (x) => m("commanditaire", x.target.value) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Début" }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: e.debut, onChange: (x) => m("debut", x.target.value) })), /* @__PURE__ */ React.createElement(Champ, { libelle: neuf && e.modele !== "vierge" ? "Fin (calculée par le modèle si vide)" : "Fin prévue" }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: e.fin, onChange: (x) => m("fin", x.target.value) })), !neuf && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Champ, { libelle: "Statut" }, /* @__PURE__ */ React.createElement(Choix, { valeur: e.statut, onChange: (v) => m("statut", v), options: STATUTS_PROJET })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Météo" }, /* @__PURE__ */ React.createElement(Choix, { valeur: e.meteo, onChange: (v) => m("meteo", v), options: METEO_PROJET }))), /* @__PURE__ */ React.createElement(Champ, { libelle: "Objectif", classe: "pleine" }, /* @__PURE__ */ React.createElement("input", { className: "input", placeholder: neuf && e.modele === "qma" ? MODELE_QMA.objectif : "Ce que le projet doit produire", value: e.objectif, onChange: (x) => m("objectif", x.target.value) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Description", classe: "pleine" }, /* @__PURE__ */ React.createElement("textarea", { className: "input", rows: 2, placeholder: neuf && e.modele === "qma" ? MODELE_QMA.description : "", value: e.description, onChange: (x) => m("description", x.target.value) })), /* @__PURE__ */ React.createElement("div", { className: "champ pleine" }, /* @__PURE__ */ React.createElement("span", null, "Équipe du projet (les responsables possibles des tâches)"), /* @__PURE__ */ React.createElement("div", { className: "equipe" }, e.equipe.map((n) => /* @__PURE__ */ React.createElement("span", { key: n, className: "etiq" }, n, n !== "Moi" && /* @__PURE__ */ React.createElement("button", { type: "button", "aria-label": `Retirer ${n}`, onClick: () => m("equipe", e.equipe.filter((x) => x !== n)) }, "×"))), /* @__PURE__ */ React.createElement("input", { className: "input", style: { width: 240 }, placeholder: "Ajouter une personne puis Entrée", value: eq, onChange: (x) => setEq(x.target.value), onKeyDown: (x) => {
+    if (x.key === "Enter") {
+      x.preventDefault();
+      const v = eq.trim();
+      if (v && !e.equipe.includes(v)) m("equipe", [...e.equipe, v]);
+      setEq("");
+    }
+  } })))), neuf && e.modele === "qma" && /* @__PURE__ */ React.createElement("p", { className: "petit" }, "Le modèle crée 6 étapes (cadrage, intégration des grilles, calibrage, fiabilité des données, déploiement, bilan), ", MODELE_QMA.sections.reduce((n, s) => n + s.taches.length, 0), " tâches datées à partir du début et 3 indicateurs de calibrage. Tout reste modifiable."), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: valider }, neuf ? "Créer le projet" : "Enregistrer"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: onFermer }, "Annuler")));
+}
+function DetailTacheProjet({ p, tache, responsables, onFermer, onEnregistrer, onSupprimer }) {
+  const [e, setE] = useState({ sousTaches: [], commentaires: [], ...tache });
+  const [st, setSt] = useState("");
+  const [com, setCom] = useState("");
+  const [ajouts, setAjouts] = useState([]);
+  const m = (k, v) => setE((x) => ({ ...x, [k]: v, ...k === "statut" && v === "Terminé" && !x.dateReelle ? { dateReelle: aujourdhui() } : {}, ...k === "statut" && v !== "Terminé" ? { dateReelle: "" } : {} }));
+  const ajouterST = () => {
+    if (!st.trim()) return;
+    m("sousTaches", [...e.sousTaches, { id: idP("st"), texte: st.trim(), fait: false }]);
+    setSt("");
+  };
+  const ajouterCom = () => {
+    if (!com.trim()) return;
+    m("commentaires", [...e.commentaires, { date: aujourdhui(), texte: com.trim() }]);
+    setCom("");
+  };
+  const valider = () => {
+    if (!e.titre.trim()) return avertir("Indique l'intitulé de la tâche.");
+    onEnregistrer({ ...e, titre: e.titre.trim() });
+  };
+  return /* @__PURE__ */ React.createElement(Modal, { titre: tache.id ? "Tâche du projet" : "Nouvelle tâche", onFermer, large: true }, /* @__PURE__ */ React.createElement("div", { className: "grille" }, /* @__PURE__ */ React.createElement(Champ, { libelle: "Intitulé", classe: "pleine" }, /* @__PURE__ */ React.createElement("input", { className: "input", autoFocus: true, value: e.titre, onChange: (x) => m("titre", x.target.value) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Étape" }, /* @__PURE__ */ React.createElement(Choix, { valeur: e.sectionId, onChange: (v) => m("sectionId", v), options: p.sections.map((s) => ({ v: s.id, lib: s.nom })) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Responsable" }, /* @__PURE__ */ React.createElement("select", { className: "input", value: e.responsable || "Moi", onChange: (x) => {
+    if (x.target.value === "__autre") {
+      const n = demanderPersonne();
+      if (n) {
+        setAjouts((a) => [...a, n]);
+        m("responsable", n);
+      }
+    } else m("responsable", x.target.value);
+  } }, [.../* @__PURE__ */ new Set([...responsables, ...ajouts, e.responsable || "Moi"])].map((r) => /* @__PURE__ */ React.createElement("option", { key: r, value: r }, r)), /* @__PURE__ */ React.createElement("option", { value: "__autre" }, "+ Ajouter une personne…"))), /* @__PURE__ */ React.createElement(Champ, { libelle: "Échéance" }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: e.echeance || "", onChange: (x) => m("echeance", x.target.value) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Priorité" }, /* @__PURE__ */ React.createElement(Choix, { valeur: e.priorite || "Normale", onChange: (v) => m("priorite", v), options: PRIORITES_TACHE })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Statut" }, /* @__PURE__ */ React.createElement(Choix, { valeur: e.statut, onChange: (v) => m("statut", v), options: STATUTS_TACHE_PROJET })), e.statut === "Terminé" && /* @__PURE__ */ React.createElement(Champ, { libelle: "Terminé le" }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", value: e.dateReelle || "", onChange: (x) => m("dateReelle", x.target.value) })), /* @__PURE__ */ React.createElement("label", { className: "champ", style: { flexDirection: "row", alignItems: "center", gap: 8 } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: !!e.jalon, onChange: (x) => m("jalon", x.target.checked) }), " ", /* @__PURE__ */ React.createElement("span", null, "Jalon (étape clé à valider)")), /* @__PURE__ */ React.createElement(Champ, { libelle: "Description", classe: "pleine" }, /* @__PURE__ */ React.createElement("textarea", { className: "input", rows: 3, value: e.description || "", onChange: (x) => m("description", x.target.value) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Résultat / livrable" }, /* @__PURE__ */ React.createElement("input", { className: "input", placeholder: "Grille validée, écart mesuré à 7 %…", value: e.resultat || "", onChange: (x) => m("resultat", x.target.value) })), /* @__PURE__ */ React.createElement(Champ, { libelle: "Lien" }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "url", placeholder: "https://…", value: e.lien || "", onChange: (x) => m("lien", x.target.value) }))), /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Sous-tâches ", e.sousTaches.length ? `· ${e.sousTaches.filter((s) => s.fait).length}/${e.sousTaches.length}` : ""), /* @__PURE__ */ React.createElement("div", { className: "sous-taches" }, e.sousTaches.map((s, i) => /* @__PURE__ */ React.createElement("label", { key: s.id || i, className: s.fait ? "faite" : "" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: s.fait, onChange: () => m("sousTaches", e.sousTaches.map((y, j) => j === i ? { ...y, fait: !y.fait } : y)) }), " ", /* @__PURE__ */ React.createElement("span", null, s.texte), /* @__PURE__ */ React.createElement("button", { type: "button", className: "btn mini", "aria-label": "Retirer la sous-tâche", onClick: () => m("sousTaches", e.sousTaches.filter((_, j) => j !== i)) }, "×")))), /* @__PURE__ */ React.createElement("div", { className: "actions" }, /* @__PURE__ */ React.createElement("input", { className: "input", style: { flex: 1 }, placeholder: "Ajouter une sous-tâche puis Entrée", value: st, onChange: (x) => setSt(x.target.value), onKeyDown: (x) => {
+    if (x.key === "Enter") {
+      x.preventDefault();
+      ajouterST();
+    }
+  } }), /* @__PURE__ */ React.createElement("button", { type: "button", className: "btn", onClick: ajouterST }, "Ajouter")), /* @__PURE__ */ React.createElement("div", { className: "sec" }, "Commentaires et suivi"), e.commentaires.length > 0 && /* @__PURE__ */ React.createElement("ul", { className: "etapes" }, e.commentaires.map((c, i) => /* @__PURE__ */ React.createElement("li", { key: i }, /* @__PURE__ */ React.createElement("b", null, fmtDate(c.date)), " · ", c.texte, " ", /* @__PURE__ */ React.createElement("button", { type: "button", className: "btn mini", "aria-label": "Retirer le commentaire", onClick: () => m("commentaires", e.commentaires.filter((_, j) => j !== i)) }, "×")))), /* @__PURE__ */ React.createElement("div", { className: "actions" }, /* @__PURE__ */ React.createElement("input", { className: "input", style: { flex: 1 }, placeholder: "Ex. relancé l'IT pour l'accès aux enregistrements", value: com, onChange: (x) => setCom(x.target.value), onKeyDown: (x) => {
+    if (x.key === "Enter") {
+      x.preventDefault();
+      ajouterCom();
+    }
+  } }), /* @__PURE__ */ React.createElement("button", { type: "button", className: "btn", onClick: ajouterCom }, "Ajouter")), /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 14 } }, /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: valider }, "Enregistrer"), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: onFermer }, "Annuler"), tache.id && /* @__PURE__ */ React.createElement("button", { className: "btn danger", style: { marginLeft: "auto" }, onClick: () => {
+    if (confirm(`Supprimer la tâche « ${tache.titre} » ?`)) onSupprimer(tache.id);
+  } }, "Supprimer")));
+}
+function LigneTacheProjet({ t, p, onOuvrir, onStatut, onResp, equipe, peutEditer, carte }) {
+  const st = t.sousTaches || [];
+  const sec = carte ? (p.sections.find((s) => s.id === t.sectionId) || {}).nom : "";
+  return /* @__PURE__ */ React.createElement("div", { className: `ptache ${carte ? "carte-k" : ""} ${t.statut === "Terminé" ? "faite" : ""} ${enRetardP(t) ? "retard" : ""}`, draggable: carte && peutEditer, onDragStart: (e) => {
+    e.dataTransfer.setData("text/plain", t.id);
+    e.dataTransfer.effectAllowed = "move";
+  } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: t.statut === "Terminé", disabled: !peutEditer, "aria-label": t.statut === "Terminé" ? "Remettre à faire" : "Marquer comme terminé", onChange: () => onStatut(t, t.statut === "Terminé" ? "À faire" : "Terminé") }), /* @__PURE__ */ React.createElement("div", { className: "tache-corps" }, /* @__PURE__ */ React.createElement("button", { type: "button", className: "tache-titre", onClick: () => onOuvrir(t) }, t.jalon && /* @__PURE__ */ React.createElement("span", { className: "jalon", title: "Jalon" }, "◆ "), t.titre), /* @__PURE__ */ React.createElement("div", { className: "tache-meta" }, sec && /* @__PURE__ */ React.createElement("span", null, sec), t.echeance && /* @__PURE__ */ React.createElement("span", { className: enRetardP(t) ? "t-retard" : "" }, fmtDate(t.echeance), enRetardP(t) ? " · en retard" : ""), t.statut === "Terminé" && t.dateReelle && /* @__PURE__ */ React.createElement("span", null, "terminé le ", fmtDate(t.dateReelle)), ["En cours", "En attente"].includes(t.statut) && !carte && /* @__PURE__ */ React.createElement("span", { className: "etiq encours" }, t.statut), t.priorite === "Haute" && tacheOuverteP(t) && /* @__PURE__ */ React.createElement("span", { className: "etiq prio" }, "Priorité haute"), peutEditer && onResp ? /* @__PURE__ */ React.createElement("select", { className: "resp-sel", "aria-label": "Responsable", title: "Responsable de la tâche", value: t.responsable || "Moi", onChange: (e) => onResp(t, e.target.value) }, [.../* @__PURE__ */ new Set([...equipe || [], t.responsable || "Moi"])].map((r) => /* @__PURE__ */ React.createElement("option", { key: r, value: r }, "👤 ", r)), /* @__PURE__ */ React.createElement("option", { value: "__autre" }, "+ Ajouter une personne…")) : /* @__PURE__ */ React.createElement("span", { className: "etiq" }, "👤 ", t.responsable || "Moi"), st.length > 0 && /* @__PURE__ */ React.createElement("span", null, "☑ ", st.filter((s) => s.fait).length, "/", st.length), (t.commentaires || []).length > 0 && /* @__PURE__ */ React.createElement("span", null, "💬 ", t.commentaires.length))));
+}
+function IndicateursProjet({ p, maj, peutEditer }) {
+  const [mes, setMes] = useState({});
+  const [nouv, setNouv] = useState({ nom: "", unite: "%", cible: "", sens: "haut" });
+  const L = p.indicateurs || [];
+  const atteint = (i, v) => i.cible === "" || i.cible === void 0 ? null : i.sens === "bas" ? +v <= +i.cible : +v >= +i.cible;
+  const ajouterMesure = (i) => {
+    const s = mes[i.id] || {};
+    if (s.valeur === void 0 || s.valeur === "" || isNaN(+String(s.valeur).replace(",", "."))) return avertir("Indique une valeur chiffrée.");
+    maj((x) => ({ ...x, indicateurs: x.indicateurs.map((y) => y.id === i.id ? { ...y, mesures: [...y.mesures || [], { date: s.date || aujourdhui(), valeur: +String(s.valeur).replace(",", "."), note: s.note || "" }].sort((a, b) => a.date.localeCompare(b.date)) } : y) }));
+    setMes({ ...mes, [i.id]: {} });
+  };
+  const ajouterInd = () => {
+    if (!nouv.nom.trim()) return avertir("Donne un nom à l'indicateur.");
+    maj((x) => ({ ...x, indicateurs: [...x.indicateurs || [], { ...nouv, nom: nouv.nom.trim(), cible: nouv.cible === "" ? "" : +nouv.cible, id: idP("i"), mesures: [] }] }));
+    setNouv({ nom: "", unite: "%", cible: "", sens: "haut" });
+  };
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, !L.length && /* @__PURE__ */ React.createElement(Vide, null, "Aucun indicateur. Ajoute par exemple le taux d'accord entre l'outil et l'évaluateur, mesuré à chaque tour de calibrage."), L.map((i) => {
+    const M = i.mesures || [];
+    const d = M[M.length - 1];
+    const ok = d ? atteint(i, d.valeur) : null;
+    return /* @__PURE__ */ React.createElement("div", { key: i.id, className: "carte" }, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("h2", { style: { margin: 0 } }, i.nom), /* @__PURE__ */ React.createElement("span", { className: "petit" }, "cible ", i.sens === "bas" ? "≤" : "≥", " ", nbFr(i.cible), " ", i.unite), d && /* @__PURE__ */ React.createElement("span", { className: `badge ${ok ? "ok" : "ko"}` }, nbFr(d.valeur), " ", i.unite, " · ", ok ? "Atteint" : "Pas encore atteint"), peutEditer && /* @__PURE__ */ React.createElement("button", { className: "btn mini", style: { marginLeft: "auto" }, onClick: () => {
+      if (confirm(`Supprimer l'indicateur « ${i.nom} » et ses mesures ?`)) maj((x) => ({ ...x, indicateurs: x.indicateurs.filter((y) => y.id !== i.id) }));
+    } }, "Supprimer")), M.length >= 2 && i.unite === "%" && /* @__PURE__ */ React.createElement(Courbe, { categories: M.map((x) => fmtDate(x.date).slice(0, 5)), series: [{ nom: i.nom, valeurs: M.map((x) => x.valeur / 100) }], hauteur: 170 }), M.length > 0 && /* @__PURE__ */ React.createElement("table", { className: "tab" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Date"), /* @__PURE__ */ React.createElement("th", null, "Valeur"), /* @__PURE__ */ React.createElement("th", null, "Écart à la cible"), /* @__PURE__ */ React.createElement("th", null, "Note"), peutEditer && /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, M.map((x, k) => /* @__PURE__ */ React.createElement("tr", { key: k }, /* @__PURE__ */ React.createElement("td", null, fmtDate(x.date)), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("b", null, nbFr(x.valeur), " ", i.unite)), /* @__PURE__ */ React.createElement("td", null, i.cible === "" ? "—" : `${x.valeur - i.cible > 0 ? "+" : ""}${nbFr(x.valeur - i.cible)} ${i.unite}`), /* @__PURE__ */ React.createElement("td", null, x.note), peutEditer && /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("button", { className: "btn mini", "aria-label": "Retirer la mesure", onClick: () => maj((y) => ({ ...y, indicateurs: y.indicateurs.map((z) => z.id === i.id ? { ...z, mesures: z.mesures.filter((_, j) => j !== k) } : z) })) }, "×")))))), peutEditer && /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("input", { className: "input", type: "date", style: { width: 150 }, value: (mes[i.id] || {}).date || aujourdhui(), onChange: (e) => setMes({ ...mes, [i.id]: { ...mes[i.id] || {}, date: e.target.value } }), "aria-label": "Date de la mesure" }), /* @__PURE__ */ React.createElement("input", { className: "input", style: { width: 110 }, placeholder: `valeur (${i.unite})`, value: (mes[i.id] || {}).valeur || "", onChange: (e) => setMes({ ...mes, [i.id]: { ...mes[i.id] || {}, valeur: e.target.value } }), "aria-label": "Valeur" }), /* @__PURE__ */ React.createElement("input", { className: "input", style: { flex: 1, minWidth: 180 }, placeholder: "Note : échantillon de 40 appels, tour 1…", value: (mes[i.id] || {}).note || "", onChange: (e) => setMes({ ...mes, [i.id]: { ...mes[i.id] || {}, note: e.target.value } }), "aria-label": "Note" }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: () => ajouterMesure(i) }, "Ajouter la mesure")));
+  }), peutEditer && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("h2", null, "Nouvel indicateur"), /* @__PURE__ */ React.createElement("div", { className: "actions" }, /* @__PURE__ */ React.createElement("input", { className: "input", style: { flex: 1, minWidth: 200 }, placeholder: "Nom (ex. taux d'accord sur le critère découverte)", value: nouv.nom, onChange: (e) => setNouv({ ...nouv, nom: e.target.value }) }), /* @__PURE__ */ React.createElement("input", { className: "input", style: { width: 80 }, placeholder: "unité", value: nouv.unite, onChange: (e) => setNouv({ ...nouv, unite: e.target.value }), "aria-label": "Unité" }), /* @__PURE__ */ React.createElement("select", { className: "input", style: { width: "auto" }, value: nouv.sens, onChange: (e) => setNouv({ ...nouv, sens: e.target.value }), "aria-label": "Sens" }, /* @__PURE__ */ React.createElement("option", { value: "haut" }, "cible minimum (≥)"), /* @__PURE__ */ React.createElement("option", { value: "bas" }, "cible maximum (≤)")), /* @__PURE__ */ React.createElement("input", { className: "input", style: { width: 90 }, type: "number", placeholder: "cible", value: nouv.cible, onChange: (e) => setNouv({ ...nouv, cible: e.target.value }), "aria-label": "Cible" }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: ajouterInd }, "Ajouter"))));
+}
+function PageProjet({ ctx, p, majProjet, supprimerProjet, retour, tacheInitiale }) {
+  const { peutEditer } = ctx;
+  const [onglet, setOnglet] = useState("liste");
+  const [edition, setEdition] = useState(null);
+  const [modifP, setModifP] = useState(false);
+  const [rapide, setRapide] = useState({});
+  const [survol, setSurvol] = useState("");
+  const [masquerFaites, setMasquerFaites] = useState(false);
+  const [point, setPoint] = useState("");
+  const [ouvertInit, setOuvertInit] = useState(false);
+  useEffect(() => {
+    if (tacheInitiale && !ouvertInit) {
+      const t = p.taches.find((x) => x.id === tacheInitiale);
+      if (t) setEdition(t);
+      setOuvertInit(true);
+    }
+  }, [tacheInitiale]);
+  const a = avancementProjet(p);
+  const responsables = equipeDe(p);
+  const [fResp, setFResp] = useState("");
+  const maj = (fn) => majProjet(p.id, fn);
+  const majTache = (id, champs) => maj((x) => ({ ...x, taches: x.taches.map((t) => t.id === id ? { ...t, ...champs } : t) }));
+  const changerStatut = (t, s) => majTache(t.id, { statut: s, dateReelle: s === "Terminé" ? t.dateReelle || aujourdhui() : "" });
+  const enregistrerTache = (e) => {
+    maj((x) => ({ ...x, equipe: [.../* @__PURE__ */ new Set([...x.equipe || ["Moi"], e.responsable || "Moi"])], taches: e.id ? x.taches.map((t) => t.id === e.id ? { ...t, ...e } : t) : [...x.taches, { ...e, id: idP("t") }] }));
+    setEdition(null);
+  };
+  const ajoutRapide = (sid) => {
+    const t = (rapide[sid] || "").trim();
+    if (!t) return;
+    maj((x) => ({ ...x, taches: [...x.taches, { id: idP("t"), titre: t, sectionId: sid, responsable: "Moi", echeance: "", priorite: "Normale", statut: "À faire", jalon: false, description: "", sousTaches: [], commentaires: [], lien: "", dateReelle: "" }] }));
+    setRapide({ ...rapide, [sid]: "" });
+  };
+  const nouvelleTache = (sid) => setEdition({ titre: "", sectionId: sid || (p.sections[0] || {}).id, responsable: "Moi", echeance: "", priorite: "Normale", statut: "À faire", jalon: false, description: "", sousTaches: [], commentaires: [], lien: "", dateReelle: "" });
+  const ajouterSection = () => {
+    const nom = prompt("Nom de la nouvelle étape (section) :");
+    if (nom && nom.trim()) maj((x) => ({ ...x, sections: [...x.sections, { id: idP("s"), nom: nom.trim() }] }));
+  };
+  const renommerSection = (s) => {
+    const nom = prompt("Nouveau nom de l'étape :", s.nom);
+    if (nom && nom.trim()) maj((x) => ({ ...x, sections: x.sections.map((y) => y.id === s.id ? { ...y, nom: nom.trim() } : y) }));
+  };
+  const supprimerSection = (s) => {
+    const n = p.taches.filter((t) => t.sectionId === s.id).length;
+    if (p.sections.length < 2) return avertir("Un projet garde au moins une étape.");
+    if (!confirm(n ? `Supprimer l'étape « ${s.nom} » ? Ses ${n} tâche(s) seront déplacées dans l'étape « ${p.sections.find((y) => y.id !== s.id).nom} ».` : `Supprimer l'étape « ${s.nom} » ?`)) return;
+    const cible = p.sections.find((y) => y.id !== s.id).id;
+    maj((x) => ({ ...x, sections: x.sections.filter((y) => y.id !== s.id), taches: x.taches.map((t) => t.sectionId === s.id ? { ...t, sectionId: cible } : t) }));
+  };
+  const deplacerSection = (s, d) => maj((x) => {
+    const L = [...x.sections];
+    const i = L.findIndex((y) => y.id === s.id);
+    const j = i + d;
+    if (j < 0 || j >= L.length) return x;
+    [L[i], L[j]] = [L[j], L[i]];
+    return { ...x, sections: L };
+  });
+  const deposer = (champ, val, e) => {
+    e.preventDefault();
+    setSurvol("");
+    const id = e.dataTransfer.getData("text/plain");
+    const t = p.taches.find((x) => x.id === id);
+    if (!t || t[champ] === val) return;
+    if (champ === "statut") changerStatut(t, val);
+    else majTache(id, { [champ]: val });
+  };
+  const copier = async () => {
+    try {
+      await navigator.clipboard.writeText(texteAvancement(p));
+      avertir("Point d'avancement copié : colle-le dans un mail Outlook.");
+    } catch (e) {
+      avertir("Copie impossible dans ce navigateur.");
+    }
+  };
+  const ajouterPoint = () => {
+    if (!point.trim()) return;
+    maj((x) => ({ ...x, points: [...x.points || [], { date: aujourdhui(), texte: point.trim() }] }));
+    setPoint("");
+  };
+  const exporter = () => {
+    try {
+      const nomS = (t) => (p.sections.find((s) => s.id === t.sectionId) || {}).nom || "";
+      const f1 = {
+        nom: "Tâches",
+        titre: p.nom,
+        sous: `${perimetreProjet(p)} · avancement ${Math.round(a.taux * 100)} % au ${fmtDate(aujourdhui())}`,
+        colonnes: [{ lib: "Étape", l: 26 }, { lib: "Tâche", l: 54 }, { lib: "Jalon", l: 7 }, { lib: "Responsable", l: 16 }, { lib: "Échéance", l: 11, f: "date" }, { lib: "Statut", l: 11 }, { lib: "Terminé le", l: 11, f: "date" }, { lib: "Sous-tâches", l: 11 }, { lib: "Résultat", l: 40 }, { lib: "Dernier commentaire", l: 40 }],
+        lignes: p.sections.flatMap((s) => p.taches.filter((t) => t.sectionId === s.id).map((t) => [nomS(t), t.titre, t.jalon ? "Oui" : "", t.responsable || "", t.echeance || "", t.statut, t.dateReelle || "", (t.sousTaches || []).length ? `${t.sousTaches.filter((x) => x.fait).length}/${t.sousTaches.length}` : "", t.resultat || "", ((t.commentaires || []).slice(-1)[0] || {}).texte || ""]))
+      };
+      const ind = (p.indicateurs || []).flatMap((i) => (i.mesures || []).map((m) => [i.nom, m.date, m.valeur, i.unite || "", `${i.sens === "bas" ? "≤" : "≥"} ${i.cible}`, m.note || ""]));
+      const f2 = { nom: "Indicateurs", titre: "Indicateurs du projet", sous: "", colonnes: [{ lib: "Indicateur", l: 40 }, { lib: "Date", l: 11, f: "date" }, { lib: "Valeur", l: 10 }, { lib: "Unité", l: 8 }, { lib: "Cible", l: 10 }, { lib: "Note", l: 46 }], lignes: ind };
+      const f3 = { nom: "Points d'étape", titre: "Points d'étape et décisions", sous: "", colonnes: [{ lib: "Date", l: 11, f: "date" }, { lib: "Point", l: 100 }], lignes: (p.points || []).map((x) => [x.date, x.texte]) };
+      const blob = creerXlsx([f1, ...ind.length ? [f2] : [], ...(p.points || []).length ? [f3] : []]);
+      const nom = `Projet_${p.nom.replace(/[^A-Za-z0-9À-ÿ]+/g, "_")}_${aujourdhui()}.xlsx`;
+      const url = URL.createObjectURL(blob);
+      const l = document.createElement("a");
+      l.href = url;
+      l.download = nom;
+      document.body.appendChild(l);
+      l.click();
+      document.body.removeChild(l);
+      setTimeout(() => URL.revokeObjectURL(url), 1e3);
+      avertir(`Export prêt : ${nom}`);
+    } catch (e) {
+      avertir("Export impossible : " + e.message);
+    }
+  };
+  const visibles = p.taches.filter((t) => (!masquerFaites || t.statut !== "Terminé") && (!fResp || (t.responsable || "Moi") === fResp));
+  const triEch = (L) => [...L].sort((x, y) => (x.statut === "Terminé") - (y.statut === "Terminé") || String(x.echeance || "9999").localeCompare(String(y.echeance || "9999")));
+  const changerResp = (t, v) => {
+    if (v === "__autre") {
+      const n = demanderPersonne();
+      if (!n) return;
+      maj((x) => ({ ...x, equipe: [.../* @__PURE__ */ new Set([...x.equipe || ["Moi"], n])], taches: x.taches.map((y) => y.id === t.id ? { ...y, responsable: n } : y) }));
+    } else majTache(t.id, { responsable: v });
+  };
+  const props = { p, onOuvrir: setEdition, onStatut: changerStatut, onResp: changerResp, equipe: responsables, peutEditer };
+  const auj = aujourdhui();
+  const lun = lundiTache(auj);
+  const semaines = {};
+  p.taches.filter((t) => tacheOuverteP(t)).forEach((t) => {
+    const k = !t.echeance ? "zz" : t.echeance < auj ? "00" : lundiTache(t.echeance);
+    (semaines[k] = semaines[k] || []).push(t);
+  });
+  const libSem = (k) => k === "00" ? "En retard" : k === "zz" ? "Sans échéance" : k === lun ? "Cette semaine" : k === ajoutJours(lun, 7) ? "Semaine prochaine" : `Semaine du ${fmtDate(k)}`;
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 10 } }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: retour }, "‹ Mes projets")), /* @__PURE__ */ React.createElement("div", { className: "carte projet-tete" }, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("h2", { style: { margin: 0, fontSize: 20 } }, p.nom), /* @__PURE__ */ React.createElement(Badge, { s: p.statut === "Actif" ? "En cours" : p.statut === "Terminé" ? "Réalisé" : p.statut }), /* @__PURE__ */ React.createElement("span", { className: `meteo m${METEO_PROJET.indexOf(p.meteo || "Dans les temps")}` }, p.meteo || "Dans les temps"), peutEditer && /* @__PURE__ */ React.createElement("div", { style: { marginLeft: "auto" }, className: "actions" }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => setModifP(true) }, "Modifier le projet"), /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: copier }, "Copier le point d'avancement"), /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: exporter }, "Excel"))), /* @__PURE__ */ React.createElement("p", { className: "sous" }, perimetreProjet(p), p.commanditaire ? ` · pour ${p.commanditaire}` : "", " · du ", fmtDate(p.debut), p.fin ? ` au ${fmtDate(p.fin)}` : ""), p.objectif && /* @__PURE__ */ React.createElement("p", { style: { margin: "4px 0" } }, /* @__PURE__ */ React.createElement("b", null, "Objectif :"), " ", p.objectif), /* @__PURE__ */ React.createElement("p", { className: "petit", style: { margin: "4px 0" } }, /* @__PURE__ */ React.createElement("b", null, "Équipe :"), " ", responsables.join(" · "), peutEditer && /* @__PURE__ */ React.createElement(React.Fragment, null, " · ", /* @__PURE__ */ React.createElement("button", { type: "button", className: "lien-btn", onClick: () => setModifP(true) }, "gérer l'équipe"))), /* @__PURE__ */ React.createElement("div", { className: "barre-fond", style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement("i", { style: { width: `${Math.round(a.taux * 100)}%`, background: "var(--violet)" } }), /* @__PURE__ */ React.createElement("span", null, Math.round(a.taux * 100), " % · ", a.fait, "/", a.n, " tâches", a.jalons.length ? ` · jalons ${a.jalonsFaits}/${a.jalons.length}` : "", a.retard ? ` · ` : "", a.retard ? /* @__PURE__ */ React.createElement("b", { className: "t-retard" }, a.retard, " en retard") : ""))), /* @__PURE__ */ React.createElement(Onglets, { liste: [{ id: "liste", lib: "Liste" }, { id: "tableau", lib: "Tableau" }, { id: "echeancier", lib: "Échéancier", n: a.retard }, { id: "indicateurs", lib: "Indicateurs" }, { id: "points", lib: "Points d'étape" }], actif: onglet, onChange: setOnglet }), ["liste", "tableau"].includes(onglet) && /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 10, alignItems: "center" } }, peutEditer && /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => nouvelleTache() }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Tâche"), peutEditer && onglet === "liste" && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: ajouterSection }, "+ Étape"), /* @__PURE__ */ React.createElement("select", { className: "input", style: { width: "auto", marginLeft: "auto" }, "aria-label": "Filtrer par responsable", value: fResp, onChange: (e) => setFResp(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Tous les responsables"), responsables.map((r) => /* @__PURE__ */ React.createElement("option", { key: r }, r))), /* @__PURE__ */ React.createElement("label", { className: "petit" }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: masquerFaites, onChange: (e) => setMasquerFaites(e.target.checked) }), " Masquer les tâches terminées")), onglet === "liste" && p.sections.map((s, i) => {
+    const L = triEch(visibles.filter((t) => t.sectionId === s.id));
+    const tot = p.taches.filter((t) => t.sectionId === s.id);
+    const f = tot.filter((t) => t.statut === "Terminé").length;
+    return /* @__PURE__ */ React.createElement("div", { key: s.id, className: `carte section-p ${survol === s.id ? "survol" : ""}`, onDragOver: (e) => {
+      e.preventDefault();
+      setSurvol(s.id);
+    }, onDragLeave: () => setSurvol(""), onDrop: (e) => deposer("sectionId", s.id, e) }, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { alignItems: "center" } }, /* @__PURE__ */ React.createElement("h2", { style: { margin: 0 } }, s.nom), /* @__PURE__ */ React.createElement("span", { className: "petit" }, f, "/", tot.length), peutEditer && /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginLeft: "auto" } }, /* @__PURE__ */ React.createElement("button", { className: "btn mini", "aria-label": "Monter l'étape", disabled: i === 0, onClick: () => deplacerSection(s, -1) }, "↑"), /* @__PURE__ */ React.createElement("button", { className: "btn mini", "aria-label": "Descendre l'étape", disabled: i === p.sections.length - 1, onClick: () => deplacerSection(s, 1) }, "↓"), /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => renommerSection(s) }, "Renommer"), /* @__PURE__ */ React.createElement("button", { className: "btn mini", onClick: () => supprimerSection(s) }, "Supprimer"))), /* @__PURE__ */ React.createElement("div", { className: "taches", style: { marginTop: 8 } }, L.map((t) => /* @__PURE__ */ React.createElement("div", { key: t.id, draggable: peutEditer, onDragStart: (e) => {
+      e.dataTransfer.setData("text/plain", t.id);
+    } }, /* @__PURE__ */ React.createElement(LigneTacheProjet, { t, ...props })))), peutEditer && /* @__PURE__ */ React.createElement("input", { className: "input ajout-p", placeholder: "+ Ajouter une tâche à cette étape (Entrée)", value: rapide[s.id] || "", onChange: (e) => setRapide({ ...rapide, [s.id]: e.target.value }), onKeyDown: (e) => {
+      if (e.key === "Enter") ajoutRapide(s.id);
+    } }));
+  }), onglet === "tableau" && /* @__PURE__ */ React.createElement("div", { className: "kanban" }, STATUTS_TACHE_PROJET.map((st) => {
+    const L = triEch(visibles.filter((t) => t.statut === st));
+    return /* @__PURE__ */ React.createElement("div", { key: st, className: `kol ${survol === st ? "survol" : ""}`, onDragOver: (e) => {
+      e.preventDefault();
+      setSurvol(st);
+    }, onDragLeave: () => setSurvol(""), onDrop: (e) => deposer("statut", st, e) }, /* @__PURE__ */ React.createElement("div", { className: "jour-tete" }, st, " ", /* @__PURE__ */ React.createElement("span", { className: "petit" }, L.length)), L.map((t) => /* @__PURE__ */ React.createElement(LigneTacheProjet, { key: t.id, t, carte: true, ...props })));
+  })), onglet === "echeancier" && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Les tâches restantes, rangées par semaine d'échéance. Les jalons sont marqués ◆."), !Object.keys(semaines).length ? /* @__PURE__ */ React.createElement(Vide, null, "Toutes les tâches sont terminées.") : Object.keys(semaines).sort().map((k) => /* @__PURE__ */ React.createElement("div", { key: k, style: { marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { className: `sec ${k === "00" ? "t-retard" : ""}` }, libSem(k), " · ", semaines[k].length), /* @__PURE__ */ React.createElement("div", { className: "taches" }, triEch(semaines[k]).map((t) => /* @__PURE__ */ React.createElement(LigneTacheProjet, { key: t.id, t, carte: true, ...props })))))), onglet === "indicateurs" && /* @__PURE__ */ React.createElement(IndicateursProjet, { p, maj, peutEditer }), onglet === "points" && /* @__PURE__ */ React.createElement("div", { className: "carte" }, /* @__PURE__ */ React.createElement("p", { className: "sous" }, "Décisions, points de vigilance, comptes rendus de réunion. Le dernier point est repris dans le point d'avancement copié pour le mail."), peutEditer && /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 10 } }, /* @__PURE__ */ React.createElement("textarea", { className: "input", rows: 2, style: { flex: 1 }, placeholder: "Ex. Réunion qualité : seuil d'accord fixé à 85 %, second tour de calibrage le 10/12", value: point, onChange: (e) => setPoint(e.target.value) }), /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: ajouterPoint }, "Ajouter")), (p.points || []).length ? /* @__PURE__ */ React.createElement("ul", { className: "etapes" }, [...p.points].map((x, k) => ({ ...x, k })).sort((x, y) => y.date.localeCompare(x.date)).map((x) => /* @__PURE__ */ React.createElement("li", { key: x.k }, /* @__PURE__ */ React.createElement("b", null, fmtDate(x.date)), " · ", x.texte, " ", peutEditer && /* @__PURE__ */ React.createElement("button", { className: "btn mini", "aria-label": "Retirer le point", onClick: () => maj((y) => ({ ...y, points: y.points.filter((_, j) => j !== x.k) })) }, "×")))) : /* @__PURE__ */ React.createElement(Vide, null, "Aucun point d'étape noté.")), edition && /* @__PURE__ */ React.createElement(DetailTacheProjet, { p, tache: edition, responsables, onFermer: () => setEdition(null), onEnregistrer: enregistrerTache, onSupprimer: (id) => {
+    maj((x) => ({ ...x, taches: x.taches.filter((t) => t.id !== id) }));
+    setEdition(null);
+  } }), modifP && /* @__PURE__ */ React.createElement(FormProjet, { ctx, projet: p, onFermer: () => setModifP(false), onEnregistrer: (e) => {
+    const { modele, ...reste } = e;
+    maj((x) => ({ ...x, ...reste }));
+    setModifP(false);
+  } }), peutEditer && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, textAlign: "right" } }, /* @__PURE__ */ React.createElement("button", { className: "btn mini danger", onClick: () => {
+    if (confirm(`Supprimer définitivement le projet « ${p.nom} » et toutes ses tâches ? (Pense à faire une sauvegarde avant.)`)) supprimerProjet(p.id);
+  } }, "Supprimer le projet")));
+}
+function VueMesProjets({ ctx }) {
+  const { suiviProjets: doc2, enregistrerSuiviProjets, peutEditer, projetOuvert, setProjetOuvert } = ctx;
+  const [creation, setCreation] = useState(false);
+  const [filtre, setFiltre] = useState("encours");
+  const projets = doc2.projets || [];
+  const ecrire = async (liste) => {
+    try {
+      await enregistrerSuiviProjets({ ...SUIVI_PROJETS_DEFAUT, ...doc2, projets: liste });
+    } catch (e) {
+      avertir("Enregistrement impossible : " + e.message);
+    }
+  };
+  const majProjet = (id, fn) => ecrire(projets.map((p2) => p2.id === id ? JSON.parse(JSON.stringify(fn(p2))) : p2));
+  const p = projetOuvert && projets.find((x) => x.id === projetOuvert.id);
+  if (p) return /* @__PURE__ */ React.createElement(PageProjet, { key: p.id, ctx, p, majProjet, tacheInitiale: projetOuvert.tacheId, retour: () => setProjetOuvert(null), supprimerProjet: (id) => {
+    ecrire(projets.filter((x) => x.id !== id));
+    setProjetOuvert(null);
+  } });
+  const L = projets.filter((x) => filtre === "tous" || (filtre === "encours" ? ["Actif", "En pause"].includes(x.statut) : ["Terminé", "Annulé"].includes(x.statut)));
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { marginBottom: 14, alignItems: "center" } }, peutEditer && /* @__PURE__ */ React.createElement("button", { className: "btn primaire", onClick: () => setCreation(true) }, /* @__PURE__ */ React.createElement(Icone, { nom: "plus", taille: 15 }), " Nouveau projet"), /* @__PURE__ */ React.createElement("div", { className: "seg", style: { marginLeft: "auto" } }, [["encours", "En cours"], ["termines", "Terminés"], ["tous", "Tous"]].map(([k, lib]) => /* @__PURE__ */ React.createElement("button", { key: k, className: filtre === k ? "on" : "", onClick: () => setFiltre(k) }, lib)))), !L.length ? /* @__PURE__ */ React.createElement(Vide, null, projets.length ? "Aucun projet dans ce filtre." : "Aucun projet pour l'instant. Crée ton premier projet : le modèle « Déploiement d'un outil qualité (QMA) » prépare les étapes et les tâches.") : /* @__PURE__ */ React.createElement("div", { className: "projets-grille" }, L.map((x) => {
+    const a = avancementProjet(x);
+    return /* @__PURE__ */ React.createElement("button", { key: x.id, className: "carte projet-carte", onClick: () => setProjetOuvert({ id: x.id }) }, /* @__PURE__ */ React.createElement("div", { className: "actions", style: { alignItems: "baseline" } }, /* @__PURE__ */ React.createElement("b", { className: "projet-nom" }, x.nom), x.statut !== "Actif" && /* @__PURE__ */ React.createElement(Badge, { s: x.statut === "Terminé" ? "Réalisé" : x.statut }), /* @__PURE__ */ React.createElement("span", { className: `meteo m${METEO_PROJET.indexOf(x.meteo || "Dans les temps")}`, style: { marginLeft: "auto" } }, x.meteo || "Dans les temps")), /* @__PURE__ */ React.createElement("div", { className: "petit" }, perimetreProjet(x), x.fin ? ` · fin prévue le ${fmtDate(x.fin)}` : ""), /* @__PURE__ */ React.createElement("div", { className: "barre-fond", style: { margin: "10px 0 6px" } }, /* @__PURE__ */ React.createElement("i", { style: { width: `${Math.round(a.taux * 100)}%`, background: "var(--violet)" } }), /* @__PURE__ */ React.createElement("span", null, Math.round(a.taux * 100), " %")), /* @__PURE__ */ React.createElement("div", { className: "petit" }, a.fait, "/", a.n, " tâches", a.jalons.length ? ` · jalons ${a.jalonsFaits}/${a.jalons.length}` : "", a.retard ? /* @__PURE__ */ React.createElement(React.Fragment, null, " · ", /* @__PURE__ */ React.createElement("b", { className: "t-retard" }, a.retard, " en retard")) : ""), a.prochaine && /* @__PURE__ */ React.createElement("div", { className: "petit", style: { marginTop: 4 } }, "Prochaine : ", a.prochaine.titre, " · ", fmtDate(a.prochaine.echeance)));
+  })), creation && /* @__PURE__ */ React.createElement(FormProjet, { ctx, projet: {}, onFermer: () => setCreation(false), onEnregistrer: (e) => {
+    const np = creerDepuisModele(e.modele, e);
+    ecrire([...projets, np]);
+    setCreation(false);
+    setProjetOuvert({ id: np.id });
+    avertir("Projet créé.");
+  } }));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(App, null));
 </script>
